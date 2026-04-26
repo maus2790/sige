@@ -1,11 +1,11 @@
-//lib/send-reset-email.ts
 import { resend } from "./resend";
 
 export async function sendResetEmail(email: string, name: string, resetToken: string) {
   const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
 
   const { data, error } = await resend.emails.send({
-    from: "SIGE Marketplace <onboarding@resend.dev>",
+    // ✅ CAMBIA ESTO - usa tu dominio personalizado
+    from: `"SIGE Marketplace" <hola@sige.click>`,  // ← NUEVO REMITENTE
     to: email,
     subject: "Recupera tu contraseña - SIGE Marketplace",
     html: `
@@ -28,7 +28,6 @@ export async function sendResetEmail(email: string, name: string, resetToken: st
   if (error) {
     console.error("Error sending email:", error);
 
-    // En desarrollo, mostramos el link en consola por si Resend bloquea el envío
     if (process.env.NODE_ENV === "development") {
       console.log("\n🔑 [DEBUG] ENLACE DE RECUPERACIÓN:", resetUrl, "\n");
     }
