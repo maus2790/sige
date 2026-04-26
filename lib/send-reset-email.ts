@@ -1,3 +1,4 @@
+//lib/send-reset-email.ts
 import { resend } from "./resend";
 
 export async function sendResetEmail(email: string, name: string, resetToken: string) {
@@ -26,12 +27,12 @@ export async function sendResetEmail(email: string, name: string, resetToken: st
 
   if (error) {
     console.error("Error sending email:", error);
-    
+
     // En desarrollo, mostramos el link en consola por si Resend bloquea el envío
     if (process.env.NODE_ENV === "development") {
       console.log("\n🔑 [DEBUG] ENLACE DE RECUPERACIÓN:", resetUrl, "\n");
     }
-    
+
     throw new Error("No se pudo enviar el email");
   }
 

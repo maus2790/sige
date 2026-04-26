@@ -1,4 +1,4 @@
-
+//app/dashboard/page.tsx
 
 import { requireRole, handleLogout } from "@/app/actions/auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,7 @@ export default async function DashboardPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Panel del Vendedor</h1>
-        
+
         <form action={handleLogout}>
           <Button variant="outline" type="submit" className="gap-2">
             <LogOut className="w-4 h-4" />
@@ -21,7 +21,7 @@ export default async function DashboardPage() {
           </Button>
         </form>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
@@ -35,7 +35,7 @@ export default async function DashboardPage() {
             <p>Rol: {user?.role}</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Productos</CardTitle>
@@ -45,7 +45,7 @@ export default async function DashboardPage() {
             <p>Próximamente: Listado de productos</p>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader>
             <CardTitle>Pedidos</CardTitle>

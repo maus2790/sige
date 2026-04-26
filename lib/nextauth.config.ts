@@ -1,3 +1,4 @@
+//lib/nextauth.config.ts
 import { AuthOptions } from "next-auth"; // Cambiado de NextAuthConfig
 import GoogleProvider from "next-auth/providers/google";
 import { db } from "@/db";
