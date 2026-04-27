@@ -6,6 +6,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
 import { SessionProvider } from "next-auth/react";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,9 +37,11 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <SessionProvider>
-          {children}
-          <Toaster />
-          <RegisterSW />
+          <QueryProvider>
+            {children}
+            <Toaster />
+            <RegisterSW />
+          </QueryProvider>
         </SessionProvider>
       </body>
     </html>

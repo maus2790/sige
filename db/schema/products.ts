@@ -1,3 +1,5 @@
+// db/schema/products.ts
+
 import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 export const products = sqliteTable("products", {
@@ -14,6 +16,8 @@ export const products = sqliteTable("products", {
     hasVideo: integer("has_video", { mode: "boolean" }).default(false),
     views: integer("views").default(0),
     sales: integer("sales").default(0),
+    status: text("status", { enum: ["Nuevo", "Usado", "Refabricado"] }).default("Nuevo"),
+    isPublished: integer("is_published", { mode: "boolean" }).default(true),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
