@@ -1,18 +1,19 @@
 "use client";
 
+
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
 import { usePathname } from "next/navigation";
-import { 
-  Bell, 
-  Menu, 
-  Moon, 
-  Sun, 
-  User, 
-  Store, 
-  LayoutDashboard, 
-  LogOut 
+import {
+  Bell,
+  Menu,
+  Moon,
+  Sun,
+  User,
+  Store,
+  LayoutDashboard,
+  LogOut
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,7 @@ export function Navbar() {
 
   useEffect(() => {
     setMounted(true);
-    
+
     const fetchAuth = async () => {
       try {
         const user = await getCurrentUser();
@@ -49,7 +50,7 @@ export function Navbar() {
         setIsLoadingAuth(false);
       }
     };
-    
+
     fetchAuth();
   }, []);
 
@@ -59,7 +60,7 @@ export function Navbar() {
   // Función para obtener la ruta del dashboard correcta según el rol
   const getDashboardPath = () => {
     if (!activeUser) return "/dashboard";
-    
+
     const role = (activeUser as any).role;
     if (role === "superadmin") return "/admin";
     if (role === "assistant") return "/assistant";
@@ -148,10 +149,10 @@ export function Navbar() {
                       <span>Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuSeparator />
-                  
-                  <DropdownMenuItem 
+
+                  <DropdownMenuItem
                     className="cursor-pointer flex items-center"
                     onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                   >
@@ -162,10 +163,10 @@ export function Navbar() {
                     )}
                     <span>{mounted && theme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
                   </DropdownMenuItem>
-                  
+
                   <DropdownMenuSeparator />
-                  
-                  <DropdownMenuItem 
+
+                  <DropdownMenuItem
                     className="cursor-pointer flex items-center text-red-600 focus:text-red-600 dark:text-red-500 dark:focus:text-red-500"
                     onClick={onLogout}
                   >
