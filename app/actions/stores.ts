@@ -45,7 +45,7 @@ export async function getAllStores(
   }
 
   if (verified !== undefined) {
-    conditions.push(eq(stores.verified, verified ? 1 : 0));
+    conditions.push(eq(stores.verified, verified));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -248,13 +248,13 @@ export async function getStoresStats() {
   const verifiedStores = await db
     .select({ count: sql<number>`count(*)` })
     .from(stores)
-    .where(eq(stores.verified, 1))
+    .where(eq(stores.verified, true))
     .get();
 
   const pendingStores = await db
     .select({ count: sql<number>`count(*)` })
     .from(stores)
-    .where(eq(stores.verified, 0))
+    .where(eq(stores.verified, false))
     .get();
 
   const activeSellers = await db

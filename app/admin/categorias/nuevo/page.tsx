@@ -33,7 +33,11 @@ export default function NuevaCategoriaPage() {
       setError(result.error);
       toast.error(result.error);
       if (result.fields) {
-        setFields(result.fields);
+        setFields({
+          name: result.fields.name,
+          slug: result.fields.slug,
+          icon: result.fields.icon ?? "",
+        });
       }
       setIsLoading(false);
     }

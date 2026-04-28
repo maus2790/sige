@@ -319,7 +319,7 @@ export async function getUserStats() {
   const verifiedSellers = await db
     .select({ count: sql<number>`count(*)` })
     .from(stores)
-    .where(eq(stores.verified, 1))
+    .where(eq(stores.verified, true))
     .get();
 
   return {

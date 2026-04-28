@@ -54,7 +54,7 @@ export async function getAllStores(
   }
 
   if (verified !== undefined) {
-    conditions.push(eq(stores.verified, verified ? 1 : 0));
+    conditions.push(eq(stores.verified, verified));
   }
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -111,7 +111,7 @@ export async function getAllStores(
         address: store.address ?? undefined,
         phone: store.phone ?? undefined,
         logoUrl: store.logoUrl ?? undefined,
-        verified: store.verified === 1,
+        verified: !!store.verified,
         rating: store.rating ?? undefined,
         createdAt: store.createdAt,
         userId: store.userId,
@@ -163,7 +163,7 @@ export async function verifyStore(storeId: string, verified: boolean) {
   await db
     .update(stores)
     .set({
-      verified: verified ? 1 : 0,
+      verified,
     })
     .where(eq(stores.id, storeId));
 
@@ -243,7 +243,7 @@ export async function getStoreById(id: string) {
     address: store.address ?? undefined,
     phone: store.phone ?? undefined,
     logoUrl: store.logoUrl ?? undefined,
-    verified: store.verified === 1,
+    verified: !!store.verified,
     rating: store.rating ?? undefined,
     createdAt: store.createdAt,
     userId: store.userId,
@@ -282,13 +282,13 @@ export async function getStoresStats() {
   const verifiedStores = await db
     .select({ count: sql<number>`count(*)` })
     .from(stores)
-    .where(eq(stores.verified, 1))
+    .where(eq(stores.verified, true))
     .get();
 
   const pendingStores = await db
     .select({ count: sql<number>`count(*)` })
     .from(stores)
-    .where(eq(stores.verified, 0))
+    .where(eq(stores.verified, false))
     .get();
 
   // Tiendas verificadas hoy (SQLite timestamp handling)
@@ -302,7 +302,7 @@ export async function getStoresStats() {
     .from(stores)
     .where(
       and(
-        eq(stores.verified, 1),
+        eq(stores.verified, true),
         sql`${stores.createdAt} >= ${today.getTime()}`,
         sql`${stores.createdAt} < ${tomorrow.getTime()}`
       )

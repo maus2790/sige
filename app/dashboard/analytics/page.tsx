@@ -251,7 +251,7 @@ export default async function AnalyticsPage() {
             </div>
             <div className="flex justify-between items-center py-2 border-b">
               <span>Órdenes pendientes</span>
-              <Badge variant={stats.pendingOrders > 0 ? "warning" : "default"}>
+              <Badge variant={stats.pendingOrders > 0 ? "destructive" : "default"}>
                 {stats.pendingOrders}
               </Badge>
             </div>

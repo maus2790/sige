@@ -48,7 +48,7 @@ export function SalesChart({ data, title, description, type = "area" }: SalesCha
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) => [`Bs. ${value.toFixed(2)}`, "Ventas"]}
+                  formatter={(value: any) => [`Bs. ${Number(value).toFixed(2)}`, "Ventas"]}
                   contentStyle={{ borderRadius: "8px", border: "1px solid #e2e8f0" }}
                 />
                 <Area
@@ -65,7 +65,7 @@ export function SalesChart({ data, title, description, type = "area" }: SalesCha
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value: number) => [`Bs. ${value.toFixed(2)}`, "Ventas"]}
+                  formatter={(value: any) => [`Bs. ${Number(value).toFixed(2)}`, "Ventas"]}
                 />
                 <Bar dataKey="total" fill="#3B82F6" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -99,13 +99,13 @@ export function CategoryPieChart({ data }: { data: { category: string; revenue: 
                 paddingAngle={5}
                 dataKey="revenue"
                 labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label={({ name, percent }) => `${name}: ${((percent || 0) * 100).toFixed(0)}%`}
               >
                 {formattedData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number) => [`Bs. ${value.toFixed(2)}`, "Ingresos"]} />
+              <Tooltip formatter={(value: any) => [`Bs. ${Number(value || 0).toFixed(2)}`, "Ingresos"]} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
