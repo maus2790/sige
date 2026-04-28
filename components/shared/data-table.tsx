@@ -31,7 +31,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronLeft, ChevronRight, Download, Printer, Search, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Printer, Search, Settings2, AlertTriangle } from "lucide-react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -43,6 +43,8 @@ interface DataTableProps<TData, TValue> {
   onPaginationChange: (pageIndex: number) => void;
   onSearchChange: (value: string) => void;
   onCategoryChange?: (value: string) => void;
+  onLowStockChange?: (value: boolean) => void;
+  initialLowStock?: boolean;
   categories?: string[];
   isLoading?: boolean;
 }
@@ -54,6 +56,8 @@ export function DataTable<TData, TValue>({
   onPaginationChange,
   onSearchChange,
   onCategoryChange,
+  onLowStockChange,
+  initialLowStock = false,
   categories = [],
   isLoading = false,
 }: DataTableProps<TData, TValue>) {
@@ -87,7 +91,17 @@ export function DataTable<TData, TValue>({
 
   // Export to Excel
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(data as any[]);
+    const exportData = data.map((row: any) => ({
+      "ID / SKU": row.sku || "N/A",
+      Nombre: row.name,
+      Categoría: row.category,
+      Precio: row.price,
+      "Stock Actual": row.inventory?.stockActual ?? 0,
+      "Stock Mínimo": row.inventory?.stockMinimo ?? 0,
+      Ubicación: row.inventory?.ubicacion ?? "N/A",
+      Estado: row.status,
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Productos");
     XLSX.writeFile(wb, "productos_sige.xlsx");
@@ -97,15 +111,17 @@ export function DataTable<TData, TValue>({
   const exportToPDF = () => {
     const doc = new jsPDF();
     const tableData = data.map((row: any) => [
+      row.sku || "N/A",
       row.name,
       row.category,
       `Bs. ${row.price}`,
-      row.stock,
+      row.inventory?.stockActual ?? 0,
+      row.inventory?.ubicacion ?? "N/A",
       row.status
     ]);
 
     autoTable(doc, {
-      head: [["Nombre", "Categoría", "Precio", "Stock", "Estado"]],
+      head: [["ID/SKU", "Nombre", "Categoría", "Precio", "Stock", "Ubicación", "Estado"]],
       body: tableData,
     });
     doc.save("productos_sige.pdf");
@@ -139,6 +155,17 @@ export function DataTable<TData, TValue>({
                 </option>
               ))}
             </select>
+          )}
+          {onLowStockChange && (
+            <Button
+              variant={initialLowStock ? "destructive" : "outline"}
+              size="sm"
+              onClick={() => onLowStockChange(!initialLowStock)}
+              className="gap-2"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Stock Bajo
+            </Button>
           )}
         </div>
 

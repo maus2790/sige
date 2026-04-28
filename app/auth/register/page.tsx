@@ -97,8 +97,8 @@ export default function RegisterPage() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Creando cuenta..." : "Registrarse"}
+          <Button type="submit" className="w-full" loading={isLoading}>
+            Registrarse
           </Button>
           <div className="text-sm text-center">
             <Link href="/auth/login" className="text-muted-foreground hover:underline">

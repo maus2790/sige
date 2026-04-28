@@ -32,16 +32,32 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Interceptar fetch requests
+// Interceptar fetch requests con estrategia Network First
 self.addEventListener('fetch', (event) => {
+  // Omitir llamadas a la API y autenticación
+  if (event.request.url.includes('/api/') || event.request.url.includes('/auth/')) {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
+    fetch(event.request)
       .then((response) => {
-        if (response) {
-          return response;
+        // Si la respuesta es válida, clonarla y guardarla en caché
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
         }
-        return fetch(event.request).catch(() => {
-          // Si falla la red y no está en caché, mostrar página offline
+        return response;
+      })
+      .catch(() => {
+        // Si falla la red, intentar buscar en caché
+        return caches.match(event.request).then((response) => {
+          if (response) {
+            return response;
+          }
+          // Si no está en caché y es navegación, mostrar página offline
           if (event.request.mode === 'navigate') {
             return caches.match('/offline');
           }

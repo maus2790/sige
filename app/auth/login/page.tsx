@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,12 +11,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { toast } from "sonner";
 import { handleLogin } from "@/app/actions/auth";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
+    return await handleLogin(formData);
+  }, null);
 
   useEffect(() => {
     // Mostrar mensajes según los parámetros de URL
@@ -30,21 +32,11 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
-    const formData = new FormData(event.currentTarget);
-    const result = await handleLogin(formData);
-
-    if (result?.error) {
-      setError(result.error);
-      toast.error(result.error);
-      setIsLoading(false);
+  useEffect(() => {
+    if (state?.error) {
+      toast.error(state.error);
     }
-    // Si no hay error, la acción redirige automáticamente
-  }
+  }, [state]);
 
   return (
     <Card>
@@ -54,11 +46,11 @@ export default function LoginPage() {
           Ingresa tus credenciales para acceder a tu cuenta
         </CardDescription>
       </CardHeader>
-      <form onSubmit={onSubmit}>
+      <form action={formAction}>
         <CardContent className="space-y-4">
-          {error && (
+          {state?.error && (
             <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
-              {error}
+              {state.error}
             </div>
           )}
           <div className="space-y-2">
@@ -69,7 +61,7 @@ export default function LoginPage() {
               type="email"
               placeholder="correo@ejemplo.com"
               required
-              disabled={isLoading}
+              disabled={isPending}
             />
           </div>
           <div className="space-y-2">
@@ -79,14 +71,12 @@ export default function LoginPage() {
               name="password"
               type="password"
               required
-              disabled={isLoading}
+              disabled={isPending}
             />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Iniciando sesión..." : "Iniciar Sesión"}
-          </Button>
+          <SubmitButton />
 
           {/* Separador */}
           <div className="relative my-2 w-full">
@@ -114,5 +104,20 @@ export default function LoginPage() {
         </CardFooter>
       </form>
     </Card>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      type="submit"
+      className="w-full"
+      disabled={pending}
+    >
+      {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+      Acceder
+    </Button>
   );
 }

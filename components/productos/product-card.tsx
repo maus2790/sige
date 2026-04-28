@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, Eye, ShoppingCart, Package } from "lucide-react";
+import { Heart, Eye, ShoppingCart, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,10 @@ interface ProductCardProps {
     name: string;
     description: string | null;
     price: number;
-    stock: number | null;
+    inventory?: {
+      stockActual: number;
+      stockMinimo: number;
+    } | null;
     imageUrls: string[] | null;
     views: number | null;
     status?: string | null;
@@ -23,6 +26,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const mainImage = product.imageUrls?.[0] || null;
 
   return (
@@ -42,15 +46,15 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Badge de stock bajo */}
-        {(product.stock ?? 0) < 5 && (product.stock ?? 0) > 0 && (
+        {(product.inventory?.stockActual ?? 0) < (product.inventory?.stockMinimo ?? 5) && (product.inventory?.stockActual ?? 0) > 0 && (
           <div className="absolute top-2 right-2 z-10">
             <Badge variant="destructive" className="text-xs">
-              ¡Quedan {product.stock}!
+              ¡Quedan {product.inventory?.stockActual}!
             </Badge>
           </div>
         )}
 
-        {product.stock === 0 && (
+        {(!product.inventory || product.inventory.stockActual === 0) && (
           <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center">
             <Badge variant="secondary" className="text-sm px-3 py-1">
               Agotado
@@ -59,17 +63,25 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Imagen */}
-        <div className="aspect-square overflow-hidden bg-linear-to-br from-slate-100 to-slate-200">
+        <div className="aspect-square relative overflow-hidden bg-linear-to-br from-slate-100 to-slate-200">
           {mainImage ? (
-            <Image
-              src={mainImage}
-              alt={product.name}
-              width={400}
-              height={400}
-              className={`w-full h-full object-cover transition-transform duration-500 ${
-                isHovered ? "scale-110" : "scale-100"
-              }`}
-            />
+            <>
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 z-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              )}
+              <Image
+                src={mainImage}
+                alt={product.name}
+                width={400}
+                height={400}
+                className={`w-full h-full object-cover transition-transform duration-500 ${
+                  isHovered ? "scale-110" : "scale-100"
+                } ${isLoading ? "opacity-0" : "opacity-100"}`}
+                onLoad={() => setIsLoading(false)}
+              />
+            </>
           ) : (
             <div className="w-full h-full flex items-center justify-center text-muted-foreground">
               <Package className="w-12 h-12" />

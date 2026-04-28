@@ -13,7 +13,9 @@ interface ProductFormProps {
     name: string;
     description: string;
     price: number;
-    stock: number;
+    stockActual: number;
+    stockMinimo: number;
+    ubicacion?: string;
     category: string;
   };
   onSubmit: (formData: FormData) => Promise<void>;
@@ -89,14 +91,40 @@ export function ProductForm({ initialData, onSubmit, isLoading }: ProductFormPro
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="stock">Stock *</Label>
+          <Label htmlFor="stockActual">Stock Actual *</Label>
           <Input
-            id="stock"
-            name="stock"
+            id="stockActual"
+            name="stockActual"
             type="number"
             placeholder="10"
-            defaultValue={initialData?.stock}
+            defaultValue={initialData?.stockActual}
             required
+            disabled={isLoading}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="stockMinimo">Stock Mínimo *</Label>
+          <Input
+            id="stockMinimo"
+            name="stockMinimo"
+            type="number"
+            placeholder="5"
+            defaultValue={initialData?.stockMinimo ?? 5}
+            required
+            disabled={isLoading}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="ubicacion">Ubicación</Label>
+          <Input
+            id="ubicacion"
+            name="ubicacion"
+            placeholder="Pasillo A, Estante 3"
+            defaultValue={initialData?.ubicacion}
             disabled={isLoading}
           />
         </div>
@@ -119,8 +147,8 @@ export function ProductForm({ initialData, onSubmit, isLoading }: ProductFormPro
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Guardando..." : initialData?.id ? "Actualizar" : "Crear Producto"}
+        <Button type="submit" loading={isLoading}>
+          {initialData?.id ? "Actualizar" : "Crear Producto"}
         </Button>
       </div>
     </form>

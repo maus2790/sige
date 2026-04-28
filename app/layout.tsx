@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
 import { SessionProvider } from "next-auth/react";
 import { QueryProvider } from "@/components/providers/query-provider";
+import NextTopLoader from "nextjs-toploader";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -36,6 +37,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=yes" />
       </head>
       <body className={inter.className}>
+        <NextTopLoader showSpinner={false} color="#3B82F6" shadow="0 0 10px #3B82F6,0 0 5px #3B82F6" />
         <SessionProvider>
           <QueryProvider>
             {children}

@@ -75,6 +75,17 @@ export function EditProductForm({ product }: { product: any }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="space-y-2">
+                <Label htmlFor="sku">Identificador / SKU</Label>
+                <Input
+                  id="sku"
+                  name="sku"
+                  defaultValue={product.sku}
+                  placeholder="Ej: PROD-001"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="name">Nombre del producto *</Label>
                 <Input
                   id="name"
@@ -97,31 +108,17 @@ export function EditProductForm({ product }: { product: any }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="price">Precio (Bs.) *</Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    defaultValue={product.price}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="stock">Stock *</Label>
-                  <Input
-                    id="stock"
-                    name="stock"
-                    type="number"
-                    defaultValue={product.stock}
-                    required
-                    disabled={isLoading}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="price">Precio (Bs.) *</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="0.01"
+                  defaultValue={product.price}
+                  required
+                  disabled={isLoading}
+                />
               </div>
             </div>
 

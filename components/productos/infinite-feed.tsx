@@ -4,6 +4,7 @@ import { useInView } from "react-intersection-observer";
 import { useEffect } from "react";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { ProductCard } from "./product-card";
+import { ProductGridSkeleton } from "./product-card-skeleton";
 import { Loader2, Package, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,12 +171,9 @@ export function InfiniteFeed({ search: initialSearch = "" }: InfiniteFeedProps) 
         </div>
       </div>
 
-      {/* Grid de productos */}
       <div className="container mx-auto px-4 py-6">
         {isLoading ? (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
+          <ProductGridSkeleton count={8} />
         ) : products.length === 0 ? (
           <div className="text-center py-20">
             <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />

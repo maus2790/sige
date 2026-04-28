@@ -3,15 +3,24 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { Product } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Tag } from "lucide-react";
 import Link from "next/link";
 import { ProductImageGallery } from "./product-image-gallery";
 import { DeleteProductButton } from "./delete-product-button";
 
 export const columns: ColumnDef<any>[] = [
+  {
+    accessorKey: "sku",
+    header: "ID / SKU",
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+        <Tag className="w-3 h-3" />
+        {row.getValue("sku") || "N/A"}
+      </div>
+    ),
+  },
   {
     accessorKey: "imageUrls",
     header: "Imagen",
@@ -49,21 +58,6 @@ export const columns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const price = parseFloat(row.getValue("price"));
       return <div className="font-medium">Bs. {price.toFixed(2)}</div>;
-    },
-  },
-  {
-    accessorKey: "stock",
-    header: "Stock",
-    cell: ({ row }) => {
-      const stock = parseInt(row.getValue("stock"));
-      return (
-        <div className="flex items-center gap-2">
-          {stock}
-          <Badge variant={stock > 0 ? "default" : "secondary"}>
-            {stock > 0 ? "Disponible" : "Agotado"}
-          </Badge>
-        </div>
-      );
     },
   },
   {

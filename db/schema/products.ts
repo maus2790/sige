@@ -5,10 +5,10 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 export const products = sqliteTable("products", {
     id: text("id").primaryKey(),
     storeId: text("store_id").notNull(),
+    sku: text("sku"), // Identificador único para la tienda (SKU)
     name: text("name").notNull(),
     description: text("description"),
     price: real("price").notNull(),
-    stock: integer("stock").default(0),
     category: text("category"),
     imageUrls: text("image_urls", { mode: "json" }).$type<string[]>(),
     videoUrl: text("video_url"),

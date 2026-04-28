@@ -6,6 +6,7 @@ import { ArrowLeft, ShoppingCart, MessageSquare, ShieldCheck, Truck, Package } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { ProductGallery } from "@/components/productos/product-gallery";
 
 interface ProductoDetailPageProps {
   params: Promise<{ id: string }>;
@@ -19,7 +20,6 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
     notFound();
   }
 
-  const mainImage = product.imageUrls?.[0] || null;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20">
@@ -38,48 +38,10 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
       <main className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Columna Izquierda: Galería de Imágenes */}
-          <div className="space-y-4">
-            <div className="aspect-square bg-white rounded-2xl overflow-hidden border shadow-sm relative">
-              {mainImage ? (
-                <Image
-                  src={mainImage}
-                  alt={product.name}
-                  fill
-                  className="object-contain p-4"
-                  priority
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  <Package className="w-20 h-20" />
-                </div>
-              )}
-              
-              {/* Badge de estado */}
-              {product.status && (
-                <div className="absolute top-4 left-4">
-                  <Badge className="bg-primary text-white border-none px-3 py-1">
-                    {product.status}
-                  </Badge>
-                </div>
-              )}
-            </div>
-
-            {/* Miniaturas */}
-            {product.imageUrls && product.imageUrls.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {product.imageUrls.map((url, idx) => (
-                  <div key={idx} className="relative w-20 h-20 rounded-lg border bg-white shrink-0 overflow-hidden cursor-pointer hover:border-primary transition-colors">
-                    <Image
-                      src={url}
-                      alt={`${product.name} ${idx + 1}`}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ProductGallery 
+            imageUrls={product.imageUrls || []} 
+            productName={product.name} 
+          />
 
           {/* Columna Derecha: Información y Compra */}
           <div className="flex flex-col gap-6">
@@ -143,8 +105,8 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
             {/* Info de Stock */}
             <div className="bg-slate-100 p-4 rounded-xl flex justify-between items-center">
               <span className="text-sm font-medium text-slate-600">Disponibilidad:</span>
-              <Badge variant={product.stock && product.stock > 0 ? "default" : "destructive"}>
-                {product.stock && product.stock > 0 ? `${product.stock} unidades` : "Agotado"}
+              <Badge variant={product.inventory && product.inventory.stockActual > 0 ? "default" : "destructive"}>
+                {product.inventory && product.inventory.stockActual > 0 ? `${product.inventory.stockActual} unidades` : "Agotado"}
               </Badge>
             </div>
           </div>

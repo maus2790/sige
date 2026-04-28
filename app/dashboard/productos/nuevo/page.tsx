@@ -100,6 +100,16 @@ export default function NuevoProductoPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="space-y-2">
+                  <Label htmlFor="sku">Identificador / SKU</Label>
+                  <Input
+                    id="sku"
+                    name="sku"
+                    placeholder="Ej: PROD-001"
+                    disabled={isLoading}
+                  />
+                </div>
+
+                <div className="space-y-2">
                   <Label htmlFor="name">Nombre del producto *</Label>
                   <Input
                     id="name"
@@ -124,31 +134,17 @@ export default function NuevoProductoPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Precio (Bs.) *</Label>
-                    <Input
-                      id="price"
-                      name="price"
-                      type="number"
-                      step="0.01"
-                      placeholder="99.99"
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="stock">Stock *</Label>
-                    <Input
-                      id="stock"
-                      name="stock"
-                      type="number"
-                      placeholder="10"
-                      required
-                      disabled={isLoading}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="price">Precio (Bs.) *</Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    required
+                    disabled={isLoading}
+                  />
                 </div>
               </div>
 

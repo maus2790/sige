@@ -1,11 +1,13 @@
+// components/inventory/inventory-table-client.tsx
+
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { DataTable } from "@/components/shared/data-table";
-import { columns } from "./product-columns";
+import { inventoryColumns } from "./inventory-columns";
 
-interface ProductsTableClientProps {
+interface InventoryTableClientProps {
   initialData: any[];
   total: number;
   pageCount: number;
@@ -16,7 +18,7 @@ interface ProductsTableClientProps {
   categories: string[];
 }
 
-export function ProductsTableClient({
+export function InventoryTableClient({
   initialData,
   pageCount,
   initialPage,
@@ -24,7 +26,7 @@ export function ProductsTableClient({
   initialCategory,
   initialLowStock,
   categories,
-}: ProductsTableClientProps) {
+}: InventoryTableClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -74,7 +76,7 @@ export function ProductsTableClient({
 
   return (
     <DataTable
-      columns={columns}
+      columns={inventoryColumns}
       data={initialData}
       pageCount={pageCount}
       onPaginationChange={handlePaginationChange}

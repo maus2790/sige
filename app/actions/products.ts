@@ -3,8 +3,8 @@
 "use server";
 
 import { db } from "@/db";
-import { products, stores } from "@/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { products, stores, inventory } from "@/db/schema";
+import { eq, and, desc, sql, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,10 +17,10 @@ import { requireRole } from "./auth";
 
 type ProductImageUrls = string[];
 type ProductUpdateData = {
+  sku?: string;
   name?: string;
   description?: string;
   price?: number;
-  stock?: number;
   category?: string;
   status?: "Nuevo" | "Usado" | "Refabricado";
   isPublished?: boolean;
@@ -32,20 +32,20 @@ type ProductUpdateData = {
 // ============================================
 
 const createProductSchema = z.object({
+  sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
   price: z.number().positive("El precio debe ser mayor a 0"),
-  stock: z.number().int().min(0, "El stock no puede ser negativo"),
   category: z.string().min(1, "Selecciona una categoría"),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
   isPublished: z.boolean().default(true),
 });
 
 const updateProductSchema = z.object({
+  sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres").optional(),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres").optional(),
   price: z.number().positive("El precio debe ser mayor a 0").optional(),
-  stock: z.number().int().min(0, "El stock no puede ser negativo").optional(),
   category: z.string().min(1, "Selecciona una categoría").optional(),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).optional(),
   isPublished: z.boolean().optional(),
@@ -76,12 +76,21 @@ export async function getSellerProducts() {
     return { products: [], total: 0 };
   }
 
-  const sellerProducts = await db
-    .select()
+  const results = await db
+    .select({
+      product: products,
+      inventory: inventory,
+    })
     .from(products)
+    .leftJoin(inventory, eq(products.id, inventory.productId))
     .where(eq(products.storeId, store.id))
     .orderBy(desc(products.createdAt))
     .all();
+
+  const sellerProducts = results.map(r => ({
+    ...r.product,
+    inventory: r.inventory
+  }));
 
   return {
     products: sellerProducts,
@@ -94,11 +103,13 @@ export async function getSellerProductsPaginated({
   limit = 10,
   search = "",
   category = "todos",
+  lowStock = false,
 }: {
   page?: number;
   limit?: number;
   search?: string;
   category?: string;
+  lowStock?: boolean;
 }) {
   const user = await requireRole("seller");
 
@@ -126,18 +137,32 @@ export async function getSellerProductsPaginated({
     );
   }
 
-  const sellerProducts = await db
-    .select()
+  if (lowStock) {
+    conditions.push(lte(inventory.stockActual, inventory.stockMinimo));
+  }
+
+  const results = await db
+    .select({
+      product: products,
+      inventory: inventory,
+    })
     .from(products)
+    .leftJoin(inventory, eq(products.id, inventory.productId))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt))
     .limit(limit)
     .offset(offset)
     .all();
 
+  const sellerProducts = results.map(r => ({
+    ...r.product,
+    inventory: r.inventory
+  }));
+
   const totalResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(products)
+    .leftJoin(inventory, eq(products.id, inventory.productId))
     .where(and(...conditions))
     .get();
 
@@ -156,15 +181,21 @@ export async function getSellerProductsPaginated({
 // ============================================
 
 export async function getProductById(id: string) {
-  const product = await db
-    .select()
+  const result = await db
+    .select({
+      product: products,
+      inventory: inventory,
+    })
     .from(products)
+    .leftJoin(inventory, eq(products.id, inventory.productId))
     .where(eq(products.id, id))
     .get();
 
-  if (!product) {
+  if (!result) {
     return null;
   }
+
+  const { product, inventory: productInventory } = result;
 
   const store = await db
     .select()
@@ -174,6 +205,7 @@ export async function getProductById(id: string) {
 
   return {
     ...product,
+    inventory: productInventory,
     store,
   };
 }
@@ -183,14 +215,23 @@ export async function getProductById(id: string) {
 // ============================================
 
 export async function getProductsByStore(storeId: string, limit: number = 10, offset: number = 0) {
-  const storeProducts = await db
-    .select()
+  const results = await db
+    .select({
+      product: products,
+      inventory: inventory,
+    })
     .from(products)
+    .leftJoin(inventory, eq(products.id, inventory.productId))
     .where(eq(products.storeId, storeId))
     .orderBy(desc(products.createdAt))
     .limit(limit)
     .offset(offset)
     .all();
+
+  const storeProducts = results.map(r => ({
+    ...r.product,
+    inventory: r.inventory
+  }));
 
   const totalResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -225,13 +266,14 @@ export async function createProduct(formData: FormData) {
   }
 
   const rawPrice = formData.get("price");
-  const rawStock = formData.get("stock");
+  const rawStockActual = formData.get("stockActual");
+  const rawStockMinimo = formData.get("stockMinimo");
 
   const validatedFields = createProductSchema.safeParse({
+    sku: formData.get("sku") as string,
     name: formData.get("name"),
     description: formData.get("description"),
     price: rawPrice ? parseFloat(rawPrice as string) : 0,
-    stock: rawStock ? parseInt(rawStock as string) : 0,
     category: formData.get("category"),
     status: formData.get("status") || "Nuevo",
     isPublished: formData.get("isPublished") === "true",
@@ -249,7 +291,7 @@ export async function createProduct(formData: FormData) {
     };
   }
 
-  const { name, description, price, stock, category, status, isPublished } = validatedFields.data;
+  const { sku, name, description, price, category, status, isPublished } = validatedFields.data;
 
   // Procesar imágenes desde formData
   const imageUrlsJson = formData.get("imageUrls") as string;
@@ -264,10 +306,10 @@ export async function createProduct(formData: FormData) {
   await db.insert(products).values({
     id: productId,
     storeId: store.id,
+    sku,
     name,
     description,
     price,
-    stock,
     category,
     status,
     isPublished,
@@ -278,6 +320,16 @@ export async function createProduct(formData: FormData) {
     views: 0,
     sales: 0,
     createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  const inventoryId = generateId();
+  await db.insert(inventory).values({
+    id: inventoryId,
+    productId,
+    stockActual: 0,
+    stockMinimo: 5,
+    ubicacion: "Sin asignar",
     updatedAt: new Date(),
   });
 
@@ -314,13 +366,14 @@ export async function updateProduct(productId: string, formData: FormData) {
   }
 
   const rawPrice = formData.get("price");
-  const rawStock = formData.get("stock");
+  const rawStockActual = formData.get("stockActual");
+  const rawStockMinimo = formData.get("stockMinimo");
 
   const validatedFields = updateProductSchema.safeParse({
+    sku: formData.get("sku") as string || undefined,
     name: formData.get("name") || undefined,
     description: formData.get("description") || undefined,
     price: rawPrice ? parseFloat(rawPrice as string) : undefined,
-    stock: rawStock ? parseInt(rawStock as string) : undefined,
     category: formData.get("category") || undefined,
     status: formData.get("status") as any || undefined,
     isPublished: formData.get("isPublished") !== null ? formData.get("isPublished") === "true" : undefined,
@@ -333,20 +386,22 @@ export async function updateProduct(productId: string, formData: FormData) {
     };
   }
 
-  const updateData: any = {
-    ...validatedFields.data,
+  const productData = validatedFields.data;
+
+  const productUpdate: any = {
+    ...productData,
     updatedAt: new Date(),
   };
 
   // Procesar imágenes si se enviaron
   const imageUrlsJson = formData.get("imageUrls") as string;
   if (imageUrlsJson) {
-    updateData.imageUrls = JSON.parse(imageUrlsJson);
+    productUpdate.imageUrls = JSON.parse(imageUrlsJson);
   }
 
   await db
     .update(products)
-    .set(updateData)
+    .set(productUpdate)
     .where(eq(products.id, productId));
 
   revalidatePath(`/dashboard/productos/${productId}/editar`);
@@ -391,43 +446,6 @@ export async function deleteProduct(productId: string) {
 }
 
 // ============================================
-// 7.7 ACTUALIZAR STOCK (MÚLTIPLE)
-// ============================================
-
-export async function updateStock(updates: { id: string; stock: number }[]) {
-  const user = await requireRole("seller");
-
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, user.id))
-    .get();
-
-  if (!store) {
-    throw new Error("No tienes una tienda asociada");
-  }
-
-  for (const update of updates) {
-    const product = await db
-      .select()
-      .from(products)
-      .where(and(eq(products.id, update.id), eq(products.storeId, store.id)))
-      .get();
-
-    if (product) {
-      await db
-        .update(products)
-        .set({ stock: update.stock, updatedAt: new Date() })
-        .where(eq(products.id, update.id));
-    }
-  }
-
-  revalidatePath("/dashboard/inventario");
-  revalidatePath("/dashboard/productos");
-  return { success: true };
-}
-
-// ============================================
 // 7.2 GET PRODUCTS CURSOR (SCROLL INFINITO)
 // ============================================
 
@@ -454,13 +472,22 @@ export async function getProductsCursor(
     conditions.push(sql`${products.id} > ${cursor}`);
   }
 
-  const items = await db
-    .select()
+  const results = await db
+    .select({
+      product: products,
+      inventory: inventory,
+    })
     .from(products)
+    .leftJoin(inventory, eq(products.id, inventory.productId))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt))
     .limit(limit + 1)
     .all();
+
+  const items = results.map(r => ({
+    ...r.product,
+    inventory: r.inventory
+  }));
 
   const hasMore = items.length > limit;
   const nextCursor = hasMore && items[limit - 1] ? items[limit - 1].id : null;
