@@ -7,7 +7,7 @@ import { useEffect } from "react";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -83,6 +83,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
             <div className="flex-1">
               <div className="relative">
                 <input
+                  id="mobile-search"
                   type="text"
                   placeholder="Buscar productos..."
                   onChange={(e) => handleSearch(e.target.value)}
@@ -210,78 +211,44 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       </div>
 
       {/* Navegación inferior (mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t md:hidden z-30">
-        <div className="flex justify-around items-center py-2">
-          <a
-            href="/"
-            className="flex flex-col items-center gap-1 px-4 py-1 text-primary"
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t md:hidden z-30 pb-safe">
+        <div className="flex justify-around items-center h-16 px-2">
+          <button
+            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
           >
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-            <span className="text-xs">Inicio</span>
-          </a>
-          <a
-            href="/search"
-            className="flex flex-col items-center gap-1 px-4 py-1 text-muted-foreground"
+            <Home className="w-5 h-5" />
+            <span className="text-[10px] font-medium leading-none">Inicio</span>
+          </button>
+          <button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              setTimeout(() => {
+                document.getElementById('mobile-search')?.focus();
+              }, 300);
+            }}
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-            <span className="text-xs">Buscar</span>
-          </a>
-          <a
-            href="/categories"
-            className="flex flex-col items-center gap-1 px-4 py-1 text-muted-foreground"
+            <Search className="w-5 h-5" />
+            <span className="text-[10px] font-medium leading-none">Buscar</span>
+          </button>
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            </svg>
-            <span className="text-xs">Categorías</span>
-          </a>
-          <a
-            href="/auth/login"
-            className="flex flex-col items-center gap-1 px-4 py-1 text-muted-foreground"
+            <Filter className="w-5 h-5" />
+            <span className="text-[10px] font-medium leading-none">Filtros</span>
+          </button>
+          <button
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              // Scroll somewhat down to show the categories bar if needed
+            }}
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
           >
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-            <span className="text-xs">Mi cuenta</span>
-          </a>
+            <Tags className="w-5 h-5" />
+            <span className="text-[10px] font-medium leading-none">Categorías</span>
+          </button>
         </div>
       </nav>
 
