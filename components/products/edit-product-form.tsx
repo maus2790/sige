@@ -16,14 +16,11 @@ import { toast } from "sonner";
 import { updateProduct } from "@/app/actions/products";
 import { ImageUpload } from "@/components/upload/image-upload";
 
-const categorias = [
-  { value: "Electrónicos", label: "Electrónicos" },
-  { value: "Ropa", label: "Ropa" },
-  { value: "Hogar", label: "Hogar" },
-  { value: "Deportes", label: "Deportes" },
-  { value: "Libros", label: "Libros" },
-  { value: "Juguetes", label: "Juguetes" },
-];
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const estados = [
   { value: "Nuevo", label: "Nuevo" },
@@ -31,7 +28,7 @@ const estados = [
   { value: "Refabricado", label: "Refabricado" },
 ];
 
-export function EditProductForm({ product }: { product: any }) {
+export function EditProductForm({ product, categories }: { product: any; categories: Category[] }) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -130,11 +127,17 @@ export function EditProductForm({ product }: { product: any }) {
                     <SelectValue placeholder="Selecciona una categoría" />
                   </SelectTrigger>
                   <SelectContent>
-                    {categorias.map((cat) => (
-                      <SelectItem key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </SelectItem>
-                    ))}
+                    {categories.length > 0 ? (
+                      categories.map((cat) => (
+                        <SelectItem key={cat.id} value={cat.name}>
+                          {cat.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-sm text-muted-foreground">
+                        No hay categorías disponibles
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

@@ -89,7 +89,8 @@ export async function getSellerProducts() {
 
   const sellerProducts = results.map(r => ({
     ...r.product,
-    inventory: r.inventory
+    inventory: r.inventory,
+    stock: r.inventory?.stockActual ?? 0,
   }));
 
   return {
@@ -156,7 +157,8 @@ export async function getSellerProductsPaginated({
 
   const sellerProducts = results.map(r => ({
     ...r.product,
-    inventory: r.inventory
+    inventory: r.inventory,
+    stock: r.inventory?.stockActual ?? 0,
   }));
 
   const totalResult = await db
@@ -206,6 +208,7 @@ export async function getProductById(id: string) {
   return {
     ...product,
     inventory: productInventory,
+    stock: productInventory?.stockActual ?? 0,
     store,
   };
 }
@@ -230,7 +233,8 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
 
   const storeProducts = results.map(r => ({
     ...r.product,
-    inventory: r.inventory
+    inventory: r.inventory,
+    stock: r.inventory?.stockActual ?? 0,
   }));
 
   const totalResult = await db

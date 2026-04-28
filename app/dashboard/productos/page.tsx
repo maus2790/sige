@@ -1,6 +1,7 @@
 // app/dashboard/productos/page.tsx
 
 import { getSellerProductsPaginated } from "@/app/actions/products";
+import { getCategories } from "@/app/actions/categories";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,14 +33,8 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
     lowStock,
   });
 
-  const categories = [
-    "Electrónicos",
-    "Ropa",
-    "Hogar",
-    "Deportes",
-    "Libros",
-    "Juguetes",
-  ];
+  const dbCategories = await getCategories();
+  const categoriesList = dbCategories.map(c => c.name);
 
   return (
     <div className="space-y-6">
@@ -75,7 +70,7 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
             initialSearch={search}
             initialCategory={category}
             initialLowStock={lowStock}
-            categories={categories}
+            categories={categoriesList}
           />
         </CardContent>
       </Card>

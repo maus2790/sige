@@ -1,3 +1,5 @@
+// components/productos/infinite-feed.tsx
+
 "use client";
 
 import { useInView } from "react-intersection-observer";
@@ -27,24 +29,26 @@ import {
 import { useDebouncedCallback } from "use-debounce";
 import { useState } from "react";
 
-const categories = [
-  { value: "todos", label: "Todos los productos" },
-  { value: "Electrónicos", label: "Electrónicos" },
-  { value: "Ropa", label: "Ropa" },
-  { value: "Hogar", label: "Hogar" },
-  { value: "Deportes", label: "Deportes" },
-  { value: "Libros", label: "Libros" },
-  { value: "Juguetes", label: "Juguetes" },
-];
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 interface InfiniteFeedProps {
   search?: string;
+  initialCategories: Category[];
 }
 
-export function InfiniteFeed({ search: initialSearch = "" }: InfiniteFeedProps) {
+export function InfiniteFeed({ search: initialSearch = "", initialCategories }: InfiniteFeedProps) {
   const [category, setCategory] = useState("todos");
   const [search, setSearch] = useState(initialSearch);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const categoriesList = [
+    { value: "todos", label: "Todos los productos" },
+    ...initialCategories.map(c => ({ value: c.name, label: c.name }))
+  ];
 
   useEffect(() => {
     setSearch(initialSearch);
@@ -118,7 +122,7 @@ export function InfiniteFeed({ search: initialSearch = "" }: InfiniteFeedProps) 
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {categories.map((cat) => (
+                        {categoriesList.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
                             {cat.label}
                           </SelectItem>
@@ -155,7 +159,7 @@ export function InfiniteFeed({ search: initialSearch = "" }: InfiniteFeedProps) 
       {/* Categorías rápidas (scroll horizontal) */}
       <div className="sticky top-[57px] z-10 bg-white border-b overflow-x-auto">
         <div className="container mx-auto px-4 py-2 flex gap-2">
-          {categories.slice(0, 6).map((cat) => (
+          {categoriesList.slice(0, 10).map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}

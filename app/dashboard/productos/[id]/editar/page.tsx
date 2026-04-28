@@ -1,4 +1,7 @@
+// app/dashboard/productos/[id]/editar/page.tsx
+
 import { getProductById } from "@/app/actions/products";
+import { getCategories } from "@/app/actions/categories";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,6 +17,7 @@ interface EditarProductoPageProps {
 export default async function EditarProductoPage({ params }: EditarProductoPageProps) {
   const { id } = await params;
   const product = await getProductById(id);
+  const categories = await getCategories();
 
   if (!product) {
     redirect("/dashboard/productos");
@@ -35,7 +39,7 @@ export default async function EditarProductoPage({ params }: EditarProductoPageP
         </div>
       </div>
 
-      <EditProductForm product={product} />
+      <EditProductForm product={product} categories={categories} />
     </div>
   );
 }

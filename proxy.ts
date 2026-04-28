@@ -50,6 +50,15 @@ const assistantRoutes = [
   '/assistant/tiendas',
 ];
 
+const adminRoutes = [
+  '/admin',
+  '/admin/',
+  '/admin/usuarios',
+  '/admin/tiendas',
+  '/admin/categorias',
+  '/admin/configuracion',
+];
+
 // ============================================
 // FUNCIÓN PARA VERIFICAR SI UNA RUTA ES PÚBLICA
 // ============================================
@@ -99,6 +108,15 @@ function isAssistantRoute(pathname: string): boolean {
   return false;
 }
 
+function isAdminRoute(pathname: string): boolean {
+  for (const route of adminRoutes) {
+    if (pathname.startsWith(route)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // ============================================
 // PROXY PRINCIPAL
 // ============================================
@@ -116,7 +134,10 @@ export default async function proxy(request: NextRequest) {
     const authRoutes = ['/auth/login', '/auth/register'];
     if (userId && authRoutes.includes(pathname)) {
       console.log(`[Proxy] Authenticated user ${userId} redirected from ${pathname} to dashboard`);
-      const dashboardUrl = userRole === 'assistant' ? '/assistant' : '/dashboard';
+      let dashboardUrl = '/dashboard';
+      if (userRole === 'superadmin') dashboardUrl = '/admin';
+      else if (userRole === 'assistant') dashboardUrl = '/assistant';
+      
       return NextResponse.redirect(new URL(dashboardUrl, request.url));
     }
 
@@ -137,7 +158,7 @@ export default async function proxy(request: NextRequest) {
 
   // Rutas de vendedor
   if (isSellerRoute(pathname)) {
-    if (userRole !== 'seller') {
+    if (userRole !== 'seller' && userRole !== 'superadmin') {
       console.log(`[Proxy] User ${userId} (role: ${userRole}) not authorized for seller route ${pathname}`);
       return NextResponse.redirect(unauthorizedUrl);
     }
@@ -145,8 +166,16 @@ export default async function proxy(request: NextRequest) {
 
   // Rutas de asistente
   if (isAssistantRoute(pathname)) {
-    if (userRole !== 'assistant') {
+    if (userRole !== 'assistant' && userRole !== 'superadmin') {
       console.log(`[Proxy] User ${userId} (role: ${userRole}) not authorized for assistant route ${pathname}`);
+      return NextResponse.redirect(unauthorizedUrl);
+    }
+  }
+
+  // Rutas de admin
+  if (isAdminRoute(pathname)) {
+    if (userRole !== 'superadmin') {
+      console.log(`[Proxy] User ${userId} (role: ${userRole}) not authorized for admin route ${pathname}`);
       return NextResponse.redirect(unauthorizedUrl);
     }
   }

@@ -8,6 +8,7 @@ import { RegisterSW } from "@/components/pwa/register-sw";
 import { SessionProvider } from "next-auth/react";
 import { QueryProvider } from "@/components/providers/query-provider";
 import NextTopLoader from "nextjs-toploader";
+import { Navbar } from "@/components/layout/Navbar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -40,6 +41,7 @@ export default function RootLayout({
         <NextTopLoader showSpinner={false} color="#3B82F6" shadow="0 0 10px #3B82F6,0 0 5px #3B82F6" />
         <SessionProvider>
           <QueryProvider>
+            <Navbar />
             {children}
             <Toaster />
             <RegisterSW />

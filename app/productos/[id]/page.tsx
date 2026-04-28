@@ -81,10 +81,16 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
               </div>
 
               <div className="pt-4 flex flex-col gap-3">
-                <Button className="w-full h-12 text-lg font-bold gap-2" size="lg">
-                  <ShoppingCart className="w-5 h-5" />
-                  Comprar Ahora
-                </Button>
+                <Link href={`/comprar/${product.id}`} className="w-full">
+                  <Button 
+                    className="w-full h-12 text-lg font-bold gap-2" 
+                    size="lg"
+                    disabled={!product.inventory || product.inventory.stockActual === 0}
+                  >
+                    <ShoppingCart className="w-5 h-5" />
+                    Comprar Ahora
+                  </Button>
+                </Link>
                 <Button variant="outline" className="w-full h-12 text-lg gap-2" size="lg">
                   <MessageSquare className="w-5 h-5" />
                   Contactar Vendedor

@@ -8,6 +8,20 @@
       "when": 1777145119889,
       "tag": "0000_clean_human_torch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1777340785560,
+      "tag": "0001_colorful_smasher",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1777343746763,
+      "tag": "0002_loose_quasimodo",
+      "breakpoints": true
     }
   ]
 }

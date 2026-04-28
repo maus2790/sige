@@ -199,7 +199,9 @@ export async function handleLogin(formData: FormData) {
   });
 
   // Redirigir según rol
-  if (user.role === "seller") {
+  if (user.role === "superadmin") {
+    redirect("/admin");
+  } else if (user.role === "seller") {
     redirect("/dashboard");
   } else if (user.role === "assistant") {
     redirect("/assistant");
@@ -280,7 +282,16 @@ export async function requireRole(allowedRoles: string | string[]) {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
   if (!roles.includes(user.role)) {
-    redirect("/unauthorized");
+    // Redirigir según el rol real del usuario
+    if (user.role === "superadmin") {
+      redirect("/admin");
+    } else if (user.role === "seller") {
+      redirect("/dashboard");
+    } else if (user.role === "assistant") {
+      redirect("/assistant");
+    } else {
+      redirect("/unauthorized");
+    }
   }
 
   return user;

@@ -1,4 +1,7 @@
+// app/page.tsx
+
 import { InfiniteFeed } from "@/components/productos/infinite-feed";
+import { getCategories } from "@/app/actions/categories";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -23,6 +26,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HomePage() {
-  return <InfiniteFeed />;
+export default async function HomePage() {
+  const categories = await getCategories();
+  
+  return <InfiniteFeed initialCategories={categories} />;
 }

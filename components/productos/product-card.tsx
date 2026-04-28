@@ -6,6 +6,7 @@ import { Heart, Eye, ShoppingCart, Package, Loader2 } from "lucide-react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 interface ProductCardProps {
@@ -29,13 +30,19 @@ export function ProductCard({ product }: ProductCardProps) {
   const [isLoading, setIsLoading] = useState(true);
   const mainImage = product.imageUrls?.[0] || null;
 
+  const router = useRouter();
+
+  const handleCardClick = () => {
+    router.push(`/productos/${product.id}`);
+  };
+
   return (
-    <Link href={`/productos/${product.id}`}>
-      <Card
-        className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg cursor-pointer h-full"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+    <div
+      onClick={handleCardClick}
+      className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg cursor-pointer h-full border rounded-xl bg-white"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
         {/* Badge de estado */}
         {product.status && product.status !== "Nuevo" && (
           <div className="absolute top-2 left-2 z-10">
@@ -76,9 +83,8 @@ export function ProductCard({ product }: ProductCardProps) {
                 alt={product.name}
                 width={400}
                 height={400}
-                className={`w-full h-full object-cover transition-transform duration-500 ${
-                  isHovered ? "scale-110" : "scale-100"
-                } ${isLoading ? "opacity-0" : "opacity-100"}`}
+                className={`w-full h-full object-cover transition-transform duration-500 ${isHovered ? "scale-110" : "scale-100"
+                  } ${isLoading ? "opacity-0" : "opacity-100"}`}
                 onLoad={() => setIsLoading(false)}
               />
             </>
@@ -109,14 +115,33 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Botones flotantes en hover */}
         <div
-          className={`absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent transition-all duration-300 ${
-            isHovered ? "translate-y-0" : "translate-y-full"
-          }`}
+          className={`absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent transition-all duration-300 flex flex-col gap-2 ${isHovered ? "translate-y-0" : "translate-y-full"
+            }`}
         >
-          <Button className="w-full gap-2" size="sm">
-            <ShoppingCart className="w-4 h-4" />
+          <Button 
+            className="w-full gap-2" 
+            size="sm" 
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/productos/${product.id}`);
+            }}
+          >
+            <Eye className="w-4 h-4" />
             Ver detalles
           </Button>
+          
+          <Link href={`/comprar/${product.id}`} className="w-full">
+            <Button 
+              className="w-full gap-2" 
+              size="sm" 
+              variant="default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ShoppingCart className="w-4 h-4" />
+              Comprar ahora
+            </Button>
+          </Link>
         </div>
 
         {/* Botón de favorito (corazón) */}
@@ -136,7 +161,6 @@ export function ProductCard({ product }: ProductCardProps) {
             <span>Pago QR</span>
           </div>
         </CardFooter>
-      </Card>
-    </Link>
+    </div>
   );
 }

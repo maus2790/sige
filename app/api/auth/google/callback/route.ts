@@ -134,7 +134,8 @@ export async function GET(request: NextRequest) {
             path: '/',
         });
 
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        const redirectUrl = user.role === 'assistant' ? '/assistant' : '/dashboard';
+        return NextResponse.redirect(new URL(redirectUrl, request.url));
 
     } catch (error) {
         console.error('[Google OAuth] Error:', error);
