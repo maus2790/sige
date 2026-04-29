@@ -39,7 +39,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
 
   if (images.length === 0) {
     return (
-      <div className="aspect-square bg-slate-100 rounded-2xl flex items-center justify-center text-muted-foreground border">
+      <div className="aspect-square bg-muted rounded-2xl flex items-center justify-center text-muted-foreground border">
         <Package className="w-20 h-20 opacity-20" />
       </div>
     );
@@ -49,7 +49,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
     <div className="flex flex-col gap-4">
       {/* Main Viewer */}
       <div 
-        className="relative aspect-square bg-white rounded-2xl overflow-hidden border shadow-sm group cursor-crosshair"
+        className="relative aspect-square bg-card rounded-2xl overflow-hidden border shadow-sm group cursor-crosshair"
         ref={containerRef}
         onMouseEnter={() => setShowZoom(true)}
         onMouseLeave={() => setShowZoom(false)}
@@ -122,7 +122,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
               key={idx}
               className={cn(
                 "w-2 h-2 rounded-full transition-all",
-                activeIndex === idx ? "bg-primary w-4" : "bg-slate-300"
+                activeIndex === idx ? "bg-primary w-4" : "bg-muted-foreground/30"
               )}
             />
           ))}
@@ -137,10 +137,10 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
               key={idx}
               onClick={() => setActiveIndex(idx)}
               className={cn(
-                "relative w-20 h-20 rounded-xl border-2 bg-white shrink-0 overflow-hidden transition-all duration-200 outline-none focus:ring-2 focus:ring-primary/20",
+                "relative w-20 h-20 rounded-xl border-2 bg-card shrink-0 overflow-hidden transition-all duration-200 outline-none focus:ring-2 focus:ring-primary/20",
                 activeIndex === idx 
                   ? "border-primary shadow-md scale-105" 
-                  : "border-transparent hover:border-slate-300"
+                  : "border-transparent hover:border-border"
               )}
             >
               <Image

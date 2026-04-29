@@ -60,7 +60,7 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
                 <p className="text-sm text-muted-foreground">Total usuarios</p>
                 <p className="text-2xl font-bold">{stats.totalUsers}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-500 opacity-50" />
+              <Users className="w-8 h-8 text-primary opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -69,7 +69,7 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Vendedores</p>
-                <p className="text-2xl font-bold text-green-600">{stats.sellers}</p>
+                <p className="text-2xl font-bold text-green-500">{stats.sellers}</p>
               </div>
               <UserCheck className="w-8 h-8 text-green-500 opacity-50" />
             </div>
@@ -80,9 +80,9 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Asistentes</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.assistants}</p>
+                <p className="text-2xl font-bold text-amber-500">{stats.assistants}</p>
               </div>
-              <UserCog className="w-8 h-8 text-yellow-500 opacity-50" />
+              <UserCog className="w-8 h-8 text-amber-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
@@ -91,7 +91,7 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Super Admins</p>
-                <p className="text-2xl font-bold text-purple-600">{stats.superadmins}</p>
+                <p className="text-2xl font-bold text-purple-500">{stats.superadmins}</p>
               </div>
               <UserPlus className="w-8 h-8 text-purple-500 opacity-50" />
             </div>
@@ -119,7 +119,7 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-lg" />}>
+          <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
             <UserTableClient
               initialData={users}
               total={total}

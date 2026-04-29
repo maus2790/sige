@@ -1,12 +1,11 @@
 // app/admin/page.tsx
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Store, Tags, ShieldAlert } from "lucide-react";
+import { Users, Store, Tags, ShieldAlert, CheckCircle } from "lucide-react";
 import { db } from "@/db";
 import { users, stores } from "@/db/schema";
 import { sql } from "drizzle-orm";
 
 export default async function AdminDashboardPage() {
-  // Obtener estadísticas básicas para el superadmin
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(users).get();
   const storeCount = await db.select({ count: sql<number>`count(*)` }).from(stores).get();
 
@@ -16,31 +15,31 @@ export default async function AdminDashboardPage() {
       value: userCount?.count || 0,
       description: "Usuarios registrados en la plataforma",
       icon: Users,
-      color: "text-blue-600",
-      bg: "bg-blue-100",
+      color: "text-primary",
+      bg: "bg-primary/10",
     },
     {
       title: "Total Tiendas",
       value: storeCount?.count || 0,
       description: "Tiendas creadas",
       icon: Store,
-      color: "text-green-600",
-      bg: "bg-green-100",
+      color: "text-green-500",
+      bg: "bg-green-500/10",
     },
     {
       title: "Verificaciones Pendientes",
-      value: 0, // Placeholder
+      value: 0,
       description: "Tiendas esperando aprobación",
       icon: ShieldAlert,
-      color: "text-amber-600",
-      bg: "bg-amber-100",
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
     },
   ];
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Panel de Administración</h1>
+        <h1 className="text-3xl font-bold">Panel de Administración</h1>
         <p className="text-muted-foreground mt-1">
           Bienvenido al centro de control de SIGE.
         </p>
@@ -87,24 +86,19 @@ export default async function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Base de Datos (Turso)</span>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                  Operacional
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Servicio de Autenticación</span>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                  Operacional
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Almacenamiento de Imágenes</span>
-                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
-                  Operacional
-                </span>
-              </div>
+              {[
+                "Base de Datos (Turso)",
+                "Servicio de Autenticación",
+                "Almacenamiento de Imágenes",
+              ].map((service) => (
+                <div key={service} className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{service}</span>
+                  <span className="flex items-center gap-1 text-xs bg-green-500/10 text-green-500 border border-green-500/20 px-2 py-0.5 rounded-full font-semibold">
+                    <CheckCircle className="w-3 h-3" />
+                    Operacional
+                  </span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

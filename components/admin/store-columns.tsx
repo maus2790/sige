@@ -15,7 +15,7 @@ export const storeColumns: ColumnDef<any>[] = [
       const logoUrl = row.getValue("logoUrl") as string | undefined;
       const storeName = row.getValue("name") as string;
       return (
-        <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center">
+        <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
           {logoUrl ? (
             <Image
               src={logoUrl}
@@ -71,7 +71,7 @@ export const storeColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const verified = row.getValue("verified") as boolean;
       return verified ? (
-        <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+        <Badge className="bg-green-500/10 text-green-500 border border-green-500/20 hover:bg-green-500/20">
           <CheckCircle className="w-3 h-3 mr-1" />
           Verificada
         </Badge>

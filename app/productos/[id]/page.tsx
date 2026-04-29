@@ -22,9 +22,9 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
 
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-20">
+    <div className="min-h-screen bg-background pb-20">
       {/* Header / Nav */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b">
+      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-md border-b">
         <div className="container mx-auto px-4 h-14 flex items-center gap-4">
           <Link href="/">
             <Button variant="ghost" size="icon" className="rounded-full">
@@ -45,12 +45,12 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
 
           {/* Columna Derecha: Información y Compra */}
           <div className="flex flex-col gap-6">
-            <div className="bg-white p-6 rounded-2xl border shadow-sm space-y-4">
+            <div className="bg-card p-6 rounded-2xl border shadow-sm space-y-4">
               <div>
                 <Badge variant="outline" className="mb-2">
                   {product.category || "General"}
                 </Badge>
-                <h1 className="text-3xl font-bold text-slate-900 leading-tight">
+                <h1 className="text-3xl font-bold text-foreground leading-tight">
                   {product.name}
                 </h1>
               </div>
@@ -99,18 +99,18 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
             </div>
 
             {/* Descripción */}
-            <div className="bg-white p-6 rounded-2xl border shadow-sm">
+            <div className="bg-card p-6 rounded-2xl border shadow-sm">
               <h2 className="text-xl font-bold mb-4">Descripción</h2>
               <div className="prose prose-slate max-w-none">
-                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
                   {product.description || "El vendedor no ha proporcionado una descripción detallada para este producto."}
                 </p>
               </div>
             </div>
             
             {/* Info de Stock */}
-            <div className="bg-slate-100 p-4 rounded-xl flex justify-between items-center">
-              <span className="text-sm font-medium text-slate-600">Disponibilidad:</span>
+            <div className="bg-muted p-4 rounded-xl flex justify-between items-center">
+              <span className="text-sm font-medium text-muted-foreground">Disponibilidad:</span>
               <Badge variant={product.inventory && product.inventory.stockActual > 0 ? "default" : "destructive"}>
                 {product.inventory && product.inventory.stockActual > 0 ? `${product.inventory.stockActual} unidades` : "Agotado"}
               </Badge>

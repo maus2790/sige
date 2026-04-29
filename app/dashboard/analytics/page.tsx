@@ -90,9 +90,9 @@ export default async function AnalyticsPage() {
 
       {/* Alerta de stock bajo */}
       {stats.lowStockProducts > 0 && (
-        <Card className="border-yellow-500 bg-yellow-50">
+        <Card className="border-amber-500/30 bg-amber-500/10">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-yellow-800">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
               <AlertCircle className="w-5 h-5" />
               <div>
                 <span className="font-semibold">¡Atención!</span>
@@ -142,7 +142,7 @@ export default async function AnalyticsPage() {
                 .map((month) => (
                   <div key={month.month} className="flex items-center gap-4">
                     <div className="w-12 text-sm font-medium">{month.month}</div>
-                    <div className="flex-1 bg-slate-100 rounded-full h-8 overflow-hidden">
+                    <div className="flex-1 bg-muted rounded-full h-8 overflow-hidden">
                       <div
                         className="bg-primary h-full rounded-full flex items-center justify-end px-2 text-xs text-white"
                         style={{
@@ -195,7 +195,7 @@ export default async function AnalyticsPage() {
                     ventas/producto
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
                     className="bg-primary rounded-full h-2"
                     style={{
@@ -217,7 +217,7 @@ export default async function AnalyticsPage() {
                     ventas/producto
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="w-full bg-muted rounded-full h-2">
                   <div
                     className="bg-primary rounded-full h-2"
                     style={{

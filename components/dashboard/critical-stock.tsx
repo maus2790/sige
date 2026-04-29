@@ -42,7 +42,7 @@ export function CriticalStock({ products }: CriticalStockProps) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-yellow-600" />
+          <AlertTriangle className="w-5 h-5 text-amber-500" />
           Stock crítico
         </CardTitle>
         <CardDescription>Productos que necesitan reabastecimiento</CardDescription>
@@ -52,9 +52,9 @@ export function CriticalStock({ products }: CriticalStockProps) {
           {products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center gap-3 p-2 rounded-lg bg-yellow-50 border border-yellow-200"
+              className="flex items-center gap-3 p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20"
             >
-              <div className="w-12 h-12 rounded-lg overflow-hidden bg-white shrink-0">
+              <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0">
                 {product.imageUrl ? (
                   <Image
                     src={product.imageUrl}
@@ -72,7 +72,7 @@ export function CriticalStock({ products }: CriticalStockProps) {
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{product.name}</p>
                 <p className="text-sm text-muted-foreground">
-                  Stock: <span className="font-semibold text-yellow-700">{product.stock}</span> unidades
+                  Stock: <span className="font-semibold text-amber-500">{product.stock}</span> unidades
                 </p>
               </div>
               <Link href={`/dashboard/productos/${product.id}/editar`}>

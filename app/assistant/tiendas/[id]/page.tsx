@@ -145,7 +145,7 @@ export default function StoreDetailPage() {
               <div className="flex items-center justify-between">
                 <CardTitle>Información de la tienda</CardTitle>
                 {store.verified ? (
-                  <Badge className="bg-green-100 text-green-700">Verificada</Badge>
+                  <Badge className="bg-green-500/10 text-green-500 border-green-500/20">Verificada</Badge>
                 ) : (
                   <Badge variant="destructive">Pendiente de verificación</Badge>
                 )}
@@ -222,8 +222,8 @@ export default function StoreDetailPage() {
               ) : (
                 <div className="space-y-3">
                   {products.map((product) => (
-                    <div key={product.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50">
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100">
+                    <div key={product.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted">
                         {product.imageUrls?.[0] ? (
                           <Image
                             src={product.imageUrls[0]}

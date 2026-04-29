@@ -31,6 +31,7 @@ import {
   MapPin,
   Package
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getPendingPayments, verifyPayment } from "@/app/actions/orders";
 
 interface PendingPayment {
@@ -115,8 +116,33 @@ export default function PagosPendientesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-9 w-64 mb-2" />
+          <Skeleton className="h-5 w-96" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-12 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="flex flex-col md:flex-row gap-4 mt-6">
+          <Skeleton className="h-10 flex-1" />
+          <Skeleton className="h-10 w-full md:w-64" />
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <Skeleton className="h-24 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -132,40 +158,40 @@ export default function PagosPendientesPage() {
 
       {/* Tarjetas de resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-linear-to-r from-yellow-50 to-orange-50 border-yellow-200">
+        <Card className="bg-amber-500/10 border-amber-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-yellow-700 font-medium">Pagos pendientes</p>
-                <p className="text-3xl font-bold text-yellow-800">{payments.length}</p>
+                <p className="text-sm text-amber-600 font-medium">Pagos pendientes</p>
+                <p className="text-3xl font-bold text-amber-600">{payments.length}</p>
               </div>
-              <AlertCircle className="w-10 h-10 text-yellow-600" />
+              <AlertCircle className="w-10 h-10 text-amber-500" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-r from-blue-50 to-sky-50 border-blue-200">
+        <Card className="bg-primary/10 border-primary/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-blue-700 font-medium">Monto total pendiente</p>
-                <p className="text-3xl font-bold text-blue-800">Bs. {getTotalPending.toFixed(2)}</p>
+                <p className="text-sm text-primary font-medium">Monto total pendiente</p>
+                <p className="text-3xl font-bold text-primary">Bs. {getTotalPending.toFixed(2)}</p>
               </div>
-              <CreditCard className="w-10 h-10 text-blue-600" />
+              <CreditCard className="w-10 h-10 text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-linear-to-r from-green-50 to-emerald-50 border-green-200">
+        <Card className="bg-green-500/10 border-green-500/20">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-green-700 font-medium">Clientes únicos</p>
-                <p className="text-3xl font-bold text-green-800">
+                <p className="text-sm text-green-600 font-medium">Clientes únicos</p>
+                <p className="text-3xl font-bold text-green-600">
                   {new Set(payments.map(p => p.buyerName)).size}
                 </p>
               </div>
-              <CheckCircle className="w-10 h-10 text-green-600" />
+              <CheckCircle className="w-10 h-10 text-green-500" />
             </div>
           </CardContent>
         </Card>
@@ -178,7 +204,7 @@ export default function PagosPendientesPage() {
           placeholder="Buscar por comprador, producto o ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full h-10 pl-10 pr-4 rounded-lg border border-slate-200 bg-slate-50 focus:outline-none focus:border-primary transition-colors"
+          className="w-full h-10 pl-10 pr-4 rounded-lg border border-border bg-muted/50 focus:outline-none focus:border-primary transition-colors"
         />
         <svg
           className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -342,7 +368,7 @@ export default function PagosPendientesPage() {
                             </DialogDescription>
                           </DialogHeader>
                           <div className="py-4 space-y-4">
-                            <div className="bg-slate-50 p-4 rounded-lg">
+                            <div className="bg-muted/50 p-4 rounded-lg border border-border">
                               <p className="text-sm font-medium">Detalles de la orden</p>
                               <p className="text-sm text-muted-foreground mt-2">
                                 Producto: {payment.productName}<br />
@@ -437,7 +463,7 @@ export default function PagosPendientesPage() {
                         <span>{range.label}</span>
                         <span className="font-medium">{count} pagos ({percentage.toFixed(0)}%)</span>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2">
+                      <div className="w-full bg-muted rounded-full h-2">
                         <div
                           className="bg-primary rounded-full h-2"
                           style={{ width: `${percentage}%` }}

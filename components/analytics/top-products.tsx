@@ -45,8 +45,8 @@ export function TopProducts({ products }: TopProductsProps) {
       <CardContent>
         <div className="space-y-4">
           {products.map((product, index) => (
-            <div key={product.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors">
-              <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-slate-100">
+            <div key={product.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors">
+              <div className="shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-muted">
                 {product.imageUrl ? (
                   <Image
                     src={product.imageUrl}

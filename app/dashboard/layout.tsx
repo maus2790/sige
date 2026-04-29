@@ -12,7 +12,7 @@ export default async function DashboardLayout({
   await requireRole("seller");
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background">
       <div className="flex">
         <DashboardNav />
         {/* Main content */}

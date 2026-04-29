@@ -13,7 +13,11 @@ import {
   User,
   Store,
   LayoutDashboard,
-  LogOut
+  ShoppingBag,
+  LogOut,
+  X,
+  ChevronDown,
+  ShoppingCart
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -85,28 +89,28 @@ export function Navbar() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/80 backdrop-blur-md dark:bg-slate-950/80 dark:border-slate-800 transition-colors">
+    <header className="sticky top-0 z-50 w-full glass transition-all duration-300">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">S</span>
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
+              <ShoppingBag className="w-6 h-6 text-white" />
             </div>
-            <span className="text-xl font-bold text-primary hidden sm:inline-block">SIGE</span>
+            <span className="text-2xl font-black text-brand-gradient tracking-tighter">SIGE</span>
           </Link>
         </div>
 
         {/* Acciones derecha */}
         <div className="flex items-center gap-2 sm:gap-4">
           {isLoading ? (
-            <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
           ) : activeUser ? (
             <>
               {/* Notificaciones */}
               <Button variant="ghost" size="icon" className="relative rounded-full">
-                <Bell className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-950"></span>
+                <Bell className="w-5 h-5 text-muted-foreground" />
+                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
               </Button>
 
               {/* User Dropdown */}
@@ -179,11 +183,8 @@ export function Navbar() {
           ) : pathname === "/" ? (
             <div className="flex items-center gap-2">
               <Link href="/auth/login">
-                <Button variant="ghost" className="hidden sm:flex">
-                  Iniciar Sesión
-                </Button>
-                <Button variant="ghost" size="icon" className="sm:hidden">
-                  <User className="w-5 h-5" />
+                <Button variant="gradient" className="rounded-full px-6">
+                  Entrar
                 </Button>
               </Link>
               <Link href="/auth/register">

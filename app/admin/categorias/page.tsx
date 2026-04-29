@@ -60,14 +60,14 @@ export default async function CategoriasPage({ searchParams }: CategoriasPagePro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Productos categorizados</p>
-                <p className="text-2xl font-bold text-green-600">{stats.totalProductsInCategories}</p>
+                 <p className="text-2xl font-bold text-primary">{stats.totalProductsInCategories}</p>
               </div>
-              <Package className="w-8 h-8 text-green-500 opacity-50" />
+              <Package className="w-8 h-8 text-primary opacity-50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
+        <Card className="bg-linear-to-r from-primary/5 to-primary/10">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -102,7 +102,7 @@ export default async function CategoriasPage({ searchParams }: CategoriasPagePro
                       </span>
                       <span className="font-medium">{cat.count} productos</span>
                     </div>
-                    <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="w-full bg-muted rounded-full h-2">
                       <div
                         className="bg-primary rounded-full h-2"
                         style={{ width: `${percentage}%` }}
@@ -125,7 +125,7 @@ export default async function CategoriasPage({ searchParams }: CategoriasPagePro
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-lg" />}>
+          <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
             <CategoryTableClient
               initialData={categories}
               total={total}

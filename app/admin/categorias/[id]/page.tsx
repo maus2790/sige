@@ -129,7 +129,7 @@ export default function EditarCategoriaPage() {
             <CardContent>
               <form onSubmit={onSubmit} className="space-y-6">
                 {error && (
-                  <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
+                  <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                     {error}
                   </div>
                 )}
@@ -176,7 +176,7 @@ export default function EditarCategoriaPage() {
 
                     <div className="space-y-2">
                       <Label>Vista previa</Label>
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                      <div className="flex items-center gap-3 p-3 bg-muted/50 border border-border rounded-lg">
                         <div className="text-4xl">{category.icon || "📁"}</div>
                         <div>
                           <p className="font-medium">{category.name}</p>
@@ -220,8 +220,8 @@ export default function EditarCategoriaPage() {
               {category.sampleProducts && category.sampleProducts.length > 0 ? (
                 <div className="space-y-3">
                   {category.sampleProducts.map((product: any) => (
-                    <div key={product.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center">
+                    <div key={product.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
                         {product.imageUrl ? (
                           <Image
                             src={product.imageUrl}

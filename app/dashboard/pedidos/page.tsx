@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -175,8 +176,64 @@ export default function PedidosPage() {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-9 w-48 mb-2" />
+          <Skeleton className="h-5 w-64" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <Card className="col-span-2 md:col-span-1">
+            <CardContent className="p-4 flex flex-col justify-center h-full">
+              <Skeleton className="h-4 w-20 mb-2" />
+              <Skeleton className="h-8 w-12" />
+            </CardContent>
+          </Card>
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4 flex flex-col justify-center h-full">
+                <Skeleton className="h-4 w-20 mb-2" />
+                <Skeleton className="h-8 w-12" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-10 w-24" />
+          ))}
+        </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row justify-between gap-4">
+                  <div className="flex gap-4 flex-1 items-center">
+                    <Skeleton className="w-16 h-16 rounded-lg shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-6 w-24 rounded-full mt-1" />
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center w-full md:w-auto">
+                    <div className="space-y-2 hidden sm:block text-right">
+                      <Skeleton className="h-5 w-32 ml-auto" />
+                      <Skeleton className="h-4 w-24 ml-auto" />
+                    </div>
+                    <div className="space-y-2 p-3 sm:p-0 border sm:border-none rounded-lg w-full sm:w-auto">
+                      <Skeleton className="h-4 w-12 ml-auto" />
+                      <Skeleton className="h-7 w-24 ml-auto" />
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 pt-4 border-t flex gap-2 justify-end">
+                  <Skeleton className="h-9 w-28" />
+                  <Skeleton className="h-9 w-32" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -191,35 +248,35 @@ export default function PedidosPage() {
       </div>
 
       {/* Tarjetas de resumen */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="bg-linear-to-r from-blue-50 to-sky-50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total pedidos</p>
-            <p className="text-2xl font-bold text-blue-700">{orders.length}</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <Card className="col-span-2 md:col-span-1 bg-primary/10 border-primary/20">
+          <CardContent className="p-4 flex flex-col justify-center h-full">
+            <p className="text-sm text-muted-foreground font-medium">Total pedidos</p>
+            <p className="text-3xl font-bold text-primary">{orders.length}</p>
           </CardContent>
         </Card>
-        <Card className="bg-linear-to-r from-yellow-50 to-orange-50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Pendientes</p>
-            <p className="text-2xl font-bold text-yellow-700">{getStatusCount("pending_payment")}</p>
+        <Card className="bg-amber-500/10 border-amber-500/20">
+          <CardContent className="p-4 flex flex-col justify-center h-full">
+            <p className="text-sm text-muted-foreground font-medium">Pendientes</p>
+            <p className="text-3xl font-bold text-amber-500">{getStatusCount("pending_payment")}</p>
           </CardContent>
         </Card>
-        <Card className="bg-linear-to-r from-green-50 to-emerald-50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Verificados</p>
-            <p className="text-2xl font-bold text-green-700">{getStatusCount("payment_verified")}</p>
+        <Card className="bg-green-500/10 border-green-500/20">
+          <CardContent className="p-4 flex flex-col justify-center h-full">
+            <p className="text-sm text-muted-foreground font-medium">Verificados</p>
+            <p className="text-3xl font-bold text-green-500">{getStatusCount("payment_verified")}</p>
           </CardContent>
         </Card>
-        <Card className="bg-linear-to-r from-purple-50 to-pink-50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Enviados</p>
-            <p className="text-2xl font-bold text-purple-700">{getStatusCount("shipped")}</p>
+        <Card className="bg-purple-500/10 border-purple-500/20">
+          <CardContent className="p-4 flex flex-col justify-center h-full">
+            <p className="text-sm text-muted-foreground font-medium">Enviados</p>
+            <p className="text-3xl font-bold text-purple-500">{getStatusCount("shipped")}</p>
           </CardContent>
         </Card>
-        <Card className="bg-linear-to-r from-teal-50 to-cyan-50">
-          <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Entregados</p>
-            <p className="text-2xl font-bold text-teal-700">{getStatusCount("delivered")}</p>
+        <Card className="bg-teal-500/10 border-teal-500/20">
+          <CardContent className="p-4 flex flex-col justify-center h-full">
+            <p className="text-sm text-muted-foreground font-medium">Entregados</p>
+            <p className="text-3xl font-bold text-teal-500">{getStatusCount("delivered")}</p>
           </CardContent>
         </Card>
       </div>
@@ -259,8 +316,8 @@ export default function PedidosPage() {
                     <CardContent className="p-6">
                       <div className="flex flex-col md:flex-row justify-between gap-4">
                         {/* Producto */}
-                        <div className="flex gap-4 flex-1">
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                        <div className="flex gap-4 flex-1 items-center">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted shrink-0">
                             {order.productImage ? (
                               <Image
                                 src={order.productImage}
@@ -281,7 +338,7 @@ export default function PedidosPage() {
                               Cantidad: {order.quantity} unidad(es)
                             </p>
                             <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={config.variant} className="flex items-center gap-1">
+                              <Badge variant={config.variant} className="flex items-center gap-1 w-fit">
                                 <StatusIcon className="w-3 h-3" />
                                 {config.label}
                               </Badge>
@@ -289,8 +346,13 @@ export default function PedidosPage() {
                           </div>
                         </div>
 
-                        {/* Monto */}
-                        <div className="text-right">
+                        {/* Detalles Comprador y Monto */}
+                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center sm:text-right w-full md:w-auto">
+                          <div className="text-left sm:text-right hidden sm:block">
+                            <p className="text-sm font-medium">{order.buyerName}</p>
+                            <p className="text-xs text-muted-foreground">{order.buyerPhone}</p>
+                          </div>
+                          <div className="text-left sm:text-right w-full sm:w-auto p-3 sm:p-0 bg-muted/30 sm:bg-transparent rounded-lg border sm:border-none border-border">
                           <p className="text-sm text-muted-foreground">Total</p>
                           <p className="text-xl font-bold text-primary">
                             Bs. {order.totalAmount.toFixed(2)}
@@ -299,9 +361,10 @@ export default function PedidosPage() {
                             {new Date(order.createdAt).toLocaleDateString("es-BO")}
                           </p>
                         </div>
+                      </div>
 
-                        {/* Acciones */}
-                        <div className="flex gap-2">
+                      {/* Acciones */}
+                      <div className="mt-4 pt-4 border-t flex flex-wrap gap-2 justify-end">
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button variant="outline" size="sm" onClick={() => setSelectedOrder(order)}>
@@ -398,8 +461,8 @@ export default function PedidosPage() {
           {selectedOrder && (
             <div className="space-y-6">
               {/* Producto */}
-              <div className="flex gap-4 p-4 bg-slate-50 rounded-lg">
-                <div className="w-20 h-20 rounded-lg overflow-hidden bg-white shrink-0">
+              <div className="flex gap-4 p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
                   {selectedOrder.productImage ? (
                     <Image
                       src={selectedOrder.productImage}
@@ -426,7 +489,7 @@ export default function PedidosPage() {
               </div>
 
               {/* Estado actual */}
-              <div className="p-4 rounded-lg bg-slate-50">
+              <div className="p-4 rounded-lg bg-muted/50 border border-border">
                 <p className="text-sm font-medium mb-2">Estado actual</p>
                 <div className="flex items-center gap-2">
                   {getStatusBadge(selectedOrder.status)}
@@ -475,7 +538,7 @@ export default function PedidosPage() {
                   <MapPin className="w-4 h-4" />
                   Dirección de envío
                 </h4>
-                <p className="text-sm p-3 bg-slate-50 rounded-lg">
+                <p className="text-sm p-3 bg-muted/50 rounded-lg border border-border">
                   {selectedOrder.shippingAddress}
                 </p>
               </div>

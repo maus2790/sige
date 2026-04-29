@@ -158,7 +158,7 @@ export function EditProductForm({ product, categories }: { product: any; categor
                 </Select>
               </div>
 
-              <div className="flex items-center justify-between p-4 rounded-lg border bg-slate-50">
+              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
                 <div className="space-y-0.5">
                   <Label className="text-base">Publicar producto</Label>
                   <p className="text-sm text-muted-foreground">

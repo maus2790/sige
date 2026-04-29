@@ -75,9 +75,9 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
   const products = data?.pages.flatMap((page) => page.items) || [];
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-white to-slate-50">
+    <div className="min-h-screen bg-background">
       {/* Header con búsqueda y filtros */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b">
+      <div className="sticky top-0 z-20 glass border-b">
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex-1">
@@ -87,7 +87,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
                   type="text"
                   placeholder="Buscar productos..."
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full h-10 pl-10 pr-4 rounded-full border border-slate-200 bg-slate-50 focus:outline-none focus:border-primary transition-colors"
+                  className="w-full h-10 pl-10 pr-4 rounded-full border bg-muted focus:outline-none focus:border-primary transition-colors"
                 />
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
@@ -158,7 +158,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       </div>
 
       {/* Categorías rápidas (scroll horizontal) */}
-      <div className="sticky top-[57px] z-10 bg-white border-b overflow-x-auto">
+      <div className="sticky top-[57px] z-10 glass border-b overflow-x-auto">
         <div className="container mx-auto px-4 py-2 flex gap-2">
           {categoriesList.slice(0, 10).map((cat) => (
             <button
@@ -166,8 +166,8 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
               onClick={() => setCategory(cat.value)}
               className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
                 category === cat.value
-                  ? "bg-primary text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-brand-gradient text-white shadow-md scale-105"
+                  : "bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground backdrop-blur-sm"
               }`}
             >
               {cat.label}
@@ -211,11 +211,11 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       </div>
 
       {/* Navegación inferior (mobile) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t md:hidden z-30 pb-safe">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t md:hidden z-30 pb-safe">
         <div className="flex justify-around items-center h-16 px-2">
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-muted-foreground hover:text-primary focus:text-primary"
           >
             <Home className="w-5 h-5" />
             <span className="text-[10px] font-medium leading-none">Inicio</span>
@@ -227,14 +227,14 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
                 document.getElementById('mobile-search')?.focus();
               }, 300);
             }}
-            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-muted-foreground hover:text-primary focus:text-primary"
           >
             <Search className="w-5 h-5" />
             <span className="text-[10px] font-medium leading-none">Buscar</span>
           </button>
           <button
             onClick={() => setIsFilterOpen(true)}
-            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-muted-foreground hover:text-primary focus:text-primary"
           >
             <Filter className="w-5 h-5" />
             <span className="text-[10px] font-medium leading-none">Filtros</span>
@@ -244,7 +244,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
               window.scrollTo({ top: 0, behavior: "smooth" });
               // Scroll somewhat down to show the categories bar if needed
             }}
-            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-slate-500 hover:text-primary focus:text-primary"
+            className="flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors text-muted-foreground hover:text-primary focus:text-primary"
           >
             <Tags className="w-5 h-5" />
             <span className="text-[10px] font-medium leading-none">Categorías</span>

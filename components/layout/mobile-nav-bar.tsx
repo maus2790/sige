@@ -16,7 +16,7 @@ export function MobileNavBar() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t md:hidden z-30 safe-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t md:hidden z-30 safe-bottom">
       <div className="flex justify-around items-center py-2">
         {navItems.map((item) => {
           const Icon = item.icon;

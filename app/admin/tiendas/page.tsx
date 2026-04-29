@@ -62,7 +62,7 @@ export default async function TiendasPage({ searchParams }: TiendasPageProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Verificadas</p>
-                <p className="text-2xl font-bold text-green-600">{stats.verifiedStores}</p>
+                <p className="text-2xl font-bold text-primary">{stats.verifiedStores}</p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500 opacity-50" />
             </div>
@@ -74,14 +74,14 @@ export default async function TiendasPage({ searchParams }: TiendasPageProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pendingStores}</p>
+                <p className="text-2xl font-bold text-primary">{stats.pendingStores}</p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10">
+        <Card className="bg-linear-to-r from-primary/5 to-primary/10">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
@@ -109,7 +109,7 @@ export default async function TiendasPage({ searchParams }: TiendasPageProps) {
       {/* Tabla de tiendas */}
       <Card>
         <CardContent className="p-6">
-          <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-lg" />}>
+          <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
             <StoreTableClient
               initialData={stores}
               total={total}

@@ -20,7 +20,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
       const images = product.imageUrls as string[];
       return (
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-md overflow-hidden bg-slate-100 border shrink-0">
+          <div className="h-10 w-10 rounded-md overflow-hidden bg-muted border shrink-0">
             {images && images.length > 0 ? (
               <img
                 src={images[0]}
@@ -29,7 +29,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
               />
             ) : (
               <div className="h-full w-full flex items-center justify-center">
-                <Package className="h-5 w-5 text-slate-400" />
+                <Package className="h-5 w-5 text-muted-foreground/50" />
               </div>
             )}
           </div>
@@ -37,7 +37,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
             <div className="flex items-center gap-2">
               <span className="font-medium truncate">{product.name}</span>
               {product.sku && (
-                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-mono">
+                <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded font-mono">
                   {product.sku}
                 </span>
               )}
@@ -60,7 +60,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
       return (
         <div className="flex items-center gap-2">
           <span className={`text-lg font-bold ${
-            stock === 0 ? "text-slate-400" : isLowStock ? "text-destructive" : "text-primary"
+            stock === 0 ? "text-muted-foreground/50" : isLowStock ? "text-destructive" : "text-primary"
           }`}>
             {stock}
           </span>
@@ -92,7 +92,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const ubicacion = row.original.inventory?.ubicacion;
       return (
-        <div className="flex items-center gap-2 text-sm text-slate-600">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MapPin className="h-3 w-3" />
           <span>{ubicacion || "No asignada"}</span>
         </div>

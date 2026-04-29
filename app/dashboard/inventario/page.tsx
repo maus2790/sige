@@ -63,7 +63,7 @@ export default async function InventarioPage({ searchParams }: InventarioPagePro
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-white">
+        <Card className="bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Package className="w-4 h-4" />
@@ -75,29 +75,29 @@ export default async function InventarioPage({ searchParams }: InventarioPagePro
           </CardContent>
         </Card>
 
-        <Card className="bg-red-50/50 border-red-100">
+        <Card className="bg-destructive/10 border-destructive/20">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-red-600 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-destructive flex items-center gap-2">
               <AlertTriangle className="w-4 h-4" />
               Stock Bajo
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-700">{lowStockCount}</div>
-            <p className="text-xs text-red-600 mt-1">Productos por debajo del mínimo</p>
+            <div className="text-2xl font-bold text-destructive">{lowStockCount}</div>
+            <p className="text-xs text-destructive/80 mt-1">Productos por debajo del mínimo</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-50">
+        <Card className="bg-muted/50 border-muted">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-600 flex items-center gap-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Package className="w-4 h-4" />
               Agotados
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{outOfStockCount}</div>
-            <p className="text-xs text-slate-500 mt-1">Sin unidades disponibles</p>
+            <div className="text-2xl font-bold text-foreground">{outOfStockCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">Sin unidades disponibles</p>
           </CardContent>
         </Card>
       </div>

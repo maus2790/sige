@@ -10,29 +10,29 @@ export default async function AssistantHomePage() {
       title: "Pagos Pendientes",
       value: stats.pendingPayments,
       icon: Clock,
-      color: "text-yellow-600",
-      bgColor: "bg-yellow-50",
+      color: "text-amber-500",
+      bgColor: "bg-amber-500/10 border-amber-500/20",
     },
     {
       title: "Verificados Hoy",
       value: stats.verifiedToday,
       icon: CheckCircle,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-green-500",
+      bgColor: "bg-green-500/10 border-green-500/20",
     },
     {
       title: "Total Verificados",
       value: stats.totalVerified,
       icon: DollarSign,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-primary",
+      bgColor: "bg-primary/10 border-primary/20",
     },
     {
       title: "Total Rechazados",
       value: stats.totalRejected,
       icon: XCircle,
-      color: "text-red-600",
-      bgColor: "bg-red-50",
+      color: "text-destructive",
+      bgColor: "bg-destructive/10 border-destructive/20",
     },
   ];
 
@@ -69,14 +69,14 @@ export default async function AssistantHomePage() {
             <CardTitle>Acciones Rápidas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-slate-50 rounded-lg">
+            <div className="p-4 bg-muted/50 rounded-xl border border-border/50">
               <h3 className="font-semibold mb-2">📋 Verificación de Pagos</h3>
               <p className="text-sm text-muted-foreground mb-3">
                 Revisa los comprobantes de pago subidos por los compradores y
                 verifica que coincidan con el monto de la orden.
               </p>
             </div>
-            <div className="p-4 bg-slate-50 rounded-lg">
+            <div className="p-4 bg-muted/50 rounded-xl border border-border/50">
               <h3 className="font-semibold mb-2">⚠️ Rechazo de Pagos</h3>
               <p className="text-sm text-muted-foreground mb-3">
                 Si el comprobante no es válido o no coincide, puedes rechazar
@@ -91,9 +91,9 @@ export default async function AssistantHomePage() {
             <CardTitle>Instrucciones Rápidas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
+            <div className="space-y-4">
               <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">
                   1
                 </div>
                 <div>
@@ -104,7 +104,7 @@ export default async function AssistantHomePage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">
                   2
                 </div>
                 <div>
@@ -115,7 +115,7 @@ export default async function AssistantHomePage() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">
                   3
                 </div>
                 <div>

@@ -13,7 +13,7 @@ export const categoryColumns: ColumnDef<any>[] = [
     cell: ({ row }) => {
       const icon = row.getValue("icon") as string | undefined;
       return (
-        <div className="text-2xl w-10 h-10 flex items-center justify-center bg-slate-100 rounded-lg">
+        <div className="text-2xl w-10 h-10 flex items-center justify-center bg-muted rounded-lg">
           {icon || "📁"}
         </div>
       );

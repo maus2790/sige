@@ -208,9 +208,9 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      <div className="rounded-md border bg-white relative">
+      <div className="rounded-md border bg-card relative">
         {isLoading && (
-          <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center">
+          <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         )}

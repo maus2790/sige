@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Package, ShoppingCart, BarChart3, Settings, LayoutDashboard, LogOut } from "lucide-react";
+import { 
+  Package, 
+  ShoppingCart, 
+  BarChart3, 
+  Settings, 
+  LayoutDashboard, 
+  LogOut,
+  ShoppingBag
+} from "lucide-react";
 import { handleLogout } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 
@@ -20,13 +28,18 @@ export function DashboardNav() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:block w-64 bg-white border-r min-h-screen p-4 sticky top-0 h-screen">
+    <aside className="hidden md:flex w-64 bg-background border-r min-h-screen p-4 flex-col sticky top-0 h-screen">
       <div className="mb-8">
-        <h1 className="text-xl font-bold text-primary">SIGE</h1>
-        <p className="text-sm text-muted-foreground">Vendedor</p>
+        <div className="flex items-center gap-2 mb-1">
+          <ShoppingBag className="w-6 h-6 text-primary" />
+          <h1 className="text-xl font-bold text-primary">SIGE</h1>
+        </div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">
+          Panel Vendedor
+        </p>
       </div>
 
-      <nav className="space-y-1">
+      <nav className="space-y-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
@@ -36,7 +49,7 @@ export function DashboardNav() {
                 variant="ghost"
                 className={cn(
                   "w-full justify-start gap-2",
-                  isActive && "bg-slate-100"
+                  isActive && "bg-muted text-primary hover:bg-accent hover:text-accent-foreground"
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -47,9 +60,9 @@ export function DashboardNav() {
         })}
       </nav>
 
-      <div className="absolute bottom-4 w-56">
+      <div className="mt-auto pt-4 border-t">
         <form action={handleLogout}>
-          <Button variant="ghost" className="w-full justify-start gap-2 text-red-600">
+          <Button variant="ghost" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10">
             <LogOut className="w-4 h-4" />
             Cerrar Sesión
           </Button>

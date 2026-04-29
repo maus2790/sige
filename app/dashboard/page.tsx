@@ -121,12 +121,12 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Stock bajo
             </CardTitle>
-            <AlertTriangle className="w-4 h-4 text-yellow-600" />
+            <AlertTriangle className="w-4 h-4 text-amber-500" />
           </CardHeader>
           <CardContent>
             <div className={cn(
               "text-2xl font-bold",
-              stats.lowStockProducts > 0 ? "text-yellow-600" : ""
+              stats.lowStockProducts > 0 ? "text-amber-500" : ""
             )}>
               {stats.lowStockProducts}
             </div>
@@ -183,8 +183,8 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {stats.topProducts.slice(0, 4).map((product) => (
-                <div key={product.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                <div key={product.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted shrink-0">
                     {product.imageUrl ? (
                       <Image
                         src={product.imageUrl}
@@ -229,10 +229,10 @@ export default async function DashboardPage() {
 
       {/* Grid de actividades y stock crítico */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-lg" />}>
+        <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
           <RecentActivity activities={recentActivities} />
         </Suspense>
-        <Suspense fallback={<div className="h-96 animate-pulse bg-slate-100 rounded-lg" />}>
+        <Suspense fallback={<div className="h-96 animate-pulse bg-muted rounded-lg" />}>
           <CriticalStock products={lowStockProducts as any} />
         </Suspense>
       </div>

@@ -3,7 +3,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 
 export function ProductCardSkeleton() {
   return (
-    <Card className="overflow-hidden h-full border-none shadow-sm">
+    <Card className="overflow-hidden h-full border border-white/10 dark:border-white/5 rounded-2xl bg-card shadow-premium">
       <div className="aspect-square">
         <Skeleton className="h-full w-full rounded-none" />
       </div>

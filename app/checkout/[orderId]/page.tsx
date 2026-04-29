@@ -164,7 +164,7 @@ export default function CheckoutPage() {
   const currentStatus = statusConfig[order.status] || { label: order.status, variant: "outline" };
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-50 to-white pb-20">
+    <div className="min-h-screen bg-background pb-20">
       <div className="container max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -199,7 +199,7 @@ export default function CheckoutPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4">
-                <div className="w-20 h-20 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
                   {order.productImage ? (
                     <Image
                       src={order.productImage}
@@ -252,9 +252,9 @@ export default function CheckoutPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="bg-muted/50 p-4 rounded-xl border border-primary/10">
                 <div className="flex items-center gap-2 mb-2">
-                  <CreditCard className="w-4 h-4 text-blue-600" />
+                  <CreditCard className="w-4 h-4 text-primary" />
                   <span className="font-semibold">Datos para transferencia</span>
                 </div>
                 <p className="text-sm"><strong>Banco:</strong> Banco Unión</p>
@@ -334,30 +334,30 @@ export default function CheckoutPage() {
               )}
 
               {order.status === "payment_verified" && (
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <CheckCircle className="w-8 h-8 mx-auto text-green-600 mb-2" />
-                  <p className="font-semibold text-green-800">¡Pago verificado!</p>
-                  <p className="text-sm text-green-700 mt-1">
+                <div className="bg-primary/10 p-4 rounded-xl text-center border border-primary/20">
+                  <CheckCircle className="w-8 h-8 mx-auto text-primary mb-2" />
+                  <p className="font-semibold text-foreground">¡Pago verificado!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Tu pago ha sido confirmado. Pronto recibirás actualizaciones de tu envío.
                   </p>
                 </div>
               )}
 
               {order.status === "shipped" && (
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <Truck className="w-8 h-8 mx-auto text-blue-600 mb-2" />
-                  <p className="font-semibold text-blue-800 text-center">¡Pedido enviado!</p>
-                  <p className="text-sm text-blue-700 mt-1 text-center">
+                <div className="bg-primary/10 p-4 rounded-xl border border-primary/20">
+                  <Truck className="w-8 h-8 mx-auto text-primary mb-2" />
+                  <p className="font-semibold text-foreground text-center">¡Pedido enviado!</p>
+                  <p className="text-sm text-muted-foreground mt-1 text-center">
                     Tu pedido está en camino. Revisa tu correo para el código de seguimiento.
                   </p>
                 </div>
               )}
 
               {order.status === "delivered" && (
-                <div className="bg-green-50 p-4 rounded-lg text-center">
-                  <CheckCircle className="w-8 h-8 mx-auto text-green-600 mb-2" />
-                  <p className="font-semibold text-green-800">¡Pedido entregado!</p>
-                  <p className="text-sm text-green-700 mt-1">
+                <div className="bg-primary/10 p-4 rounded-xl text-center border border-primary/20">
+                  <CheckCircle className="w-8 h-8 mx-auto text-primary mb-2" />
+                  <p className="font-semibold text-foreground">¡Pedido entregado!</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Gracias por comprar en SIGE Marketplace.
                   </p>
                 </div>

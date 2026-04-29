@@ -267,7 +267,7 @@ export default function HistorialPage() {
               {selectedOrder.assistantNotes && (
                 <div className="border-t pt-3">
                   <p className="text-sm font-medium mb-1">Notas del asistente:</p>
-                  <p className="text-sm text-muted-foreground bg-slate-50 p-3 rounded-lg">
+                  <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg border border-border">
                     {selectedOrder.assistantNotes}
                   </p>
                 </div>

@@ -9,6 +9,7 @@ import { SessionProvider } from "next-auth/react";
 import { QueryProvider } from "@/components/providers/query-provider";
 import NextTopLoader from "nextjs-toploader";
 import { Navbar } from "@/components/layout/Navbar";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -21,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -38,15 +39,22 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=yes" />
       </head>
       <body className={inter.className}>
-        <NextTopLoader showSpinner={false} color="#3B82F6" shadow="0 0 10px #3B82F6,0 0 5px #3B82F6" />
-        <SessionProvider>
-          <QueryProvider>
-            <Navbar />
-            {children}
-            <Toaster />
-            <RegisterSW />
-          </QueryProvider>
-        </SessionProvider>
+        <NextTopLoader showSpinner={false} color="#2563EB" shadow="0 0 10px #2563EB,0 0 5px #2563EB" />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SessionProvider>
+            <QueryProvider>
+              <Navbar />
+              {children}
+              <Toaster />
+              <RegisterSW />
+            </QueryProvider>
+          </SessionProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

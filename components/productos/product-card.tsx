@@ -39,7 +39,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg cursor-pointer h-full border rounded-xl bg-white"
+      className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl cursor-pointer h-full border border-white/20 dark:border-white/5 rounded-2xl bg-card/50 backdrop-blur-sm"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -70,11 +70,11 @@ export function ProductCard({ product }: ProductCardProps) {
         )}
 
         {/* Imagen */}
-        <div className="aspect-square relative overflow-hidden bg-linear-to-br from-slate-100 to-slate-200">
+        <div className="aspect-square relative overflow-hidden bg-muted">
           {mainImage ? (
             <>
               {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-slate-50/50 z-20">
+                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-20">
                   <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
               )}
@@ -103,7 +103,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {product.description || "Sin descripción"}
           </p>
           <div className="flex items-center justify-between">
-            <span className="text-2xl font-bold text-primary">
+            <span className="text-2xl font-black text-brand-gradient">
               Bs. {product.price.toFixed(2)}
             </span>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -133,9 +133,9 @@ export function ProductCard({ product }: ProductCardProps) {
           
           <Link href={`/comprar/${product.id}`} className="w-full">
             <Button 
-              className="w-full gap-2" 
+              className="w-full gap-2 rounded-xl" 
               size="sm" 
-              variant="default"
+              variant="gradient"
               onClick={(e) => e.stopPropagation()}
             >
               <ShoppingCart className="w-4 h-4" />
@@ -146,7 +146,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Botón de favorito (corazón) */}
         <button
-          className="absolute top-2 right-2 p-2 rounded-full bg-white/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-red-50"
+          className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-accent"
           onClick={(e) => {
             e.preventDefault();
             // TODO: Implementar favoritos

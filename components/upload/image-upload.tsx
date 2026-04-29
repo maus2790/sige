@@ -123,7 +123,7 @@ export function ImageUpload({
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {imageItems.map((item, index) => (
           <div key={index} className="relative group">
-            <div className="aspect-square relative rounded-lg overflow-hidden border bg-slate-100">
+            <div className="aspect-square relative rounded-lg overflow-hidden border bg-muted">
               <Image
                 src={item.isUploading ? item.previewUrl! : item.url}
                 alt={`Producto ${index + 1}`}
@@ -139,7 +139,7 @@ export function ImageUpload({
             <button
               type="button"
               onClick={() => handleRemove(index)}
-              className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
               disabled={item.isUploading}
             >
               <X className="w-4 h-4" />
@@ -148,7 +148,7 @@ export function ImageUpload({
         ))}
 
         {imageItems.length < maxImages && (
-          <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors bg-slate-50">
+          <label className="aspect-square flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors bg-muted/50 hover:bg-muted/80">
             <div className="flex flex-col items-center gap-2">
               <Upload className="w-8 h-8 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">

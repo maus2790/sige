@@ -59,16 +59,16 @@ export function RecentActivity({ activities }: RecentActivityProps) {
           {activities.map((activity) => (
             <div
               key={activity.id}
-              className="flex items-start gap-4 p-3 rounded-lg hover:bg-slate-50 transition-colors"
+              className="flex items-start gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
             >
               {/* Icono de actividad */}
               <div className="shrink-0">
                 <div className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center",
-                  activity.type === "order" && "bg-blue-100 text-blue-600",
-                  activity.type === "payment" && "bg-green-100 text-green-600",
-                  activity.type === "shipping" && "bg-purple-100 text-purple-600",
-                  activity.type === "product" && "bg-orange-100 text-orange-600"
+                  activity.type === "order" && "bg-primary/10 text-primary",
+                  activity.type === "payment" && "bg-green-500/10 text-green-500",
+                  activity.type === "shipping" && "bg-purple-500/10 text-purple-500",
+                  activity.type === "product" && "bg-amber-500/10 text-amber-500"
                 )}>
                   {activity.type === "order" && <ShoppingCart className="w-5 h-5" />}
                   {activity.type === "payment" && <CheckCircle className="w-5 h-5" />}

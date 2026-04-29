@@ -32,7 +32,7 @@ export function StatsCard({ title, value, icon, description, trend, className }:
           <p className="text-xs text-muted-foreground mt-1">{description}</p>
         )}
         {trend && (
-          <div className={cn("text-xs mt-2", trend.isPositive ? "text-green-600" : "text-red-600")}>
+          <div className={cn("text-xs mt-2", trend.isPositive ? "text-green-500" : "text-destructive")}>
             {trend.isPositive ? "↑" : "↓"} {Math.abs(trend.value)}% {trend.isPositive ? "más" : "menos"}
           </div>
         )}

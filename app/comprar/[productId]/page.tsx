@@ -116,7 +116,7 @@ export default function ComprarPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4">
-                <div className="w-24 h-24 rounded-lg overflow-hidden bg-slate-100 shrink-0">
+                <div className="w-24 h-24 rounded-lg overflow-hidden bg-muted shrink-0">
                   {product.imageUrls?.[0] ? (
                     <Image
                       src={product.imageUrls[0]}

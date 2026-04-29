@@ -82,7 +82,7 @@ export default function StoreDetailPage() {
               <div className="flex items-center justify-between">
                 <CardTitle>Información de la tienda</CardTitle>
                 {store.verified ? (
-                  <Badge className="bg-green-100 text-green-700">
+                  <Badge className="bg-green-500/10 text-green-500 border-green-500/20">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Verificada
                   </Badge>
@@ -96,7 +96,7 @@ export default function StoreDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-6">
-                <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center">
+                <div className="w-24 h-24 rounded-xl overflow-hidden bg-muted flex items-center justify-center">
                   {store.logoUrl ? (
                     <Image
                       src={store.logoUrl}
@@ -170,7 +170,7 @@ export default function StoreDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Pendientes</p>
-                  <p className="text-2xl font-bold text-yellow-600">{store.pendingOrders}</p>
+                  <p className="text-2xl font-bold text-amber-500">{store.pendingOrders}</p>
                 </div>
               </div>
             </CardContent>
@@ -185,8 +185,8 @@ export default function StoreDetailPage() {
               <CardContent>
                 <div className="space-y-3">
                   {store.recentProducts.map((product: any) => (
-                    <div key={product.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center">
+                    <div key={product.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
                         {product.imageUrl ? (
                           <Image
                             src={product.imageUrl}

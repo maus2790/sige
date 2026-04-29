@@ -72,7 +72,7 @@ export default function NuevaCategoriaPage() {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-6">
             {error && (
-              <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
+              <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-destructive text-sm">
                 {error}
               </div>
             )}
@@ -134,7 +134,7 @@ export default function NuevaCategoriaPage() {
                           const iconInput = document.getElementById("icon") as HTMLInputElement;
                           if (iconInput) iconInput.value = icon;
                         }}
-                        className="w-10 h-10 text-2xl flex items-center justify-center bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
+                        className="w-10 h-10 text-2xl flex items-center justify-center bg-muted rounded-lg hover:bg-muted/80 transition-colors"
                       >
                         {icon}
                       </button>
