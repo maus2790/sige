@@ -89,6 +89,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
   {
     accessorKey: "inventory.ubicacion",
     header: "Ubicación",
+    meta: { className: "hidden lg:table-cell" },
     cell: ({ row }) => {
       const ubicacion = row.original.inventory?.ubicacion;
       return (
@@ -101,7 +102,8 @@ export const inventoryColumns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "inventory.updatedAt",
-    header: "Última Modificación",
+    header: "Última Actualización",
+    meta: { className: "hidden lg:table-cell" },
     cell: ({ row }) => {
       const updatedAt = row.original.inventory?.updatedAt;
       if (!updatedAt) return <span className="text-xs text-muted-foreground">Nunca</span>;

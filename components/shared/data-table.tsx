@@ -15,6 +15,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -31,10 +32,11 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronLeft, ChevronRight, Download, Printer, Search, Settings2, AlertTriangle } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download, Printer, Search, Settings2, AlertTriangle, Loader2, Package } from "lucide-react";
 import * as XLSX from "xlsx";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -47,6 +49,9 @@ interface DataTableProps<TData, TValue> {
   initialLowStock?: boolean;
   categories?: string[];
   isLoading?: boolean;
+  renderMobileCard?: (row: TData) => React.ReactNode;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -60,7 +65,11 @@ export function DataTable<TData, TValue>({
   initialLowStock = false,
   categories = [],
   isLoading = false,
+  renderMobileCard,
+  onLoadMore,
+  hasMore = false,
 }: DataTableProps<TData, TValue>) {
+  const observerTarget = React.useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -88,6 +97,26 @@ export function DataTable<TData, TValue>({
     manualPagination: true,
     pageCount: pageCount,
   });
+
+  // Infinite Scroll Observer for Mobile
+  React.useEffect(() => {
+    if (!onLoadMore || !hasMore || isLoading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          onLoadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [onLoadMore, hasMore, isLoading]);
 
   // Export to Excel
   const exportToExcel = () => {
@@ -128,9 +157,9 @@ export function DataTable<TData, TValue>({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-1 items-center gap-2 max-w-sm">
+    <div className="space-y-4 w-full min-w-0">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row flex-1 items-start sm:items-center gap-2 w-full md:max-w-sm">
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -145,7 +174,7 @@ export function DataTable<TData, TValue>({
           </div>
           {onCategoryChange && categories.length > 0 && (
             <select
-              className="h-9 w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="h-9 w-full sm:w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               onChange={(e) => onCategoryChange(e.target.value)}
             >
               <option value="todos">Todas las categorías</option>
@@ -169,20 +198,20 @@ export function DataTable<TData, TValue>({
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-2 flex-1 sm:flex-none">
             <Download className="h-4 w-4" />
-            Excel
+            <span className="hidden sm:inline">Excel</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToPDF} className="gap-2">
+          <Button variant="outline" size="sm" onClick={exportToPDF} className="gap-2 flex-1 sm:flex-none">
             <Printer className="h-4 w-4" />
-            PDF
+            <span className="hidden sm:inline">PDF</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-auto gap-2">
+              <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none ml-auto">
                 <Settings2 className="h-4 w-4" />
-                Columnas
+                <span className="hidden sm:inline">Columnas</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -208,60 +237,138 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      <div className="rounded-md border bg-card relative">
+      <div className="rounded-md border bg-card relative shadow-sm overflow-hidden">
         {isLoading && (
           <div className="absolute inset-0 bg-background/50 z-10 flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         )}
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => {
-                  return (
-                    <TableHead key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
+        
+        {/* Mobile View (Cards) */}
+        {renderMobileCard && (
+          <div className="md:hidden">
+            <div className="flex flex-col divide-y divide-border/50">
+              {isLoading && data.length === 0 ? (
+                // Skeletons para carga inicial móvil
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="p-4 space-y-4">
+                    <div className="flex gap-4">
+                      <Skeleton className="h-20 w-20 rounded-lg shrink-0" />
+                      <div className="flex-1 space-y-2 py-1">
+                        <Skeleton className="h-5 w-3/4" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <Skeleton className="h-4 w-1/3 mt-2" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-12 w-full rounded-xl" />
+                    <div className="flex gap-3">
+                      <Skeleton className="h-9 flex-1 rounded-lg" />
+                      <Skeleton className="h-9 flex-1 rounded-lg" />
+                    </div>
+                  </div>
+                ))
+              ) : table.getRowModel().rows?.length ? (
+                <>
+                  {table.getRowModel().rows.map((row) => (
+                    <div key={row.id} className="p-4 transition-colors active:bg-muted/50">
+                      {renderMobileCard(row.original)}
+                    </div>
                   ))}
+                  {/* Target para Infinite Scroll */}
+                  {hasMore && (
+                    <div ref={observerTarget} className="p-4 flex justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/40" />
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="h-32 flex flex-col items-center justify-center text-center p-8">
+                  <Package className="h-10 w-10 text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">No se encontraron productos.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Desktop View (Table) */}
+        <div className={cn(
+          "overflow-x-auto w-full",
+          renderMobileCard ? "hidden md:block" : "block"
+        )}>
+          <Table className="w-full">
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead 
+                        key={header.id} 
+                        className={cn(
+                          "whitespace-nowrap",
+                          (header.column.columnDef.meta as any)?.className
+                        )}
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center"
-                >
-                  No se encontraron resultados.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {isLoading && data.length === 0 ? (
+                // Skeletons para carga inicial escritorio
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {columns.map((_, j) => (
+                      <TableCell key={j}>
+                        <Skeleton className="h-6 w-full" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                    className="transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell 
+                        key={cell.id} 
+                        className={cn(
+                          "whitespace-nowrap",
+                          (cell.column.columnDef.meta as any)?.className
+                        )}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    No se encontraron resultados.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <div className="flex items-center justify-between px-2">

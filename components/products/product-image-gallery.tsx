@@ -12,20 +12,24 @@ import {
   DialogDescription,
   DialogHeader
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, X, Package } from "lucide-react";
+import { ChevronLeft, ChevronRight, X, Package, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ProductImageGalleryProps {
   images: string[];
   productName: string;
+  className?: string;
 }
 
-export function ProductImageGallery({ images, productName }: ProductImageGalleryProps) {
+export function ProductImageGallery({ images, productName, className }: ProductImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isImageLoading, setIsImageLoading] = useState(true);
 
   if (!images || images.length === 0) {
     return (
-      <div className="w-12 h-12 rounded-md border bg-muted flex items-center justify-center text-muted-foreground">
+      <div className={cn("w-12 h-12 rounded-md border bg-muted flex items-center justify-center text-muted-foreground", className)}>
         <Package className="w-6 h-6" />
       </div>
     );
@@ -44,15 +48,25 @@ export function ProductImageGallery({ images, productName }: ProductImageGallery
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <div className="relative w-12 h-12 rounded-md overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity">
+        <div className={cn("relative w-12 h-12 rounded-md overflow-hidden border cursor-pointer hover:opacity-80 transition-opacity bg-muted", className)}>
+          {isImageLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center">
+              <Skeleton className="h-full w-full absolute inset-0" />
+              <Loader2 className="h-1/2 w-1/2 animate-spin text-muted-foreground/20" />
+            </div>
+          )}
           <Image
             src={images[0]}
             alt={productName}
             fill
-            className="object-cover"
+            className={cn(
+              "object-cover transition-all duration-300",
+              isImageLoading ? "scale-105 blur-sm" : "scale-100 blur-0"
+            )}
+            onLoad={() => setIsImageLoading(false)}
           />
           {images.length > 1 && (
-            <div className="absolute bottom-0 right-0 bg-black/60 text-white text-[10px] px-1 rounded-tl-md">
+            <div className="absolute bottom-0 right-0 z-20 bg-black/60 text-white text-[10px] px-1 rounded-tl-md">
               +{images.length - 1}
             </div>
           )}

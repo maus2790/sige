@@ -38,6 +38,72 @@ export const r2Client = new S3Client({
   forcePathStyle: true, // Necesario para R2
 });
 
+// ============================================
+// COMPENSACIÓN AUTOMÁTICA DE HORA (CLOCK SKEW)
+// ============================================
+// Esto soluciona el error RequestTimeTooSkewed si el reloj local está desfasado.
+
+r2Client.middlewareStack.add(
+  (next) => async (args) => {
+    try {
+      const result = await next(args);
+      
+      // En cada respuesta exitosa, actualizamos el offset para futuros pedidos
+      const response = result.response as any;
+      if (response && response.headers && response.headers.date) {
+        const serverDate = new Date(response.headers.date);
+        const offset = serverDate.getTime() - Date.now();
+        if (Math.abs(offset) > 2000) { // Solo si hay más de 2s de diferencia
+          (r2Client.config as any).systemClockOffset = offset;
+        }
+      }
+      return result;
+    } catch (error: any) {
+      // Si falla por desfase horario, intentamos sincronizar y reintentar una vez
+      if (
+        (error.name === "RequestTimeTooSkewed" || error.Code === "RequestTimeTooSkewed") &&
+        !(args as any)._isRetry
+      ) {
+        console.warn("[R2] Desfase horario detectado. Sincronizando con el servidor...");
+        
+        // Intentar obtener la hora del servidor desde los headers del error si están disponibles
+        const serverDateStr = error.$metadata?.httpHeaders?.date;
+        let offset = 0;
+
+        if (serverDateStr) {
+          offset = new Date(serverDateStr).getTime() - Date.now();
+        } else {
+          // Si no, hacer una petición rápida al endpoint para obtener el header Date
+          try {
+            const res = await fetch(endpoint, { method: "HEAD" });
+            const dateStr = res.headers.get("date");
+            if (dateStr) {
+              offset = new Date(dateStr).getTime() - Date.now();
+            }
+          } catch (e) {
+            console.error("[R2] No se pudo obtener la hora del servidor para sincronizar.");
+          }
+        }
+
+        if (offset !== 0) {
+          (r2Client.config as any).systemClockOffset = offset;
+          console.log(`[R2] Reloj sincronizado. Offset: ${offset}ms. Reintentando...`);
+          
+          // Marcar para no entrar en bucle infinito
+          (args as any)._isRetry = true;
+          return await next(args);
+        }
+      }
+      throw error;
+    }
+  },
+  {
+    step: "initialize",
+    name: "ClockSkewMiddleware",
+    priority: "high",
+  }
+);
+
 export const R2_BUCKET_NAME = bucketName;
 export const R2_PUBLIC_URL = "/api/images";
 

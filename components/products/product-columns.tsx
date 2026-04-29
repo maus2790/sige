@@ -14,6 +14,7 @@ export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "sku",
     header: "ID / SKU",
+    meta: { className: "hidden lg:table-cell" },
     cell: ({ row }) => (
       <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
         <Tag className="w-3 h-3" />
@@ -46,6 +47,7 @@ export const columns: ColumnDef<any>[] = [
   {
     accessorKey: "category",
     header: "Categoría",
+    meta: { className: "hidden lg:table-cell" },
     cell: ({ row }) => (
       <Badge variant="outline">
         {row.getValue("category") || "Sin categoría"}

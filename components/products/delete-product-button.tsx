@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { deleteProduct } from "@/app/actions/products";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,9 +21,10 @@ import {
 interface DeleteProductButtonProps {
   productId: string;
   productName: string;
+  className?: string;
 }
 
-export function DeleteProductButton({ productId, productName }: DeleteProductButtonProps) {
+export function DeleteProductButton({ productId, productName, className }: DeleteProductButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function onDelete() {
@@ -39,7 +41,11 @@ export function DeleteProductButton({ productId, productName }: DeleteProductBut
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-red-600">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={cn("text-destructive hover:text-destructive hover:bg-destructive/10", className)}
+        >
           <Trash2 className="w-4 h-4" />
         </Button>
       </AlertDialogTrigger>

@@ -19,6 +19,7 @@ import { Edit2, Loader2, Warehouse } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { updateInventoryItem } from "@/app/actions/inventory";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface AdjustStockDialogProps {
   productId: string;
@@ -26,6 +27,7 @@ interface AdjustStockDialogProps {
   currentStock: number;
   currentMinStock: number;
   currentLocation: string;
+  className?: string;
 }
 
 export function AdjustStockDialog({
@@ -34,6 +36,7 @@ export function AdjustStockDialog({
   currentStock,
   currentMinStock,
   currentLocation,
+  className,
 }: AdjustStockDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -65,7 +68,7 @@ export function AdjustStockDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className={cn("gap-2", className)}>
           <Warehouse className="h-4 w-4" />
           Gestionar Stock
         </Button>
