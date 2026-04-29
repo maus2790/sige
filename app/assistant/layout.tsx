@@ -16,7 +16,7 @@ export default async function AssistantLayout({
       <div className="flex">
         <AssistantNav />
         {/* Main content */}
-        <main className="flex-1 p-4 md:p-8 pb-20 md:pb-8">
+        <main className="flex-1 min-w-0 p-4 md:p-8 pb-20 md:pb-8">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>

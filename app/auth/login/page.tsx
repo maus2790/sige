@@ -12,12 +12,13 @@ import { toast } from "sonner";
 import { handleLogin } from "@/app/actions/auth";
 import { GoogleSignInButton } from "@/components/auth/google-signin-button";
 import { Loader2 } from "lucide-react";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const [state, formAction, isPending] = useActionState(async (prevState: any, formData: FormData) => {
-    return await handleLogin(formData);
-  }, null);
+  const [isPending, setIsPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Mostrar mensajes según los parámetros de URL
@@ -32,11 +33,49 @@ export default function LoginPage() {
     }
   }, [searchParams]);
 
-  useEffect(() => {
-    if (state?.error) {
-      toast.error(state.error);
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsPending(true);
+    setError(null);
+
+    const formData = new FormData(event.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+
+    // 1. Verificar credenciales y establecer cookies personalizadas (para compatibilidad)
+    const result = await handleLogin(formData);
+
+    if (result?.error) {
+      setError(result.error);
+      toast.error(result.error);
+      setIsPending(false);
+      return;
     }
-  }, [state]);
+
+    // 2. Iniciar sesión en NextAuth para unificar la sesión y que la Navbar se actualice
+    const signInResult = await signIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
+
+    if (signInResult?.error) {
+      toast.error("Error al sincronizar sesión");
+      setIsPending(false);
+      return;
+    }
+
+    toast.success("¡Bienvenido de nuevo!");
+    
+    // Redirigir según el rol del usuario devuelto por handleLogin
+    const role = result.user?.role;
+    let targetPath = "/dashboard";
+    
+    if (role === "superadmin") targetPath = "/admin";
+    else if (role === "assistant") targetPath = "/assistant";
+    
+    window.location.href = targetPath;
+  }
 
   return (
     <Card>
@@ -46,11 +85,11 @@ export default function LoginPage() {
           Ingresa tus credenciales para acceder a tu cuenta
         </CardDescription>
       </CardHeader>
-      <form action={formAction}>
+      <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
-          {state?.error && (
+          {error && (
             <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
-              {state.error}
+              {error}
             </div>
           )}
           <div className="space-y-2">

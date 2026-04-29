@@ -12,6 +12,7 @@ import {
   Tags,
   ShieldAlert
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { handleLogout } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 
@@ -62,12 +63,17 @@ export function AdminNavigation() {
         </nav>
 
         <div className="mt-auto pt-4 border-t">
-          <form action={handleLogout}>
-            <Button variant="ghost" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10">
-              <LogOut className="w-4 h-4" />
-              Cerrar Sesión
-            </Button>
-          </form>
+          <Button 
+            variant="ghost" 
+            className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10"
+            onClick={async () => {
+              await handleLogout();
+              signOut({ callbackUrl: "/" });
+            }}
+          >
+            <LogOut className="w-4 h-4" />
+            Cerrar Sesión
+          </Button>
         </div>
       </aside>
 

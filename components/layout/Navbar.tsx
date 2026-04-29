@@ -38,28 +38,13 @@ export function Navbar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
-  const [customUser, setCustomUser] = useState<any>(null);
-  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
     setMounted(true);
-
-    const fetchAuth = async () => {
-      try {
-        const user = await getCurrentUser();
-        setCustomUser(user);
-      } catch (error) {
-        console.error("Error fetching custom user", error);
-      } finally {
-        setIsLoadingAuth(false);
-      }
-    };
-
-    fetchAuth();
   }, []);
 
-  const activeUser = session?.user || customUser;
-  const isLoading = status === "loading" || isLoadingAuth;
+  const activeUser = session?.user;
+  const isLoading = status === "loading";
 
   // Función para obtener la ruta del dashboard correcta según el rol
   const getDashboardPath = () => {
@@ -79,8 +64,8 @@ export function Navbar() {
   };
 
   const onLogout = async () => {
-    await signOut({ redirect: false });
     await handleLogout();
+    await signOut({ callbackUrl: "/" });
   };
 
   // Ocultar el Navbar en las rutas de autenticación
@@ -118,7 +103,7 @@ export function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full border">
                     <Avatar className="h-10 w-10">
-                      <AvatarImage src={activeUser.image || activeUser.image_url || ""} alt={activeUser.name || "User"} />
+                      <AvatarImage src={activeUser.image || ""} alt={activeUser.name || "User"} />
                       <AvatarFallback className="bg-primary/10 text-primary font-medium">
                         {getInitials(activeUser.name)}
                       </AvatarFallback>

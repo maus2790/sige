@@ -12,6 +12,7 @@ export const users = sqliteTable("users", {
     resetToken: text("reset_token"),
     resetTokenExpiry: integer("reset_token_expiry", { mode: "timestamp" }),
     provider: text("provider"),
+    image: text("image"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 

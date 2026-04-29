@@ -14,6 +14,8 @@ interface ImageUploadProps {
   onImagesChange: (urls: string[]) => void;
   initialImages?: string[];
   maxImages?: number;
+  folder?: string;
+  label?: string;
 }
 
 interface ImageItem {
@@ -26,7 +28,9 @@ interface ImageItem {
 export function ImageUpload({
   onImagesChange,
   initialImages = [],
-  maxImages = 5
+  maxImages = 5,
+  folder = "products",
+  label = "Imágenes"
 }: ImageUploadProps) {
   // Inicializar estado con las imágenes existentes
   const [imageItems, setImageItems] = useState<ImageItem[]>(
@@ -66,7 +70,7 @@ export function ImageUpload({
     for (const item of newItems) {
       const formData = new FormData();
       formData.append("file", item.file!);
-      formData.append("folder", "products");
+      formData.append("folder", folder);
 
       try {
         const response = await fetch("/api/upload", {
@@ -118,7 +122,7 @@ export function ImageUpload({
 
   return (
     <div className="space-y-4">
-      <Label>Imágenes del producto</Label>
+      <Label>{label}</Label>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {imageItems.map((item, index) => (

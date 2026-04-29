@@ -50,13 +50,13 @@ export default async function InventarioPage({ searchParams }: InventarioPagePro
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Warehouse className="w-8 h-8 text-primary" />
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <Warehouse className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             Gestión de Inventario
           </h1>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Supervisa tus existencias, controla el stock mínimo y gestiona las ubicaciones de tus productos.
           </p>
         </div>

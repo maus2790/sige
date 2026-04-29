@@ -58,7 +58,7 @@ export function AssistantNav() {
       </nav>
 
       <div className="mt-auto pt-4 border-t">
-        <form action={handleLogout}>
+        <form action={async () => { await handleLogout(); }}>
           <Button variant="ghost" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10">
             <LogOut className="w-4 h-4" />
             Cerrar Sesión

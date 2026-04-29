@@ -11,6 +11,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { sendResetEmail } from "@/lib/send-reset-email";
+import { getServerSession } from "next-auth/next";
+import { nextauthConfig } from "@/lib/nextauth.config";
 
 // ============================================
 // ESQUEMAS DE VALIDACIÓN CORREGIDOS
@@ -198,16 +200,7 @@ export async function handleLogin(formData: FormData) {
     path: "/",
   });
 
-  // Redirigir según rol
-  if (user.role === "superadmin") {
-    redirect("/admin");
-  } else if (user.role === "seller") {
-    redirect("/dashboard");
-  } else if (user.role === "assistant") {
-    redirect("/assistant");
-  } else {
-    redirect("/");
-  }
+  return { success: true, user };
 }
 
 // ============================================
@@ -221,7 +214,7 @@ export async function handleLogout() {
   cookieStore.delete("user_name");
   cookieStore.delete("user_role");
 
-  redirect("/auth/login");
+  return { success: true };
 }
 
 // ============================================
@@ -230,7 +223,14 @@ export async function handleLogout() {
 
 export async function getCurrentUser() {
   const cookieStore = await cookies();
-  const userId = cookieStore.get("user_id")?.value;
+  let userId = cookieStore.get("user_id")?.value;
+
+  if (!userId) {
+    const session = await getServerSession(nextauthConfig);
+    if (session?.user) {
+      userId = (session.user as any).id;
+    }
+  }
 
   if (!userId) {
     return null;

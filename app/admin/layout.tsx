@@ -17,7 +17,7 @@ export default async function AdminLayout({
         <AdminNavigation />
 
         {/* Main content */}
-        <main className="flex-1 md:ml-64 p-4 md:p-8 pb-20">
+        <main className="flex-1 min-w-0 md:ml-64 p-4 md:p-8 pb-20">
           {children}
         </main>
       </div>

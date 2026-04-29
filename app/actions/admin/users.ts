@@ -20,6 +20,7 @@ const updateUserSchema = z.object({
   role: z.enum(["seller", "assistant", "superadmin"]).optional(),
   phone: z.string().optional(),
   videoPlan: z.enum(["free", "video", "pro"]).optional(),
+  image: z.string().optional().nullable(),
 });
 
 const createUserSchema = z.object({
@@ -28,6 +29,7 @@ const createUserSchema = z.object({
   password: z.string().min(6, "La contraseña debe tener al menos 6 caracteres"),
   role: z.enum(["seller", "assistant", "superadmin"]).default("seller"),
   phone: z.string().optional(),
+  image: z.string().optional().nullable(),
 });
 
 // ============================================
@@ -68,6 +70,7 @@ export async function getAllUsers(
       videoPlan: users.videoPlan,
       videoPlanExpiresAt: users.videoPlanExpiresAt,
       provider: users.provider,
+      image: users.image,
       createdAt: users.createdAt,
     })
     .from(users)
@@ -150,6 +153,7 @@ export async function createUser(formData: FormData) {
     password: formData.get("password"),
     role: formData.get("role"),
     phone: formData.get("phone") || undefined,
+    image: formData.get("image") as string || undefined,
   });
 
   if (!validatedFields.success) {
@@ -163,7 +167,7 @@ export async function createUser(formData: FormData) {
     };
   }
 
-  const { name, email, password, role, phone } = validatedFields.data;
+  const { name, email, password, role, phone, image } = validatedFields.data;
 
   // Verificar si el email ya existe
   const existingUser = await db
@@ -189,6 +193,7 @@ export async function createUser(formData: FormData) {
     password: hashedPassword,
     role,
     phone,
+    image,
     createdAt: new Date(),
   });
 
@@ -231,6 +236,7 @@ export async function updateUser(userId: string, formData: FormData) {
     role: formData.get("role") || undefined,
     phone: formData.get("phone") || undefined,
     videoPlan: formData.get("videoPlan") || undefined,
+    image: formData.get("image") as string || undefined,
   });
 
   if (!validatedFields.success) {

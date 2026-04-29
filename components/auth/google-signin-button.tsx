@@ -8,9 +8,9 @@ import { Loader2 } from "lucide-react";
 
 export function GoogleSignInButton() {
   const [isLoading, setIsLoading] = useState(false);
-  const handleGoogleClick = () => {
+  const handleGoogleClick = async () => {
     setIsLoading(true);
-    window.location.href = "/api/auth/google";
+    await signIn("google", { callbackUrl: "/" }, { prompt: "select_account" });
   };
 
   return (

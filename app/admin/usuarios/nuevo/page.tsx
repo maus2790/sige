@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { createUser } from "@/app/actions/admin/users";
+import { ImageUpload } from "@/components/upload/image-upload";
 
 const roles = [
   { value: "seller", label: "Vendedor" },
@@ -22,6 +23,7 @@ export default function NuevoUsuarioPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [fields, setFields] = useState({
     name: "",
     email: "",
@@ -33,6 +35,9 @@ export default function NuevoUsuarioPage() {
     setError(null);
 
     const formData = new FormData(event.currentTarget);
+    if (avatarUrl) {
+      formData.append("image", avatarUrl);
+    }
     const result = await createUser(formData);
 
     if (result?.error) {
@@ -144,6 +149,15 @@ export default function NuevoUsuarioPage() {
                     type="tel"
                     placeholder="71234567"
                     disabled={isLoading}
+                  />
+                </div>
+
+                <div className="pt-2">
+                  <ImageUpload
+                    onImagesChange={(urls) => setAvatarUrl(urls[0] || null)}
+                    maxImages={1}
+                    folder="avatars"
+                    label="Avatar del usuario"
                   />
                 </div>
               </div>

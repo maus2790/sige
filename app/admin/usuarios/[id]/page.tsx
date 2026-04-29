@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { getUserById, updateUser } from "@/app/actions/admin/users";
+import { ImageUpload } from "@/components/upload/image-upload";
 
 const roles = [
   { value: "seller", label: "Vendedor" },
@@ -32,6 +33,7 @@ export default function EditarUsuarioPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export default function EditarUsuarioPage() {
         return;
       }
       setUser(data);
+      setAvatarUrl(data.image);
       setIsLoading(false);
     }
     loadUser();
@@ -50,10 +53,13 @@ export default function EditarUsuarioPage() {
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsSaving(true);
+    setIsLoading(true);
     setError(null);
 
     const formData = new FormData(event.currentTarget);
+    if (avatarUrl !== undefined) {
+      formData.append("image", avatarUrl || "");
+    }
     const result = await updateUser(userId, formData);
 
     if (result.error) {
@@ -170,6 +176,16 @@ export default function EditarUsuarioPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="pt-2">
+                  <ImageUpload
+                    onImagesChange={(urls) => setAvatarUrl(urls[0] || null)}
+                    initialImages={user.image ? [user.image] : []}
+                    maxImages={1}
+                    folder="avatars"
+                    label="Avatar del usuario"
+                  />
                 </div>
               </div>
             </div>

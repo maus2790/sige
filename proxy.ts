@@ -118,15 +118,55 @@ function isAdminRoute(pathname: string): boolean {
 }
 
 // ============================================
+// FUNCIÓN PARA DECODIFICAR EL JWT DE NEXTAUTH
+// ============================================
+async function getNextAuthSession(request: NextRequest): Promise<{ id: string; role: string } | null> {
+  try {
+    // NextAuth usa esta cookie para almacenar el JWT
+    const sessionToken = request.cookies.get('next-auth.session-token')?.value
+      || request.cookies.get('__Secure-next-auth.session-token')?.value;
+
+    if (!sessionToken) return null;
+
+    // Importar decode dinámicamente (compatible con Edge Runtime)
+    const { decode } = await import('next-auth/jwt');
+    
+    const token = await decode({
+      token: sessionToken,
+      secret: process.env.NEXTAUTH_SECRET!,
+    });
+
+    if (!token) return null;
+
+    return {
+      id: (token.id as string) || '',
+      role: (token.role as string) || 'seller',
+    };
+  } catch (error) {
+    console.log('[Proxy] Error decoding NextAuth token:', error);
+    return null;
+  }
+}
+
+// ============================================
 // PROXY PRINCIPAL
 // ============================================
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   console.log(`[Proxy] Request: ${pathname}`);
 
-  // 2. Leer cookies de sesión (ahora unificadas para manual y Google)
-  const userId = request.cookies.get('user_id')?.value;
-  const userRole = request.cookies.get('user_role')?.value;
+  // 2. Leer cookies de sesión manual
+  let userId = request.cookies.get('user_id')?.value;
+  let userRole = request.cookies.get('user_role')?.value;
+
+  // 2b. Si no hay cookies manuales, intentar leer la sesión de NextAuth (Google login)
+  if (!userId) {
+    const nextAuthSession = await getNextAuthSession(request);
+    if (nextAuthSession) {
+      userId = nextAuthSession.id;
+      userRole = nextAuthSession.role;
+    }
+  }
 
   // 3. Si es ruta pública...
   if (isPublicRoute(pathname)) {

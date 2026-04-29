@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
 import { AdjustStockDialog } from "./adjust-stock-dialog";
+import { ProductImageGallery } from "@/components/products/product-image-gallery";
 
 export const inventoryColumns: ColumnDef<any>[] = [
   {
@@ -20,19 +21,11 @@ export const inventoryColumns: ColumnDef<any>[] = [
       const images = product.imageUrls as string[];
       return (
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-md overflow-hidden bg-muted border shrink-0">
-            {images && images.length > 0 ? (
-              <img
-                src={images[0]}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="h-full w-full flex items-center justify-center">
-                <Package className="h-5 w-5 text-muted-foreground/50" />
-              </div>
-            )}
-          </div>
+          <ProductImageGallery
+            images={images || []}
+            productName={product.name}
+            className="h-10 w-10 shrink-0"
+          />
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-medium truncate">{product.name}</span>

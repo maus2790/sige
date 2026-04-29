@@ -198,18 +198,18 @@ export function DataTable<TData, TValue>({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-2 flex-1 sm:flex-none">
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <Button variant="outline" size="sm" onClick={exportToExcel} className="gap-2 flex-1 md:flex-none">
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Excel</span>
           </Button>
-          <Button variant="outline" size="sm" onClick={exportToPDF} className="gap-2 flex-1 sm:flex-none">
+          <Button variant="outline" size="sm" onClick={exportToPDF} className="gap-2 flex-1 md:flex-none">
             <Printer className="h-4 w-4" />
             <span className="hidden sm:inline">PDF</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 flex-1 sm:flex-none ml-auto">
+              <Button variant="outline" size="sm" className="gap-2 flex-1 md:flex-none ml-auto">
                 <Settings2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Columnas</span>
               </Button>

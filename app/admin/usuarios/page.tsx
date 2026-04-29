@@ -36,15 +36,15 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Gestión de Usuarios</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold">Gestión de Usuarios</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Administra todos los usuarios de la plataforma
           </p>
         </div>
-        <Link href="/admin/usuarios/nuevo">
-          <Button className="gap-2">
+        <Link href="/admin/usuarios/nuevo" className="w-full sm:w-auto">
+          <Button className="gap-2 w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             Nuevo Usuario
           </Button>
@@ -52,7 +52,7 @@ export default async function UsuariosPage({ searchParams }: UsuariosPageProps) 
       </div>
 
       {/* Tarjetas de estadísticas */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">

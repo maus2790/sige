@@ -5,8 +5,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, Store } from "lucide-react";
 import Link from "next/link";
+import { ProductImageGallery } from "@/components/products/product-image-gallery";
+import { DeleteUserButton } from "./delete-user-button";
 
 export const userColumns: ColumnDef<any>[] = [
+  {
+    accessorKey: "image",
+    header: "Avatar",
+    cell: ({ row }) => {
+      const user = row.original;
+      const imageUrls = user.image ? [user.image] : [];
+      return (
+        <ProductImageGallery
+          images={imageUrls}
+          productName={user.name}
+          className="h-10 w-10 shrink-0"
+        />
+      );
+    },
+  },
   {
     accessorKey: "name",
     header: "Nombre",
@@ -102,6 +119,7 @@ export const userColumns: ColumnDef<any>[] = [
               <Pencil className="w-4 h-4" />
             </Button>
           </Link>
+          <DeleteUserButton userId={user.id} userName={user.name} />
         </div>
       );
     },
