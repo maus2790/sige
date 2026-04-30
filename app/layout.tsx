@@ -9,10 +9,6 @@ import { Providers } from "./providers";
 const inter = Inter({ subsets: ["latin"] });
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F0F4FF" },
-    { media: "(prefers-color-scheme: dark)", color: "#07121E" },
-  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
