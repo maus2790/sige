@@ -12,8 +12,8 @@ function ThemeColorUpdater() {
 
   useEffect(() => {
     // #0a1929 is the base color of the dark mode glass navbar
-    // #ffffff is the base color of the light mode glass navbar
-    const color = resolvedTheme === "dark" ? "#0a1929" : "#ffffff";
+    // #f4f6ff es la mezcla visual aproximada del navbar glass sobre el fondo claro
+    const color = resolvedTheme === "dark" ? "#0a1929" : "#f4f6ff";
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     
     if (metaThemeColor) {
