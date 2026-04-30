@@ -12,7 +12,7 @@ export default async function AssistantLayout({
   await requireRole("assistant");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/40">
       <div className="flex">
         <AssistantNav />
         {/* Main content */}

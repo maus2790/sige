@@ -33,7 +33,6 @@ export function EditProductForm({ product, categories }: { product: any; categor
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>(product.imageUrls || []);
-  const [isPublished, setIsPublished] = useState(product.isPublished ?? true);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,7 +41,6 @@ export function EditProductForm({ product, categories }: { product: any; categor
 
     const formData = new FormData(event.currentTarget);
     formData.append("imageUrls", JSON.stringify(imageUrls));
-    formData.append("isPublished", isPublished.toString());
 
     const result = await updateProduct(product.id, formData);
 
@@ -105,18 +103,6 @@ export function EditProductForm({ product, categories }: { product: any; categor
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="price">Precio (Bs.) *</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  step="0.01"
-                  defaultValue={product.price}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
             </div>
 
             <div className="space-y-4">
@@ -156,19 +142,6 @@ export function EditProductForm({ product, categories }: { product: any; categor
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/50">
-                <div className="space-y-0.5">
-                  <Label className="text-base">Publicar producto</Label>
-                  <p className="text-sm text-muted-foreground">
-                    El producto será visible para todos los usuarios.
-                  </p>
-                </div>
-                <Switch
-                  checked={isPublished}
-                  onCheckedChange={setIsPublished}
-                />
               </div>
 
               <div className="pt-4">

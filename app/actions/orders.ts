@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { orders, products, stores, inventory } from "@/db/schema";
+import { orders, products, stores, inventory, comercialConfig } from "@/db/schema";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -131,9 +131,11 @@ export async function createOrder(formData: FormData) {
     .select({
       product: products,
       inventory: inventory,
+      comercialConfig: comercialConfig,
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(eq(products.id, productId))
     .get();
 
@@ -148,7 +150,10 @@ export async function createOrder(formData: FormData) {
     return { error: `Stock insuficiente. Solo quedan ${currentStock} unidades.` };
   }
 
-  const totalAmount = product.price * quantity;
+  const finalPrice = productData.comercialConfig?.precioOferta || productData.comercialConfig?.precioVenta || 0;
+  const discountApplied = productData.comercialConfig?.ofertaPorcentaje || 0;
+
+  const totalAmount = finalPrice * quantity;
 
   // Crear orden
   const orderId = randomUUID();
@@ -162,6 +167,8 @@ export async function createOrder(formData: FormData) {
     buyerEmail,
     buyerCi,
     quantity,
+    unitPrice: finalPrice,
+    discountApplied: discountApplied,
     totalAmount,
     shippingAddress,
     paymentMethod,
@@ -183,7 +190,7 @@ export async function createOrder(formData: FormData) {
   revalidatePath(`/productos/${productId}`);
   revalidatePath("/");
   
-  redirect(`/checkout/${orderId}`);
+  return { id: orderId };
 }
 
 // ============================================

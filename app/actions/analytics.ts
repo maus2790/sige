@@ -257,10 +257,10 @@ export async function getLowStockProducts() {
     .select({
       id: products.id,
       name: products.name,
-      price: products.price,
       category: products.category,
       stockActual: inventory.stockActual,
       stockMinimo: inventory.stockMinimo,
+      imageUrl: sql<string>`json_extract(${products.imageUrls}, '$[0]')`,
     })
     .from(inventory)
     .innerJoin(products, eq(inventory.productId, products.id))
@@ -274,7 +274,10 @@ export async function getLowStockProducts() {
     .limit(10)
     .all();
 
-  return lowStock;
+  return lowStock.map(item => ({
+    ...item,
+    stock: item.stockActual,
+  }));
 }
 
 // ============================================

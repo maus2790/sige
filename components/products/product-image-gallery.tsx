@@ -59,6 +59,8 @@ export function ProductImageGallery({ images, productName, className }: ProductI
             src={images[0]}
             alt={productName}
             fill
+            sizes="50px"
+            quality={60}
             className={cn(
               "object-cover transition-all duration-300",
               isImageLoading ? "scale-105 blur-sm" : "scale-100 blur-0"
@@ -108,6 +110,8 @@ export function ProductImageGallery({ images, productName, className }: ProductI
               alt={`${productName} - ${currentIndex + 1}`}
               fill
               className="object-contain"
+              sizes="(max-width: 1024px) 100vw, 800px"
+              quality={85}
               priority
             />
           </div>
@@ -132,6 +136,8 @@ export function ProductImageGallery({ images, productName, className }: ProductI
                   src={url}
                   alt={`Thumbnail ${idx}`}
                   fill
+                  sizes="64px"
+                  quality={50}
                   className="object-cover"
                 />
               </button>

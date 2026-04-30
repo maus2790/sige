@@ -9,6 +9,8 @@ export const orders = sqliteTable("orders", {
   buyerEmail: text("buyer_email"),
   buyerCi: text("buyer_ci"), // Nuevo: CI/NIT del comprador
   quantity: integer("quantity").notNull(),
+  unitPrice: real("unit_price"),
+  discountApplied: integer("discount_applied"),
   totalAmount: real("total_amount").notNull(),
   status: text("status").default("pending_payment"),
   paymentMethod: text("payment_method"),

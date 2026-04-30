@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { categories, products } from "@/db/schema";
+import { categories, products, comercialConfig } from "@/db/schema";
 import { eq, desc, sql, and, ilike } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -137,10 +137,11 @@ export async function getCategoryById(id: string) {
     .select({
       id: products.id,
       name: products.name,
-      price: products.price,
+      price: comercialConfig.precioVenta,
       imageUrl: sql<string>`json_extract(${products.imageUrls}, '$[0]')`,
     })
     .from(products)
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(eq(products.category, category.name))
     .limit(5)
     .all();

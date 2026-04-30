@@ -39,7 +39,9 @@ export function AssistantNav() {
       <nav className="space-y-1 flex-1">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = item.href === "/assistant" 
+            ? pathname === "/assistant" 
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link key={item.href} href={item.href}>
               <Button

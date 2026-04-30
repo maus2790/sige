@@ -19,7 +19,6 @@ interface ProductsTableClientProps {
   initialPage: number;
   initialSearch: string;
   initialCategory: string;
-  initialLowStock: boolean;
   categories: string[];
 }
 
@@ -29,7 +28,6 @@ export function ProductsTableClient({
   initialPage,
   initialSearch,
   initialCategory,
-  initialLowStock,
   categories,
 }: ProductsTableClientProps) {
   const router = useRouter();
@@ -82,12 +80,7 @@ export function ProductsTableClient({
     });
   };
 
-  const handleLowStockChange = (value: boolean) => {
-    const queryString = createQueryString({ lowStock: value ? "true" : null, page: 1 });
-    startTransition(() => {
-      router.push(`${pathname}?${queryString}`);
-    });
-  };
+
 
   const handleLoadMore = () => {
     if (currentPage >= pageCount) return;
@@ -160,15 +153,11 @@ export function ProductsTableClient({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 bg-muted/40 p-3 rounded-xl border border-border/40">
+        <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">Precio</span>
-            <span className="font-bold text-foreground text-sm">Bs. {price.toFixed(2)}</span>
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">Stock</span>
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-0.5">Stock Disponible</span>
             <span className={`font-bold text-sm ${stock <= (product.inventory?.stockMinimo ?? 0) ? "text-destructive" : "text-foreground"}`}>
-              {stock} <span className="text-[10px] font-normal text-muted-foreground uppercase">unidades</span>
+              {stock} <span className="text-[10px] font-normal text-muted-foreground uppercase">unidades en inventario</span>
             </span>
           </div>
         </div>
@@ -200,8 +189,6 @@ export function ProductsTableClient({
       onPaginationChange={handlePaginationChange}
       onSearchChange={handleSearchChange}
       onCategoryChange={handleCategoryChange}
-      onLowStockChange={handleLowStockChange}
-      initialLowStock={initialLowStock}
       categories={categories}
       isLoading={isPending}
       renderMobileCard={renderMobileCard}

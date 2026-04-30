@@ -12,7 +12,6 @@ interface CriticalProduct {
   name: string;
   stock: number;
   imageUrl: string | null;
-  price: number;
 }
 
 interface CriticalStockProps {

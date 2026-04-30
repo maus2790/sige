@@ -38,7 +38,7 @@ import { getCurrentUser, handleLogout } from "@/app/actions/auth";
 
 export function Navbar() {
   const { data: session, status } = useSession();
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
@@ -160,14 +160,14 @@ export function Navbar() {
 
                   <DropdownMenuItem
                     className="cursor-pointer flex items-center"
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                   >
-                    {mounted && theme === "dark" ? (
+                    {mounted && resolvedTheme === "dark" ? (
                       <Sun className="mr-2 h-4 w-4" />
                     ) : (
                       <Moon className="mr-2 h-4 w-4" />
                     )}
-                    <span>{mounted && theme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
+                    <span>{mounted && resolvedTheme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
                   </DropdownMenuItem>
 
                   <DropdownMenuSeparator />

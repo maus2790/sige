@@ -55,14 +55,6 @@ export const columns: ColumnDef<any>[] = [
     ),
   },
   {
-    accessorKey: "price",
-    header: "Precio",
-    cell: ({ row }) => {
-      const price = parseFloat(row.getValue("price"));
-      return <div className="font-medium">Bs. {price.toFixed(2)}</div>;
-    },
-  },
-  {
     accessorKey: "status",
     header: "Estado",
     cell: ({ row }) => {

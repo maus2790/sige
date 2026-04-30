@@ -55,7 +55,7 @@ function generateId() {
 // 3.3 REGISTRO DE USUARIO
 // ============================================
 
-export async function handleRegister(formData: FormData) {
+export async function handleRegister(formData: FormData, callbackUrl?: string) {
   const result = registerSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -118,7 +118,8 @@ export async function handleRegister(formData: FormData) {
     createdAt: new Date(),
   });
 
-  redirect("/auth/login?registered=true");
+  const redirectPath = `/auth/login?registered=true${callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`;
+  redirect(redirectPath);
 }
 
 // ============================================
@@ -358,7 +359,7 @@ export async function handleForgotPassword(formData: FormData) {
 // 3.10 RESTABLECER CONTRASEÑA
 // ============================================
 
-export async function handleResetPassword(formData: FormData, token: string) {
+export async function handleResetPassword(formData: FormData, token: string, callbackUrl?: string) {
   const result = resetPasswordSchema.safeParse({
     token,
     password: formData.get("password"),
@@ -407,5 +408,6 @@ export async function handleResetPassword(formData: FormData, token: string) {
     })
     .where(eq(users.id, user.id));
 
-  redirect("/auth/login?reset=true");
+  const redirectPath = `/auth/login?reset=true${callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`;
+  redirect(redirectPath);
 }

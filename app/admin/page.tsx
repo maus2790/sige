@@ -4,6 +4,7 @@ import { Users, Store, Tags, ShieldAlert, CheckCircle } from "lucide-react";
 import { db } from "@/db";
 import { users, stores } from "@/db/schema";
 import { sql } from "drizzle-orm";
+import { cn } from "@/lib/utils";
 
 export default async function AdminDashboardPage() {
   const userCount = await db.select({ count: sql<number>`count(*)` }).from(users).get();
@@ -47,12 +48,12 @@ export default async function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {stats.map((stat) => (
-          <Card key={stat.title}>
+          <Card key={stat.title} className={cn(stat.bg, "border-border/50 shadow-sm")}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <div className={`${stat.bg} p-2 rounded-lg`}>
+              <div className="bg-background/50 p-2 rounded-lg">
                 <stat.icon className={`w-4 h-4 ${stat.color}`} />
               </div>
             </CardHeader>

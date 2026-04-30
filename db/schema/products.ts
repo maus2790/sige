@@ -8,7 +8,6 @@ export const products = sqliteTable("products", {
     sku: text("sku"), // Identificador único para la tienda (SKU)
     name: text("name").notNull(),
     description: text("description"),
-    price: real("price").notNull(),
     category: text("category"),
     imageUrls: text("image_urls", { mode: "json" }).$type<string[]>(),
     videoUrl: text("video_url"),
@@ -17,7 +16,6 @@ export const products = sqliteTable("products", {
     views: integer("views").default(0),
     sales: integer("sales").default(0),
     status: text("status", { enum: ["Nuevo", "Usado", "Refabricado"] }).default("Nuevo"),
-    isPublished: integer("is_published", { mode: "boolean" }).default(true),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
     updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

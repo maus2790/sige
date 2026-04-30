@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { stores, users, products, inventory, orders } from "@/db/schema";
+import { stores, users, products, inventory, orders, comercialConfig } from "@/db/schema";
 import { eq, desc, sql, and, ilike } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireRole } from "@/app/actions/auth";
@@ -229,8 +229,14 @@ export async function getStoreById(id: string) {
 
   // Últimos 5 productos
   const recentProducts = await db
-    .select()
+    .select({
+      id: products.id,
+      name: products.name,
+      price: comercialConfig.precioVenta,
+      imageUrls: products.imageUrls,
+    })
     .from(products)
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(eq(products.storeId, id))
     .orderBy(desc(products.createdAt))
     .limit(5)
@@ -261,7 +267,7 @@ export async function getStoreById(id: string) {
     recentProducts: recentProducts.map(p => ({
       id: p.id,
       name: p.name,
-      price: p.price,
+      price: p.price ?? 0,
       imageUrl: p.imageUrls?.[0] ?? undefined,
     })),
   };

@@ -5,7 +5,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Edit2, Package, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
@@ -93,6 +93,7 @@ export const inventoryColumns: ColumnDef<any>[] = [
       );
     },
   },
+
   {
     accessorKey: "inventory.updatedAt",
     header: "Última Actualización",

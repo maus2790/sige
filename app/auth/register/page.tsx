@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,8 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState({ name: "", email: "" });
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl");
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,7 +23,7 @@ export default function RegisterPage() {
     setError(null);
 
     const formData = new FormData(event.currentTarget);
-    const result = await handleRegister(formData);
+    const result = await handleRegister(formData, callbackUrl || undefined);
 
     if (result?.error) {
       setError(result.error);

@@ -1,6 +1,7 @@
 // db/schema/inventory.ts
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 import { products } from "./products";
+import { comercialConfig } from "./comercial-config";
 import { relations } from "drizzle-orm";
 
 export const inventory = sqliteTable("inventory", {
@@ -25,6 +26,10 @@ export const productsRelations = relations(products, ({ one }) => ({
     inventory: one(inventory, {
         fields: [products.id],
         references: [inventory.productId],
+    }),
+    comercialConfig: one(comercialConfig, {
+        fields: [products.id],
+        references: [comercialConfig.productId],
     }),
 }));
 

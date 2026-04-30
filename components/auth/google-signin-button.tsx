@@ -6,11 +6,11 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
-export function GoogleSignInButton() {
+export function GoogleSignInButton({ callbackUrl }: { callbackUrl?: string }) {
   const [isLoading, setIsLoading] = useState(false);
   const handleGoogleClick = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: "/" }, { prompt: "select_account" });
+    await signIn("google", { callbackUrl: callbackUrl || "/" }, { prompt: "select_account" });
   };
 
   return (

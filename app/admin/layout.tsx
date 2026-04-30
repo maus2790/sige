@@ -12,7 +12,7 @@ export default async function AdminLayout({
   await requireRole("superadmin");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/40">
       <div className="flex">
         <AdminNavigation />
 

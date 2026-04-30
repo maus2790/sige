@@ -69,6 +69,13 @@ export default function LoginPage() {
     
     // Redirigir según el rol del usuario devuelto por handleLogin
     const role = result.user?.role;
+    const callbackUrl = searchParams.get("callbackUrl");
+    
+    if (callbackUrl) {
+      window.location.href = callbackUrl;
+      return;
+    }
+
     let targetPath = "/dashboard";
     
     if (role === "superadmin") targetPath = "/admin";
@@ -130,13 +137,13 @@ export default function LoginPage() {
           </div>
 
           {/* Botón de Google */}
-          <GoogleSignInButton />
+          <GoogleSignInButton callbackUrl={searchParams.get("callbackUrl") || undefined} />
 
           <div className="text-sm text-center space-y-2">
             <Link href="/auth/forgot-password" className="text-primary hover:underline block">
               ¿Olvidaste tu contraseña?
             </Link>
-            <Link href="/auth/register" className="text-muted-foreground hover:underline block">
+            <Link href={`/auth/register${searchParams.get("callbackUrl") ? `?callbackUrl=${encodeURIComponent(searchParams.get("callbackUrl")!)}` : ""}`} className="text-muted-foreground hover:underline block">
               ¿No tienes cuenta? Regístrate
             </Link>
           </div>

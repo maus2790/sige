@@ -10,12 +10,11 @@ import { ProductToastHandler } from "@/components/products/product-toast-handler
 import { ProductsTableClient } from "@/components/products/products-table-client";
 
 interface ProductosPageProps {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     search?: string;
     category?: string;
-    lowStock?: string;
-  };
+  }>;
 }
 
 export default async function ProductosPage({ searchParams }: ProductosPageProps) {
@@ -23,14 +22,13 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
   const page = params.page ? parseInt(params.page) : 1;
   const search = params.search || "";
   const category = params.category || "todos";
-  const lowStock = params.lowStock === "true";
+
 
   const { products, total, pageCount } = await getSellerProductsPaginated({
     page,
     limit: 10,
     search,
     category,
-    lowStock,
   });
 
   const dbCategories = await getCategories();
@@ -69,7 +67,6 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
             initialPage={page}
             initialSearch={search}
             initialCategory={category}
-            initialLowStock={lowStock}
             categories={categoriesList}
           />
         </CardContent>

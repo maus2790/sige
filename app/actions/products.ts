@@ -3,7 +3,7 @@
 "use server";
 
 import { db } from "@/db";
-import { products, stores, inventory } from "@/db/schema";
+import { products, stores, inventory, comercialConfig } from "@/db/schema";
 import { eq, and, desc, sql, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -23,6 +23,7 @@ type ProductUpdateData = {
   price?: number;
   category?: string;
   status?: "Nuevo" | "Usado" | "Refabricado";
+  oferta?: number;
   isPublished?: boolean;
   updatedAt: Date;
 };
@@ -35,10 +36,10 @@ const createProductSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
-  price: z.number().positive("El precio debe ser mayor a 0"),
+  price: z.number().positive("El precio debe ser mayor a 0").optional(),
   category: z.string().min(1, "Selecciona una categoría"),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
-  isPublished: z.boolean().default(true),
+  oferta: z.number().int().min(0).max(100).optional().default(0),
 });
 
 const updateProductSchema = z.object({
@@ -48,7 +49,7 @@ const updateProductSchema = z.object({
   price: z.number().positive("El precio debe ser mayor a 0").optional(),
   category: z.string().min(1, "Selecciona una categoría").optional(),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).optional(),
-  isPublished: z.boolean().optional(),
+  oferta: z.number().int().min(0).max(100).optional(),
 });
 
 // ============================================
@@ -80,9 +81,11 @@ export async function getSellerProducts() {
     .select({
       product: products,
       inventory: inventory,
+      comercialConfig: comercialConfig,
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(eq(products.storeId, store.id))
     .orderBy(desc(products.createdAt))
     .all();
@@ -90,7 +93,10 @@ export async function getSellerProducts() {
   const sellerProducts = results.map(r => ({
     ...r.product,
     inventory: r.inventory,
+    comercialConfig: r.comercialConfig,
     stock: r.inventory?.stockActual ?? 0,
+    price: r.comercialConfig?.precioVenta ?? 0,
+    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
   }));
 
   return {
@@ -146,9 +152,11 @@ export async function getSellerProductsPaginated({
     .select({
       product: products,
       inventory: inventory,
+      comercialConfig: comercialConfig,
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt))
     .limit(limit)
@@ -158,7 +166,10 @@ export async function getSellerProductsPaginated({
   const sellerProducts = results.map(r => ({
     ...r.product,
     inventory: r.inventory,
+    comercialConfig: r.comercialConfig,
     stock: r.inventory?.stockActual ?? 0,
+    price: r.comercialConfig?.precioVenta ?? 0,
+    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
   }));
 
   const totalResult = await db
@@ -187,9 +198,11 @@ export async function getProductById(id: string) {
     .select({
       product: products,
       inventory: inventory,
+      comercialConfig: comercialConfig,
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(eq(products.id, id))
     .get();
 
@@ -197,7 +210,7 @@ export async function getProductById(id: string) {
     return null;
   }
 
-  const { product, inventory: productInventory } = result;
+  const { product, inventory: productInventory, comercialConfig: productComercial } = result;
 
   const store = await db
     .select()
@@ -208,7 +221,10 @@ export async function getProductById(id: string) {
   return {
     ...product,
     inventory: productInventory,
+    comercialConfig: productComercial,
     stock: productInventory?.stockActual ?? 0,
+    price: productComercial?.precioVenta ?? 0,
+    oferta: productComercial?.ofertaPorcentaje ?? 0,
     store,
   };
 }
@@ -222,10 +238,12 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
     .select({
       product: products,
       inventory: inventory,
+      comercialConfig: comercialConfig,
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
-    .where(eq(products.storeId, storeId))
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
+    .where(and(eq(products.storeId, storeId), eq(comercialConfig.isPublished, true)))
     .orderBy(desc(products.createdAt))
     .limit(limit)
     .offset(offset)
@@ -234,7 +252,10 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
   const storeProducts = results.map(r => ({
     ...r.product,
     inventory: r.inventory,
+    comercialConfig: r.comercialConfig,
     stock: r.inventory?.stockActual ?? 0,
+    price: r.comercialConfig?.precioVenta ?? 0,
+    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
   }));
 
   const totalResult = await db
@@ -277,10 +298,10 @@ export async function createProduct(formData: FormData) {
     sku: formData.get("sku") as string,
     name: formData.get("name"),
     description: formData.get("description"),
-    price: rawPrice ? parseFloat(rawPrice as string) : 0,
+    price: rawPrice ? parseFloat(rawPrice as string) : undefined,
     category: formData.get("category"),
     status: formData.get("status") || "Nuevo",
-    isPublished: formData.get("isPublished") === "true",
+    oferta: formData.get("oferta") ? parseInt(formData.get("oferta") as string) : undefined,
   });
 
   if (!validatedFields.success) {
@@ -295,7 +316,7 @@ export async function createProduct(formData: FormData) {
     };
   }
 
-  const { sku, name, description, price, category, status, isPublished } = validatedFields.data;
+  const { sku, name, description, price, category, status, oferta } = validatedFields.data;
 
   // Procesar imágenes desde formData
   const imageUrlsJson = formData.get("imageUrls") as string;
@@ -313,10 +334,8 @@ export async function createProduct(formData: FormData) {
     sku,
     name,
     description,
-    price,
     category,
     status,
-    isPublished,
     imageUrls,
     videoUrl,
     videoType,
@@ -334,6 +353,17 @@ export async function createProduct(formData: FormData) {
     stockActual: 0,
     stockMinimo: 5,
     ubicacion: "Sin asignar",
+    updatedAt: new Date(),
+  });
+
+  const comercialId = generateId();
+  await db.insert(comercialConfig).values({
+    id: comercialId,
+    productId,
+    precioVenta: price || 0,
+    precioAdquisicion: 0,
+    ofertaPorcentaje: oferta || 0,
+    isPublished: false, // Default to unpublished until configured
     updatedAt: new Date(),
   });
 
@@ -380,7 +410,7 @@ export async function updateProduct(productId: string, formData: FormData) {
     price: rawPrice ? parseFloat(rawPrice as string) : undefined,
     category: formData.get("category") || undefined,
     status: formData.get("status") as any || undefined,
-    isPublished: formData.get("isPublished") !== null ? formData.get("isPublished") === "true" : undefined,
+    oferta: formData.get("oferta") ? parseInt(formData.get("oferta") as string) : undefined,
   });
 
   if (!validatedFields.success) {
@@ -472,6 +502,8 @@ export async function getProductsCursor(
     );
   }
 
+  conditions.push(eq(comercialConfig.isPublished, true));
+
   if (cursor) {
     conditions.push(sql`${products.id} > ${cursor}`);
   }
@@ -480,9 +512,11 @@ export async function getProductsCursor(
     .select({
       product: products,
       inventory: inventory,
+      comercialConfig: comercialConfig,
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
+    .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt))
     .limit(limit + 1)
@@ -490,7 +524,10 @@ export async function getProductsCursor(
 
   const items = results.map(r => ({
     ...r.product,
-    inventory: r.inventory
+    inventory: r.inventory,
+    comercialConfig: r.comercialConfig,
+    price: r.comercialConfig?.precioVenta ?? 0,
+    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
   }));
 
   const hasMore = items.length > limit;

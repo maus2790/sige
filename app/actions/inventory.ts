@@ -17,7 +17,7 @@ export async function updateInventoryItem(
   data: { 
     stockActual?: number; 
     stockMinimo?: number; 
-    ubicacion?: string 
+    ubicacion?: string;
   }
 ) {
   const user = await requireRole("seller");

@@ -74,49 +74,53 @@ export default async function DashboardPage() {
         <StatsCard
           title="Ingresos totales"
           value={formatCurrency(stats.totalRevenue)}
-          icon={<DollarSign className="w-4 h-4 text-primary" />}
+          icon={<DollarSign className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
           description="Ventas realizadas"
           trend={revenueTrend > 0 ? { value: revenueTrend, isPositive: true } : undefined}
+          className="bg-blue-500/5 border-blue-500/20 shadow-sm"
         />
         <StatsCard
           title="Ventas"
           value={stats.totalSales}
-          icon={<ShoppingBag className="w-4 h-4 text-primary" />}
+          icon={<ShoppingBag className="w-4 h-4 text-green-600 dark:text-green-400" />}
           description="Órdenes completadas"
           trend={salesTrend > 0 ? { value: salesTrend, isPositive: true } : undefined}
+          className="bg-green-500/5 border-green-500/20 shadow-sm"
         />
         <StatsCard
           title="Productos"
           value={stats.totalProducts}
-          icon={<Package className="w-4 h-4 text-primary" />}
+          icon={<Package className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />}
           description="En tu tienda"
+          className="bg-indigo-500/5 border-indigo-500/20 shadow-sm"
         />
         <StatsCard
           title="Ticket promedio"
           value={formatCurrency(stats.averageOrderValue)}
-          icon={<TrendingUp className="w-4 h-4 text-primary" />}
+          icon={<TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
           description="Por orden"
+          className="bg-amber-500/5 border-amber-500/20 shadow-sm"
         />
       </div>
 
       {/* Segunda fila de métricas */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <Card>
+        <Card className="bg-amber-500/5 border-amber-500/20 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Pendientes
             </CardTitle>
-            <Clock className="w-4 h-4 text-muted-foreground" />
+            <Clock className="w-4 h-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingOrders}</div>
+            <div className="text-2xl font-bold text-amber-600">{stats.pendingOrders}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Por verificar
             </p>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-amber-500/5 border-amber-500/20 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Stock bajo
@@ -136,15 +140,15 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-blue-500/5 border-blue-500/20 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Visitas
             </CardTitle>
-            <Eye className="w-4 h-4 text-muted-foreground" />
+            <Eye className="w-4 h-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-blue-600">
               {stats.topProducts.reduce((acc, p) => acc + (p.sales * 50), 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -153,15 +157,15 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-indigo-500/5 border-indigo-500/20 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Conversión
             </CardTitle>
-            <TrendingUp className="w-4 h-4 text-muted-foreground" />
+            <TrendingUp className="w-4 h-4 text-indigo-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-indigo-600">
               {stats.totalProducts > 0
                 ? ((stats.totalSales / stats.totalProducts) * 10).toFixed(1)
                 : 0}%

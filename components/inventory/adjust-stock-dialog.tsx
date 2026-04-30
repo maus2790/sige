@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Edit2, Loader2, Warehouse } from "lucide-react";
+import { Edit2, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { updateInventoryItem } from "@/app/actions/inventory";
 import { toast } from "sonner";
@@ -69,13 +69,13 @@ export function AdjustStockDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className={cn("gap-2", className)}>
-          <Warehouse className="h-4 w-4" />
-          Gestionar Stock
+          <Edit2 className="h-4 w-4" />
+          Editar Valores
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Gestionar Inventario</DialogTitle>
+          <DialogTitle>Editar Inventario</DialogTitle>
           <DialogDescription>
             Actualiza los parámetros de existencias para <strong>{productName}</strong>.
           </DialogDescription>
@@ -125,8 +125,8 @@ export function AdjustStockDialog({
           <Button variant="outline" onClick={() => setOpen(false)} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button onClick={handleUpdate} disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          <Button onClick={handleUpdate} disabled={isLoading} className="gap-2">
+            {isLoading && <Loader2 className="h-4 w-4 animate-spin" />}
             Guardar Cambios
           </Button>
         </DialogFooter>

@@ -55,6 +55,8 @@ interface Order {
   buyerEmail: string | null;
   buyerCi: string | null;
   quantity: number;
+  unitPrice: number;
+  discountApplied: number;
   totalAmount: number;
   status: string;
   paymentMethod: string;
@@ -342,6 +344,11 @@ export default function PedidosPage() {
                                 <StatusIcon className="w-3 h-3" />
                                 {config.label}
                               </Badge>
+                              {order.discountApplied > 0 && (
+                                <Badge className="bg-yellow-400 text-black hover:bg-yellow-500 border-none font-bold">
+                                  {order.discountApplied}% OFF
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -483,8 +490,13 @@ export default function PedidosPage() {
                     Cantidad: {selectedOrder.quantity} unidad(es)
                   </p>
                   <p className="text-sm font-medium mt-1">
-                    Precio unitario: Bs. {(selectedOrder.totalAmount / selectedOrder.quantity).toFixed(2)}
+                    Precio unitario: Bs. {(selectedOrder.unitPrice || selectedOrder.totalAmount / selectedOrder.quantity).toFixed(2)}
                   </p>
+                  {selectedOrder.discountApplied > 0 && (
+                    <p className="text-xs text-green-600 font-bold mt-0.5">
+                      Oferta aplicada: {selectedOrder.discountApplied}% de descuento
+                    </p>
+                  )}
                 </div>
               </div>
 
