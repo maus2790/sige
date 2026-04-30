@@ -17,8 +17,11 @@ import {
   LogOut,
   X,
   ChevronDown,
-  ShoppingCart
+  ShoppingCart,
+  Download
 } from "lucide-react";
+
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,6 +41,7 @@ export function Navbar() {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
 
   useEffect(() => {
     setMounted(true);
@@ -140,6 +144,19 @@ export function Navbar() {
                   </DropdownMenuItem>
 
                   <DropdownMenuSeparator />
+
+                  {isInstallable && !isInstalled && (
+                    <>
+                      <DropdownMenuItem
+                        className="cursor-pointer flex items-center sm:hidden text-primary font-medium"
+                        onClick={installApp}
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        <span>Instalar App</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="sm:hidden" />
+                    </>
+                  )}
 
                   <DropdownMenuItem
                     className="cursor-pointer flex items-center"
