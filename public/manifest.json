@@ -4,8 +4,6 @@
     "description": "Plataforma de comercio electrónico con videos, notificaciones push y PWA",
     "start_url": "/",
     "display": "standalone",
-    "theme_color": "#3B82F6",
-    "background_color": "#ffffff",
     "orientation": "portrait",
     "scope": "/",
     "icons": [

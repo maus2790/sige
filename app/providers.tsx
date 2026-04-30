@@ -11,7 +11,9 @@ function ThemeColorUpdater() {
   const { resolvedTheme } = useTheme();
 
   useEffect(() => {
-    const color = resolvedTheme === "dark" ? "#07121E" : "#F0F4FF";
+    // #0a1929 is the base color of the dark mode glass navbar
+    // #ffffff is the base color of the light mode glass navbar
+    const color = resolvedTheme === "dark" ? "#0a1929" : "#ffffff";
     let metaThemeColor = document.querySelector('meta[name="theme-color"]');
     
     if (metaThemeColor) {
