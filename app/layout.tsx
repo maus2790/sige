@@ -1,20 +1,43 @@
-"use client";
-
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
-import { SessionProvider } from "next-auth/react";
-import { QueryProvider } from "@/components/providers/query-provider";
-import NextTopLoader from "nextjs-toploader";
 import { Navbar } from "@/components/layout/Navbar";
-import { ThemeProvider } from "@/components/providers/theme-provider";
+import { Providers } from "./providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// Nota: Metadata y Viewport no pueden ser exportados desde un Client Component
-// Por lo que los movemos a un archivo separado o los definimos inline
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F0F4FF" },
+    { media: "(prefers-color-scheme: dark)", color: "#07121E" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
+
+export const metadata: Metadata = {
+  title: "SIGE Marketplace - Tu tienda en Bolivia",
+  description: "Plataforma de comercio electrónico con videos, notificaciones push y PWA",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "SIGE",
+  },
+  formatDetection: {
+    telephone: true,
+  },
+  icons: {
+    apple: [
+      { url: "/icons/icon-192.png" },
+      { url: "/icons/icon-192.png", sizes: "152x152" },
+      { url: "/icons/icon-192.png", sizes: "180x180" },
+    ],
+  },
+};
 
 export default function RootLayout({
   children,
@@ -23,38 +46,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-        <meta name="theme-color" content="#3B82F6" />
-        <title>SIGE Marketplace - Tu tienda en Bolivia</title>
-        <meta name="description" content="Plataforma de comercio electrónico con videos, notificaciones push y PWA" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="SIGE" />
-        <meta name="format-detection" content="telephone=yes" />
-      </head>
       <body className={inter.className}>
-        <NextTopLoader showSpinner={false} color="#2563EB" shadow="0 0 10px #2563EB,0 0 5px #2563EB" />
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <SessionProvider>
-            <QueryProvider>
-              <Navbar />
-              {children}
-              <Toaster />
-              <RegisterSW />
-            </QueryProvider>
-          </SessionProvider>
-        </ThemeProvider>
+        <Providers>
+          <Navbar />
+          {children}
+          <Toaster />
+          <RegisterSW />
+        </Providers>
       </body>
     </html>
   );
