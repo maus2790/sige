@@ -29,6 +29,7 @@ interface Category {
   id: string;
   name: string;
   slug: string;
+  icon?: string | null;
 }
 
 interface InfiniteFeedProps {
@@ -43,8 +44,8 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
   const [isScrolled, setIsScrolled] = useState(false);
 
   const categoriesList = [
-    { value: "todos", label: "Todos" },
-    ...initialCategories.map(c => ({ value: c.name, label: c.name }))
+    { value: "todos", label: "Todos", icon: "✨" },
+    ...initialCategories.map(c => ({ value: c.name, label: c.name, icon: c.icon }))
   ];
 
   useEffect(() => {
@@ -131,7 +132,10 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
                     <SelectContent className="rounded-xl border-border/50 shadow-glass">
                       {categoriesList.map((cat) => (
                         <SelectItem key={cat.value} value={cat.value} className="text-base py-3 cursor-pointer">
-                          {cat.label}
+                          <span className="flex items-center gap-2">
+                            <span>{cat.icon}</span>
+                            <span>{cat.label}</span>
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -165,17 +169,18 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       {/* Categorías Pills */}
       <div className="container mx-auto px-4 mb-10">
         <div className="flex items-center gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x">
-          {categoriesList.slice(0, 10).map((cat) => (
+          {categoriesList.map((cat) => (
             <button
               key={cat.value}
               onClick={() => setCategory(cat.value)}
-              className={`px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 snap-center border-2 ${
+              className={`px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 snap-center border-2 flex items-center gap-2 ${
                 category === cat.value
                   ? "bg-foreground text-background border-foreground shadow-md scale-105"
                   : "bg-card text-muted-foreground border-transparent hover:border-primary/20 hover:text-foreground shadow-sm"
               }`}
             >
-              {cat.label}
+              <span>{cat.icon}</span>
+              <span>{cat.label}</span>
             </button>
           ))}
         </div>

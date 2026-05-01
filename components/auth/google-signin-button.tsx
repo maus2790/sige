@@ -8,23 +8,29 @@ import { Loader2 } from "lucide-react";
 
 export function GoogleSignInButton({ callbackUrl }: { callbackUrl?: string }) {
   const [isLoading, setIsLoading] = useState(false);
+  
   const handleGoogleClick = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: callbackUrl || "/" }, { prompt: "select_account" });
+    try {
+      await signIn("google", { callbackUrl: callbackUrl || "/" }, { prompt: "select_account" });
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      setIsLoading(false);
+    }
   };
 
   return (
     <Button
       type="button"
       variant="outline"
-      className="w-full"
+      className="w-full py-6 font-medium border-white/10 bg-background/50 hover:bg-background transition-all duration-300 rounded-xl flex items-center justify-center gap-2"
       onClick={handleGoogleClick}
       disabled={isLoading}
     >
       {isLoading ? (
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        <Loader2 className="h-5 w-5 animate-spin" />
       ) : (
-        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+        <svg className="h-5 w-5" viewBox="0 0 24 24">
           <path
             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
             fill="#4285F4"
@@ -43,7 +49,7 @@ export function GoogleSignInButton({ callbackUrl }: { callbackUrl?: string }) {
           />
         </svg>
       )}
-      Continuar con Google
+      <span className="text-sm">Continuar con Google</span>
     </Button>
   );
-}
+}
