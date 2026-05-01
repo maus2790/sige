@@ -144,7 +144,7 @@ export default function ComprarPage() {
           
           {/* Columna Izquierda: Formulario (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="glass-card p-6 md:p-8 rounded-4xl border shadow-sm">
+            <div className="glass-card p-6 md:p-8 rounded-4xl border border-white/20 dark:border-white/10 shadow-md dark:shadow-[0_0_25px_rgba(37,99,235,0.1)] transition-all duration-300">
               <div className="flex items-center gap-3 mb-6">
                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
                     <User className="w-5 h-5" />
@@ -295,7 +295,7 @@ export default function ComprarPage() {
 
           {/* Columna Derecha: Resumen (5 cols) */}
           <div className="lg:col-span-5 space-y-6">
-             <div className="glass-card p-6 rounded-4xl border shadow-sm sticky top-24">
+             <div className="glass-card p-6 rounded-4xl border border-white/20 dark:border-white/10 shadow-md dark:shadow-[0_0_25px_rgba(37,99,235,0.1)] transition-all duration-300 sticky top-24">
                 <h3 className="text-xl font-bold mb-6 tracking-tight">Resumen de tu orden</h3>
                 
                 <div className="flex gap-4 mb-6">

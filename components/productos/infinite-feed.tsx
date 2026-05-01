@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag, X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -99,92 +100,60 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       </div>
 
       {/* Floating Search & Filters */}
-      <div className={`sticky top-20 z-30 transition-all duration-300 px-4 max-w-3xl mx-auto -mt-16 mb-10 ${isScrolled ? 'top-4 drop-shadow-2xl' : ''}`}>
-        <div className="glass-card rounded-2xl p-2 flex items-center gap-2 border border-white/20 dark:border-white/10">
+      <div className={`sticky top-20 z-30 transition-all duration-300 px-4 max-w-3xl mx-auto -mt-16 mb-6 ${isScrolled ? 'top-4 drop-shadow-2xl' : ''}`}>
+        <div className="glass-card rounded-2xl p-1.5 flex items-center gap-2 border border-white/20 dark:border-white/10">
           <div className="relative flex-1">
             <input
               id="mobile-search"
               type="text"
               placeholder="¿Qué estás buscando hoy?"
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full h-12 pl-12 pr-4 rounded-xl bg-transparent border-none focus:ring-0 focus:outline-none text-foreground placeholder:text-muted-foreground font-medium"
+              className="w-full h-10 pl-11 pr-4 rounded-xl bg-transparent border-none focus:ring-0 focus:outline-none text-foreground placeholder:text-muted-foreground font-medium text-sm"
             />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           </div>
-          <div className="w-px h-8 bg-border hidden sm:block"></div>
-          <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-xl h-12 w-12 hover:bg-accent hover:text-primary transition-colors">
-                <Filter className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="bottom" className="rounded-t-[2rem] shadow-premium border-t-0 p-6 max-h-[85vh]">
-              <SheetHeader className="mb-6">
-                <SheetTitle className="text-2xl font-bold">Filtros Avanzados</SheetTitle>
-              </SheetHeader>
-              <div className="py-2 space-y-6">
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Categoría</Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger className="h-12 rounded-xl text-base bg-muted/50 border-0 focus:ring-2 focus:ring-primary/20">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border/50 shadow-glass">
-                      {categoriesList.map((cat) => (
-                        <SelectItem key={cat.value} value={cat.value} className="text-base py-3 cursor-pointer">
-                          <span className="flex items-center gap-2">
-                            <span>{cat.icon}</span>
-                            <span>{cat.label}</span>
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <SheetFooter className="pt-8 flex-col sm:flex-row gap-3 mt-auto">
-                <Button
-                  variant="outline"
-                  className="w-full h-12 rounded-xl text-base font-semibold"
-                  onClick={() => {
-                    setCategory("todos");
-                    setSearch("");
-                    setIsFilterOpen(false);
-                  }}
-                >
-                  Limpiar todo
-                </Button>
-                <Button
-                  className="w-full h-12 rounded-xl text-base font-semibold bg-brand-gradient text-white border-0 shadow-md hover:shadow-lg transition-all"
-                  onClick={() => setIsFilterOpen(false)}
-                >
-                  Ver resultados
-                </Button>
-              </SheetFooter>
-            </SheetContent>
-          </Sheet>
+          
+          <div className="flex items-center gap-2 pr-2">
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="h-9 w-[130px] rounded-xl text-xs bg-muted/50 border-0 focus:ring-1 focus:ring-primary/20">
+                <SelectValue placeholder="Categoría" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border/50 shadow-glass">
+                {categoriesList.map((cat) => (
+                  <SelectItem key={cat.value} value={cat.value} className="text-sm py-2">
+                    <span className="flex items-center gap-2">
+                      <span>{cat.icon}</span>
+                      <span>{cat.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Categorías Pills */}
-      <div className="container mx-auto px-4 mb-10">
-        <div className="flex items-center gap-3 overflow-x-auto pb-4 pt-2 scrollbar-hide snap-x">
-          {categoriesList.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() => setCategory(cat.value)}
-              className={`px-5 py-2.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 snap-center border-2 flex items-center gap-2 ${
-                category === cat.value
-                  ? "bg-foreground text-background border-foreground shadow-md scale-105"
-                  : "bg-card text-muted-foreground border-transparent hover:border-primary/20 hover:text-foreground shadow-sm"
-              }`}
+      {/* Selected Category Indicator */}
+      {category !== "todos" && (
+        <div className="container mx-auto px-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="secondary" 
+              className="pl-3 pr-1 py-1.5 h-8 rounded-full bg-primary/10 text-primary border-primary/20 flex items-center gap-2 font-bold"
             >
-              <span>{cat.icon}</span>
-              <span>{cat.label}</span>
-            </button>
-          ))}
+              <span>{categoriesList.find(c => c.value === category)?.icon}</span>
+              {category}
+              <button 
+                onClick={() => setCategory("todos")}
+                className="w-5 h-5 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+            <span className="text-xs text-muted-foreground font-medium">Filtro activo</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Grilla de Productos */}
       <div className="container mx-auto px-4">
@@ -244,62 +213,6 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </>
         )}
       </div>
-
-      {/* Navegación inferior flotante (Mobile) */}
-      <nav className="fixed bottom-6 left-4 right-4 bg-background/85 backdrop-blur-xl border border-border shadow-glass rounded-full md:hidden z-40 overflow-visible transition-all duration-300">
-        <div className="flex justify-around items-center h-16 px-2">
-          <button
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="flex flex-col items-center justify-center flex-1 h-full space-y-1 text-foreground active:scale-90 transition-transform"
-          >
-            <Home className="w-5 h-5" />
-            <span className="text-[10px] font-bold leading-none mt-1">Inicio</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 0, behavior: "smooth" });
-              setTimeout(() => {
-                document.getElementById('mobile-search')?.focus();
-              }, 400);
-            }}
-            className="flex flex-col items-center justify-center flex-1 h-full space-y-1 text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
-          >
-            <Search className="w-5 h-5" />
-            <span className="text-[10px] font-bold leading-none mt-1">Buscar</span>
-          </button>
-          
-          <div className="relative -top-6 flex items-center justify-center">
-             <button
-               onClick={() => {
-                  setCategory("todos");
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-               }}
-               className="flex items-center justify-center w-14 h-14 rounded-full bg-brand-gradient text-white shadow-premium hover:shadow-2xl active:scale-90 transition-all border-4 border-background ring-2 ring-primary/20 group"
-             >
-               <ShoppingBag className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
-             </button>
-          </div>
-          
-          <button
-            onClick={() => setIsFilterOpen(true)}
-            className="flex flex-col items-center justify-center flex-1 h-full space-y-1 text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
-          >
-            <Filter className="w-5 h-5" />
-            <span className="text-[10px] font-bold leading-none mt-1">Filtros</span>
-          </button>
-          
-          <button
-            onClick={() => {
-              window.scrollTo({ top: 300, behavior: "smooth" });
-            }}
-            className="flex flex-col items-center justify-center flex-1 h-full space-y-1 text-muted-foreground hover:text-foreground active:scale-90 transition-transform"
-          >
-            <Tags className="w-5 h-5" />
-            <span className="text-[10px] font-bold leading-none mt-1">Tags</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

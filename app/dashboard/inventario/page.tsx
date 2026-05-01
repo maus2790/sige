@@ -1,6 +1,7 @@
 // app/dashboard/inventario/page.tsx
 
 import { getSellerProductsPaginated } from "@/app/actions/products";
+import { getCategories } from "@/app/actions/categories";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { InventoryTableClient } from "@/components/inventory/inventory-table-client";
 import { Badge } from "@/components/ui/badge";
@@ -30,14 +31,8 @@ export default async function InventarioPage({ searchParams }: InventarioPagePro
     lowStock,
   });
 
-  const categories = [
-    "Electrónicos",
-    "Ropa",
-    "Hogar",
-    "Deportes",
-    "Libros",
-    "Juguetes",
-  ];
+  const dbCategories = await getCategories();
+  const categoriesList = dbCategories.map(c => c.name);
 
   // Estadísticas rápidas
   const lowStockCount = products.filter(p => 
@@ -118,7 +113,7 @@ export default async function InventarioPage({ searchParams }: InventarioPagePro
             initialSearch={search}
             initialCategory={category}
             initialLowStock={lowStock}
-            categories={categories}
+            categories={categoriesList}
           />
         </CardContent>
       </Card>

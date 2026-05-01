@@ -35,11 +35,12 @@ type ProductUpdateData = {
 const createProductSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-  description: z.string().min(10, "La descripción debe tener al menos 10 caracteres"),
-  price: z.number().positive("El precio debe ser mayor a 0").optional(),
+  description: z.string().min(5, "La descripción debe tener al menos 5 caracteres"),
+  price: z.number().positive("El precio debe ser mayor a 0"),
   category: z.string().min(1, "Selecciona una categoría"),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
   oferta: z.number().int().min(0).max(100).optional().default(0),
+  stock: z.number().int().min(0).default(0),
 });
 
 const updateProductSchema = z.object({
@@ -140,7 +141,7 @@ export async function getSellerProductsPaginated({
   if (search && search.trim()) {
     const searchTerm = `%${search.trim()}%`;
     conditions.push(
-      sql`${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm}`
+      sql`(${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm})`
     );
   }
 
@@ -291,8 +292,7 @@ export async function createProduct(formData: FormData) {
   }
 
   const rawPrice = formData.get("price");
-  const rawStockActual = formData.get("stockActual");
-  const rawStockMinimo = formData.get("stockMinimo");
+  const rawStock = formData.get("stock");
 
   const validatedFields = createProductSchema.safeParse({
     sku: formData.get("sku") as string,
@@ -302,6 +302,7 @@ export async function createProduct(formData: FormData) {
     category: formData.get("category"),
     status: formData.get("status") || "Nuevo",
     oferta: formData.get("oferta") ? parseInt(formData.get("oferta") as string) : undefined,
+    stock: rawStock ? parseInt(rawStock as string) : undefined,
   });
 
   if (!validatedFields.success) {
@@ -316,60 +317,58 @@ export async function createProduct(formData: FormData) {
     };
   }
 
-  const { sku, name, description, price, category, status, oferta } = validatedFields.data;
+  const { sku, name, description, price, category, status, oferta, stock } = validatedFields.data;
 
-  // Procesar imágenes desde formData
+  // Procesar imágenes
   const imageUrlsJson = formData.get("imageUrls") as string;
   const imageUrls: ProductImageUrls = imageUrlsJson ? JSON.parse(imageUrlsJson) : [];
 
-  const videoUrl: string | null = null;
-  const videoType: string | null = null;
-  const hasVideo: boolean = false;
-
   const productId = generateId();
 
-  await db.insert(products).values({
-    id: productId,
-    storeId: store.id,
-    sku,
-    name,
-    description,
-    category,
-    status,
-    imageUrls,
-    videoUrl,
-    videoType,
-    hasVideo,
-    views: 0,
-    sales: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  });
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(products).values({
+        id: productId,
+        storeId: store.id,
+        sku,
+        name,
+        description,
+        category,
+        status,
+        imageUrls,
+        views: 0,
+        sales: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
-  const inventoryId = generateId();
-  await db.insert(inventory).values({
-    id: inventoryId,
-    productId,
-    stockActual: 0,
-    stockMinimo: 5,
-    ubicacion: "Sin asignar",
-    updatedAt: new Date(),
-  });
+      await tx.insert(inventory).values({
+        id: generateId(),
+        productId,
+        stockActual: stock,
+        stockMinimo: 5,
+        ubicacion: "Sin asignar",
+        updatedAt: new Date(),
+      });
 
-  const comercialId = generateId();
-  await db.insert(comercialConfig).values({
-    id: comercialId,
-    productId,
-    precioVenta: price || 0,
-    precioAdquisicion: 0,
-    ofertaPorcentaje: oferta || 0,
-    isPublished: false, // Default to unpublished until configured
-    updatedAt: new Date(),
-  });
+      await tx.insert(comercialConfig).values({
+        id: generateId(),
+        productId,
+        precioVenta: price,
+        precioAdquisicion: 0,
+        ofertaPorcentaje: oferta || 0,
+        isPublished: true, // Quick publish sets it as published
+        updatedAt: new Date(),
+      });
+    });
 
-  revalidatePath("/dashboard/productos");
-  revalidatePath("/productos");
-  redirect("/dashboard/productos?created=true");
+    revalidatePath("/dashboard/productos");
+    revalidatePath("/productos");
+    return { success: true, productId };
+  } catch (error) {
+    console.error("Error in transaction:", error);
+    return { error: "Error al crear el producto. Intenta de nuevo." };
+  }
 }
 
 // ============================================

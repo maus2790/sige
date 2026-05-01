@@ -4,7 +4,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
 import { Navbar } from "@/components/layout/Navbar";
+import { MobileNavBar } from "@/components/layout/mobile-nav-bar";
 import { Providers } from "./providers";
+import { getCategories } from "./actions/categories";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -35,17 +37,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const categories = await getCategories();
+
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <Navbar />
-          {children}
+          <Navbar categories={categories} />
+          <div className="min-h-screen">
+            {children}
+          </div>
+          <MobileNavBar categories={categories} />
           <Toaster />
           <RegisterSW />
         </Providers>

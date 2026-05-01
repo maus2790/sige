@@ -18,10 +18,13 @@ import {
   X,
   ChevronDown,
   ShoppingCart,
-  Download
+  Download,
+  Plus
 } from "lucide-react";
 
 import { usePWAInstall } from "@/hooks/use-pwa-install";
+import { useCart } from "@/hooks/use-cart";
+import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,15 +36,28 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
-import { getCurrentUser, handleLogout } from "@/app/actions/auth";
+import { handleLogout } from "@/app/actions/auth";
 
-export function Navbar() {
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+interface NavbarProps {
+  categories: Category[];
+}
+
+export function Navbar({ categories }: NavbarProps) {
   const { data: session, status } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
+  const totalItems = useCart((state) => state.getTotalItems());
+  const [isPublishOpen, setIsPublishOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -50,10 +66,8 @@ export function Navbar() {
   const activeUser = session?.user;
   const isLoading = status === "loading";
 
-  // Función para obtener la ruta del dashboard correcta según el rol
   const getDashboardPath = () => {
     if (!activeUser) return "/dashboard";
-
     const role = (activeUser as any).role;
     if (role === "superadmin") return "/admin";
     if (role === "assistant") return "/assistant";
@@ -72,132 +86,159 @@ export function Navbar() {
     await signOut({ callbackUrl: "/" });
   };
 
-  // Ocultar el Navbar en las rutas de autenticación
   if (pathname.startsWith("/auth")) {
     return null;
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full glass transition-all duration-300">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <div className="flex items-center gap-2">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
-              <ShoppingBag className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-black text-brand-gradient tracking-tighter">SIGE</span>
-          </Link>
-        </div>
+    <>
+      <header className="sticky top-0 z-50 w-full glass transition-all duration-300">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          {/* Logo */}
+          <div className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
+                <ShoppingBag className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-black text-brand-gradient tracking-tighter">SIGE</span>
+            </Link>
+          </div>
 
-        {/* Acciones derecha */}
-        <div className="flex items-center gap-2 sm:gap-4">
-          {isLoading ? (
-            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
-          ) : activeUser ? (
-            <>
-              {/* Notificaciones */}
-              <Button variant="ghost" size="icon" className="relative rounded-full">
-                <Bell className="w-5 h-5 text-muted-foreground" />
-                <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
-              </Button>
-
-              {/* User Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full border">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={activeUser.image || ""} alt={activeUser.name || "User"} />
-                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
-                        {getInitials(activeUser.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{activeUser.name}</p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {activeUser.email}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/profile" className="cursor-pointer flex items-center">
-                      <User className="mr-2 h-4 w-4" />
-                      <span>Perfil</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/" className="cursor-pointer flex items-center">
-                      <Store className="mr-2 h-4 w-4" />
-                      <span>Tienda</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href={dashboardPath} className="cursor-pointer flex items-center">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      <span>Dashboard</span>
-                    </Link>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuSeparator />
-
-                  {isInstallable && !isInstalled && (
-                    <>
-                      <DropdownMenuItem
-                        className="cursor-pointer flex items-center sm:hidden text-primary font-medium"
-                        onClick={installApp}
-                      >
-                        <Download className="mr-2 h-4 w-4" />
-                        <span>Instalar App</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator className="sm:hidden" />
-                    </>
-                  )}
-
-                  <DropdownMenuItem
-                    className="cursor-pointer flex items-center"
-                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                  >
-                    {mounted && resolvedTheme === "dark" ? (
-                      <Sun className="mr-2 h-4 w-4" />
-                    ) : (
-                      <Moon className="mr-2 h-4 w-4" />
+          {/* Acciones derecha */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            {isLoading ? (
+              <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+            ) : (
+              <>
+                {/* Carrito Desktop */}
+                <Link href="/cart" className="hidden md:block">
+                  <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
+                    <ShoppingCart className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    {totalItems > 0 && (
+                      <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-primary border-2 border-background animate-in zoom-in duration-300">
+                        {totalItems}
+                      </Badge>
                     )}
-                    <span>{mounted && resolvedTheme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
-                  </DropdownMenuItem>
+                  </Button>
+                </Link>
 
-                  <DropdownMenuSeparator />
+                {activeUser && (
+                  <Button variant="ghost" size="icon" className="relative rounded-full">
+                    <Bell className="w-5 h-5 text-muted-foreground" />
+                    <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
+                  </Button>
+                )}
 
-                  <DropdownMenuItem
-                    className="cursor-pointer flex items-center text-red-600 focus:text-red-600 dark:text-red-500 dark:focus:text-red-500"
-                    onClick={onLogout}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Cerrar Sesión</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
-          ) : pathname === "/" ? (
-            <div className="flex items-center gap-2">
-              <Link href="/auth/login">
-                <Button variant="gradient" className="rounded-full px-6">
-                  Entrar
-                </Button>
-              </Link>
-              <Link href="/auth/register">
-                <Button className="hidden sm:flex">
-                  Registrarse
-                </Button>
-              </Link>
-            </div>
-          ) : null}
+                {activeUser ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="relative h-10 w-10 rounded-full border">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={activeUser.image || ""} alt={activeUser.name || "User"} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                            {getInitials(activeUser.name)}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                      <DropdownMenuLabel className="font-normal">
+                        <div className="flex flex-col space-y-1">
+                          <p className="text-sm font-medium leading-none">{activeUser.name}</p>
+                          <p className="text-xs leading-none text-muted-foreground">
+                            {activeUser.email}
+                          </p>
+                        </div>
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile" className="cursor-pointer flex items-center">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Perfil</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/" className="cursor-pointer flex items-center">
+                          <Store className="mr-2 h-4 w-4" />
+                          <span>Tienda</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href={dashboardPath} className="cursor-pointer flex items-center">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      {isInstallable && !isInstalled && (
+                        <>
+                          <DropdownMenuItem
+                            className="cursor-pointer flex items-center sm:hidden text-primary font-medium"
+                            onClick={installApp}
+                          >
+                            <Download className="mr-2 h-4 w-4" />
+                            <span>Instalar App</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="sm:hidden" />
+                        </>
+                      )}
+
+                      <DropdownMenuItem
+                        className="cursor-pointer flex items-center"
+                        onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                      >
+                        {mounted && resolvedTheme === "dark" ? (
+                          <Sun className="mr-2 h-4 w-4" />
+                        ) : (
+                          <Moon className="mr-2 h-4 w-4" />
+                        )}
+                        <span>{mounted && resolvedTheme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator />
+
+                      <DropdownMenuItem
+                        className="cursor-pointer flex items-center text-red-600 focus:text-red-600 dark:text-red-500 dark:focus:text-red-500"
+                        onClick={onLogout}
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>Cerrar Sesión</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Link href="/auth/login">
+                      <Button variant="gradient" className="rounded-full px-6">
+                        Entrar
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
+      </header>
+
+      {/* FAB Desktop para Publicación Rápida */}
+      <div className="fixed bottom-8 right-8 z-50 hidden md:block">
+        <Button 
+          onClick={() => setIsPublishOpen(true)}
+          className="w-16 h-16 rounded-2xl bg-brand-gradient text-white shadow-premium hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 border-none group"
+        >
+          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-500" />
+        </Button>
       </div>
-    </header>
+
+      <QuickPublishModal 
+        categories={categories}
+        open={isPublishOpen}
+        onOpenChange={setIsPublishOpen}
+      />
+    </>
   );
 }
+

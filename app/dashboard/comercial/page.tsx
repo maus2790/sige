@@ -1,6 +1,7 @@
 // app/dashboard/comercial/page.tsx
 
 import { getSellerProductsPaginated } from "@/app/actions/products";
+import { getCategories } from "@/app/actions/categories";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ComercialTableClient } from "@/components/comercial/comercial-table-client";
 import { Banknote, Package, TrendingUp } from "lucide-react";
@@ -10,6 +11,9 @@ interface ComercialPageProps {
     page?: string;
     search?: string;
     category?: string;
+    oferta?: string;
+    publicado?: string;
+    destacado?: string;
   }>;
 }
 
@@ -18,6 +22,9 @@ export default async function ComercialPage({ searchParams }: ComercialPageProps
   const page = params.page ? parseInt(params.page) : 1;
   const search = params.search || "";
   const category = params.category || "todos";
+  const oferta = params.oferta || "todos";
+  const publicado = params.publicado || "todos";
+  const destacado = params.destacado || "todos";
 
   const { products, total, pageCount } = await getSellerProductsPaginated({
     page,
@@ -26,14 +33,9 @@ export default async function ComercialPage({ searchParams }: ComercialPageProps
     category,
   });
 
-  const categories = [
-    "Electrónicos",
-    "Ropa",
-    "Hogar",
-    "Deportes",
-    "Libros",
-    "Juguetes",
-  ];
+  const dbCategories = await getCategories();
+  const categoriesList = dbCategories.map(c => c.name);
+
 
   // Estadísticas rápidas comerciales
   const totalValue = products.reduce((acc, p) => acc + ((p as any).price * (p as any).stock), 0);
@@ -108,7 +110,10 @@ export default async function ComercialPage({ searchParams }: ComercialPageProps
             initialPage={page}
             initialSearch={search}
             initialCategory={category}
-            categories={categories}
+            initialOffer={oferta}
+            initialPublished={publicado}
+            initialFeatured={destacado}
+            categories={categoriesList}
           />
         </CardContent>
       </Card>

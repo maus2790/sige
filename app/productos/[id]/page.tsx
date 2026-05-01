@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ProductGallery } from "@/components/productos/product-gallery";
+import { AddToCartButton } from "@/components/productos/add-to-cart-button";
 
 interface ProductoDetailPageProps {
   params: Promise<{ id: string }>;
@@ -61,7 +62,7 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
 
           {/* Columna Derecha: Información y Compra */}
           <div className="lg:col-span-5 flex flex-col gap-6">
-            <div className="glass-card p-6 md:p-8 rounded-4xl border shadow-sm space-y-5">
+            <div className="glass-card p-6 md:p-8 rounded-4xl border border-white/20 dark:border-white/10 shadow-md dark:shadow-[0_0_25px_rgba(37,99,235,0.1)] transition-all duration-300 space-y-5">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <Badge variant="secondary" className="px-3 py-1 text-sm font-medium rounded-full bg-primary/10 text-primary border-primary/20">
@@ -137,17 +138,25 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
               </div>
 
               {/* Botones Desktop */}
-              <div className="pt-4 flex-col gap-3 hidden md:flex">
-                <Link href={`/comprar/${product.id}`} className="w-full">
-                  <Button 
-                    className="w-full h-14 text-lg font-bold gap-2 rounded-2xl shadow-premium hover:shadow-2xl transition-all hover:-translate-y-1 bg-brand-gradient text-white border-0" 
+              <div className="pt-4 hidden md:flex flex-col gap-3">
+                <div className="flex gap-3">
+                  <Link href={`/comprar/${product.id}`} className="flex-1">
+                    <Button 
+                      className="w-full h-14 text-lg font-bold gap-2 rounded-2xl shadow-premium hover:shadow-2xl transition-all hover:-translate-y-1 bg-brand-gradient text-white border-0" 
+                      size="lg"
+                      disabled={isOutOfStock}
+                    >
+                      <ShoppingCart className="w-5 h-5" />
+                      {isOutOfStock ? "Producto Agotado" : "Comprar Ahora"}
+                    </Button>
+                  </Link>
+                  <AddToCartButton 
+                    product={product} 
+                    className="h-14 w-14 rounded-2xl" 
+                    showText={false}
                     size="lg"
-                    disabled={isOutOfStock}
-                  >
-                    <ShoppingCart className="w-5 h-5" />
-                    {isOutOfStock ? "Producto Agotado" : "Comprar Ahora"}
-                  </Button>
-                </Link>
+                  />
+                </div>
                 <Button variant="outline" className="w-full h-14 text-base font-semibold gap-2 rounded-2xl border-2 hover:bg-accent transition-colors" size="lg">
                   <MessageSquare className="w-5 h-5" />
                   Contactar al Vendedor
@@ -156,7 +165,7 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
             </div>
 
             {/* Info de Stock */}
-            <div className={`p-5 rounded-2xl flex items-center gap-4 border shadow-sm backdrop-blur-sm ${isOutOfStock ? 'bg-destructive/5 border-destructive/20' : 'bg-card border-border'}`}>
+            <div className={`p-5 rounded-2xl flex items-center gap-4 border shadow-md dark:shadow-[0_0_20px_rgba(37,99,235,0.08)] backdrop-blur-sm transition-all duration-300 ${isOutOfStock ? 'bg-destructive/5 border-destructive/20' : 'bg-card border-white/20 dark:border-white/10'}`}>
               <div className={`p-3 rounded-full ${isOutOfStock ? 'bg-destructive/10 text-destructive' : 'bg-primary/10 text-primary'}`}>
                  <Info className="w-6 h-6" />
               </div>
@@ -173,7 +182,7 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
             </div>
 
             {/* Descripción */}
-            <div className="bg-card p-6 md:p-8 rounded-4xl border shadow-sm mt-2">
+            <div className="bg-card p-6 md:p-8 rounded-4xl border border-white/20 dark:border-white/10 shadow-md dark:shadow-[0_0_25px_rgba(37,99,235,0.1)] transition-all duration-300 mt-2">
               <h2 className="text-2xl font-bold mb-6 text-foreground tracking-tight">Acerca de este producto</h2>
               <div className="prose prose-slate dark:prose-invert max-w-none">
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-base">

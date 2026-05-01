@@ -52,6 +52,7 @@ interface DataTableProps<TData, TValue> {
   renderMobileCard?: (row: TData) => React.ReactNode;
   onLoadMore?: () => void;
   hasMore?: boolean;
+  extraActions?: React.ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -68,6 +69,7 @@ export function DataTable<TData, TValue>({
   renderMobileCard,
   onLoadMore,
   hasMore = false,
+  extraActions,
 }: DataTableProps<TData, TValue>) {
   const observerTarget = React.useRef<HTMLDivElement>(null);
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -209,7 +211,7 @@ export function DataTable<TData, TValue>({
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2 flex-1 md:flex-none ml-auto">
+              <Button variant="outline" size="sm" className="gap-2 flex-1 md:flex-none">
                 <Settings2 className="h-4 w-4" />
                 <span className="hidden sm:inline">Columnas</span>
               </Button>
@@ -234,6 +236,7 @@ export function DataTable<TData, TValue>({
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+          {extraActions}
         </div>
       </div>
 
@@ -243,7 +246,7 @@ export function DataTable<TData, TValue>({
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         )}
-        
+
         {/* Mobile View (Cards) */}
         {renderMobileCard && (
           <div className="md:hidden">
@@ -302,8 +305,8 @@ export function DataTable<TData, TValue>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead 
-                        key={header.id} 
+                      <TableHead
+                        key={header.id}
                         className={cn(
                           "whitespace-nowrap",
                           (header.column.columnDef.meta as any)?.className
@@ -341,8 +344,8 @@ export function DataTable<TData, TValue>({
                     className="transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted"
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell 
-                        key={cell.id} 
+                      <TableCell
+                        key={cell.id}
                         className={cn(
                           "whitespace-nowrap",
                           (cell.column.columnDef.meta as any)?.className

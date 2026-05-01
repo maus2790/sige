@@ -80,8 +80,8 @@ export function AdminNavigation() {
       </aside>
 
       {/* Bottom Navigation Mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-lg border-t md:hidden z-30">
-        <div className="flex justify-around items-center h-16 px-2">
+      <nav className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-30 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]">
+        <div className="flex justify-around items-center h-14 px-2 pb-[env(safe-area-inset-bottom,0px)]">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = item.href === "/admin" 

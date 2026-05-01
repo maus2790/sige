@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AddToCartButton } from "./add-to-cart-button";
 
 interface ProductCardProps {
   product: {
@@ -49,7 +50,7 @@ export function ProductCard({ product }: ProductCardProps) {
   return (
     <div
       onClick={handleCardClick}
-      className="group relative overflow-hidden transition-all duration-500 hover:shadow-2xl cursor-pointer h-full border border-white/20 dark:border-white/5 rounded-2xl bg-card/50 backdrop-blur-sm"
+      className="group relative overflow-hidden transition-all duration-500 shadow-md hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.12)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.25)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-2xl bg-card/50 backdrop-blur-md"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -159,25 +160,34 @@ export function ProductCard({ product }: ProductCardProps) {
 
         {/* Botones flotantes en hover */}
         <div
-          className={`absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent transition-all duration-300 flex flex-col gap-2 ${isHovered ? "translate-y-0" : "translate-y-full"
+          className={`absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/90 via-black/40 to-transparent dark:from-primary/30 dark:via-background/90 dark:to-transparent dark:backdrop-blur-[2px] transition-all duration-300 flex flex-col gap-2 ${isHovered ? "translate-y-0" : "translate-y-full"
             }`}
         >
-          <Button 
-            className="w-full gap-2" 
-            size="sm" 
-            variant="secondary"
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(`/productos/${product.id}`);
-            }}
-          >
-            <Eye className="w-4 h-4" />
-            Ver detalles
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              className="flex-1 gap-2 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white dark:border-white/20" 
+              size="sm" 
+              variant="secondary"
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/productos/${product.id}`);
+              }}
+            >
+              <Eye className="w-4 h-4" />
+              Detalles
+            </Button>
+            
+            <AddToCartButton 
+              product={product} 
+              size="sm" 
+              showText={false}
+              className="w-10 h-10 rounded-xl"
+            />
+          </div>
           
           <Link href={`/comprar/${product.id}`} className="w-full">
             <Button 
-              className="w-full gap-2 rounded-xl" 
+              className="w-full gap-2 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.3)] dark:shadow-[0_0_20px_rgba(37,99,235,0.5)]" 
               size="sm" 
               variant="gradient"
               onClick={(e) => e.stopPropagation()}
