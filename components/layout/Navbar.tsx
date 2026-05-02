@@ -48,9 +48,10 @@ interface Category {
 
 interface NavbarProps {
   categories: Category[];
+  myStoreId?: string | null;
 }
 
-export function Navbar({ categories }: NavbarProps) {
+export function Navbar({ categories, myStoreId }: NavbarProps) {
   const { data: session, status } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const pathname = usePathname();
@@ -100,7 +101,7 @@ export function Navbar({ categories }: NavbarProps) {
               <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
                 <ShoppingBag className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-black text-brand-gradient tracking-tighter">SIGE</span>
+              <span className="text-2xl font-black text-brand-gradient tracking-tighter uppercase">SIGE</span>
             </Link>
           </div>
 
@@ -110,11 +111,31 @@ export function Navbar({ categories }: NavbarProps) {
               <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
             ) : (
               <>
+                {/* Mercado Link Desktop */}
+                {pathname !== "/" && (
+                  <Link href="/" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                    Mercado
+                  </Link>
+                )}
+
+                {myStoreId && pathname !== `/tienda/${myStoreId}` && (
+                  <Link href={`/tienda/${myStoreId}`} className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                    Mi Tienda
+                  </Link>
+                )}
+
+                {/* Dashboard Link Desktop (Solo si no está ya en un dashboard) */}
+                {!pathname.startsWith("/dashboard") && !pathname.startsWith("/admin") && !pathname.startsWith("/assistant") && activeUser && (
+                  <Link href={dashboardPath} className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                    Dashboard
+                  </Link>
+                )}
+
                 {/* Carrito Desktop */}
                 <Link href="/cart" className="hidden md:block">
                   <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
                     <ShoppingCart className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    {totalItems > 0 && (
+                    {mounted && totalItems > 0 && (
                       <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-primary border-2 border-background animate-in zoom-in duration-300">
                         {totalItems}
                       </Badge>
@@ -151,24 +172,40 @@ export function Navbar({ categories }: NavbarProps) {
                         </div>
                       </DropdownMenuLabel>
                       <DropdownMenuSeparator />
+                      
+                      {pathname !== "/" && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/" className="cursor-pointer flex items-center">
+                            <ShoppingBag className="mr-2 h-4 w-4" />
+                            <span>Mercado</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+
+                      {myStoreId && pathname !== `/tienda/${myStoreId}` && (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/tienda/${myStoreId}`} className="cursor-pointer flex items-center">
+                            <Store className="mr-2 h-4 w-4" />
+                            <span>Mi Tienda</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+
                       <DropdownMenuItem asChild>
                         <Link href="/profile" className="cursor-pointer flex items-center">
                           <User className="mr-2 h-4 w-4" />
                           <span>Perfil</span>
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/" className="cursor-pointer flex items-center">
-                          <Store className="mr-2 h-4 w-4" />
-                          <span>Tienda</span>
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href={dashboardPath} className="cursor-pointer flex items-center">
-                          <LayoutDashboard className="mr-2 h-4 w-4" />
-                          <span>Dashboard</span>
-                        </Link>
-                      </DropdownMenuItem>
+
+                      {!pathname.startsWith("/dashboard") && !pathname.startsWith("/admin") && !pathname.startsWith("/assistant") && (
+                        <DropdownMenuItem asChild>
+                          <Link href={dashboardPath} className="cursor-pointer flex items-center">
+                            <LayoutDashboard className="mr-2 h-4 w-4" />
+                            <span>Dashboard</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
 
                       <DropdownMenuSeparator />
 

@@ -5,7 +5,8 @@ interface CartItem {
   id: string;
   name: string;
   price: number;
-  image: string;
+  imageUrls: string[];
+  category: string;
   quantity: number;
 }
 
@@ -44,7 +45,8 @@ export const useCart = create<CartStore>()(
               id: product.id,
               name: product.name,
               price: product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0,
-              image: product.imageUrls?.[0] || "",
+              imageUrls: product.imageUrls || [],
+              category: product.category || "General",
               quantity: 1,
             },
           ],

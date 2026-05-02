@@ -5,9 +5,9 @@ import { getCategories } from "@/app/actions/categories";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "SIGE Marketplace - Los mejores productos de Bolivia",
+  title: "SIGE Mercado - Los mejores productos de Bolivia",
   description:
-    "Descubre los mejores productos de Bolivia. Compra de manera segura con videos, notificaciones y envíos a todo el país.",
+    "Explora el mercado global de Bolivia. Compra de manera segura con envíos a todo el país y la mejor selección de productos locales.",
   keywords: "marketplace, Bolivia, compras online, productos, tiendas",
   openGraph: {
     title: "SIGE Marketplace",

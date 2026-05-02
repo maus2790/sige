@@ -18,9 +18,16 @@ interface CategorySheetProps {
   onSelect: (category: string) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  selectedCategory?: string;
 }
 
-export function CategorySheet({ categories, onSelect, open, onOpenChange }: CategorySheetProps) {
+export function CategorySheet({ 
+  categories, 
+  onSelect, 
+  open, 
+  onOpenChange,
+  selectedCategory = "todos"
+}: CategorySheetProps) {
   return (
     <Drawer.Root open={open} onOpenChange={onOpenChange}>
       <Drawer.Portal>
@@ -45,33 +52,50 @@ export function CategorySheet({ categories, onSelect, open, onOpenChange }: Cate
                     onSelect("todos");
                     onOpenChange(false);
                   }}
-                  className="flex flex-col items-center justify-center p-6 rounded-3xl bg-primary/5 border-2 border-primary/10 hover:border-primary/30 transition-all group"
+                  className={`flex flex-col items-center justify-center p-6 rounded-3xl transition-all group border-2 ${
+                    selectedCategory === "todos" 
+                    ? "bg-primary/10 border-primary shadow-md scale-105" 
+                    : "bg-primary/5 border-primary/10 hover:border-primary/30"
+                  }`}
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-transform ${
+                    selectedCategory === "todos" ? "bg-primary text-white scale-110" : "bg-primary/10"
+                  }`}>
                     <span className="text-2xl">✨</span>
                   </div>
-                  <span className="font-bold text-foreground">Todos</span>
+                  <span className={`font-bold ${selectedCategory === "todos" ? "text-primary" : "text-foreground"}`}>Todos</span>
                 </button>
 
-                {categories.map((cat) => (
-                  <button
-                    key={cat.id}
-                    onClick={() => {
-                      onSelect(cat.name);
-                      onOpenChange(false);
-                    }}
-                    className="flex flex-col items-center justify-center p-6 rounded-3xl bg-muted/30 border-2 border-transparent hover:border-primary/20 hover:bg-muted/50 transition-all group"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-background flex items-center justify-center mb-3 shadow-sm group-hover:scale-110 transition-transform">
-                      {cat.icon ? (
-                        <span className="text-2xl">{cat.icon}</span>
-                      ) : (
-                        <Package className="w-6 h-6 text-muted-foreground" />
-                      )}
-                    </div>
-                    <span className="font-bold text-foreground text-center line-clamp-1">{cat.name}</span>
-                  </button>
-                ))}
+                {categories.map((cat) => {
+                  const isSelected = selectedCategory === cat.name;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        onSelect(cat.name);
+                        onOpenChange(false);
+                      }}
+                      className={`flex flex-col items-center justify-center p-6 rounded-3xl transition-all group border-2 ${
+                        isSelected 
+                        ? "bg-primary/10 border-primary shadow-md scale-105" 
+                        : "bg-muted/30 border-transparent hover:border-primary/20 hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-3 shadow-sm transition-transform ${
+                        isSelected ? "bg-primary text-white scale-110" : "bg-background"
+                      }`}>
+                        {cat.icon ? (
+                          <span className="text-2xl">{cat.icon}</span>
+                        ) : (
+                          <Package className={`w-6 h-6 ${isSelected ? "text-white" : "text-muted-foreground"}`} />
+                        )}
+                      </div>
+                      <span className={`font-bold text-center line-clamp-1 ${isSelected ? "text-primary" : "text-foreground"}`}>
+                        {cat.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

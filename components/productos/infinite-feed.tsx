@@ -24,6 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useDebouncedCallback } from "use-debounce";
 
 interface Category {
@@ -39,7 +40,11 @@ interface InfiniteFeedProps {
 }
 
 export function InfiniteFeed({ search: initialSearch = "", initialCategories }: InfiniteFeedProps) {
-  const [category, setCategory] = useState("todos");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const urlCategory = searchParams.get("category") || "todos";
+  
+  const [category, setCategory] = useState(urlCategory);
   const [search, setSearch] = useState(initialSearch);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
@@ -49,9 +54,25 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
     ...initialCategories.map(c => ({ value: c.name, label: c.name, icon: c.icon }))
   ];
 
+  // Sincronizar estado con la URL
+  useEffect(() => {
+    setCategory(urlCategory);
+  }, [urlCategory]);
+
   useEffect(() => {
     setSearch(initialSearch);
   }, [initialSearch]);
+
+  const updateCategory = (newCategory: string) => {
+    setCategory(newCategory);
+    const params = new URLSearchParams(searchParams.toString());
+    if (newCategory === "todos") {
+      params.delete("category");
+    } else {
+      params.set("category", newCategory);
+    }
+    router.push(`/?${params.toString()}`, { scroll: false });
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -91,10 +112,10 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
             <ShoppingBag className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 drop-shadow-lg">
-            Lo Mejor de Bolivia <br className="md:hidden" /> en tus Manos
+            SIGE Mercado <br className="md:hidden" /> Lo mejor de Bolivia
           </h1>
           <p className="text-lg md:text-xl text-blue-50 mb-8 max-w-2xl mx-auto font-medium drop-shadow-sm">
-            Descubre, explora y compra productos locales con total seguridad y envío a todo el país.
+            Explora el mercado global con productos locales, envíos seguros y la mejor experiencia de compra.
           </p>
         </div>
       </div>
@@ -114,7 +135,10 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </div>
           
           <div className="flex items-center gap-2 pr-2">
-            <Select value={category} onValueChange={setCategory}>
+            <Select 
+              value={category} 
+              onValueChange={updateCategory}
+            >
               <SelectTrigger className="h-9 w-[130px] rounded-xl text-xs bg-muted/50 border-0 focus:ring-1 focus:ring-primary/20">
                 <SelectValue placeholder="Categoría" />
               </SelectTrigger>
@@ -144,7 +168,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
               <span>{categoriesList.find(c => c.value === category)?.icon}</span>
               {category}
               <button 
-                onClick={() => setCategory("todos")}
+                onClick={() => updateCategory("todos")}
                 className="w-5 h-5 rounded-full bg-primary/20 hover:bg-primary/30 flex items-center justify-center transition-colors"
               >
                 <X className="w-3 h-3" />

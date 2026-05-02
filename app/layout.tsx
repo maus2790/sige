@@ -7,6 +7,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MobileNavBar } from "@/components/layout/mobile-nav-bar";
 import { Providers } from "./providers";
 import { getCategories } from "./actions/categories";
+import { getMyStoreId } from "./actions/storefront";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,7 +18,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SIGE Marketplace - Tu tienda en Bolivia",
+  title: "SIGE Mercado - Los mejores productos de Bolivia",
   description: "Plataforma de comercio electrónico con videos, notificaciones push y PWA",
   manifest: "/manifest.json",
   appleWebApp: {
@@ -43,16 +44,17 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const categories = await getCategories();
+  const myStoreId = await getMyStoreId();
 
   return (
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <Navbar categories={categories} />
+          <Navbar categories={categories} myStoreId={myStoreId} />
           <div className="min-h-screen">
             {children}
           </div>
-          <MobileNavBar categories={categories} />
+          <MobileNavBar categories={categories} myStoreId={myStoreId} />
           <Toaster />
           <RegisterSW />
         </Providers>

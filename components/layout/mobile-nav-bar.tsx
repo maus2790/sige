@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Home, ShoppingCart, Plus, Package, Store } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { CategorySheet } from "@/components/productos/category-sheet";
@@ -17,22 +17,37 @@ interface Category {
 
 interface MobileNavBarProps {
   categories: Category[];
+  myStoreId?: string | null;
 }
 
-export function MobileNavBar({ categories }: MobileNavBarProps) {
+export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const totalItems = useCart((state) => state.getTotalItems());
   
   const [isCategoryOpen, setIsCategoryOpen] = React.useState(false);
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Mostrar en Mercado y en Tiendas
+  const isStorePage = pathname.startsWith("/tienda/");
+  if (pathname !== "/" && !isStorePage) return null;
+
+  const cartCount = mounted ? totalItems : 0;
 
   const handleCategorySelect = (category: string) => {
+    // Si estamos en una tienda, redirigir al mercado con ese filtro
+    // O si el usuario prefiere filtrar la tienda, podríamos añadir lógica aquí.
+    // Por ahora, seguimos el comportamiento del mercado principal.
     router.push(`/?category=${encodeURIComponent(category)}`);
   };
 
   const navItems = [
-    { href: "/", label: "Inicio", icon: Home },
+    { href: "/", label: "Mercado", icon: Home },
     { 
       label: "Categorías", 
       icon: Package, 
@@ -49,10 +64,17 @@ export function MobileNavBar({ categories }: MobileNavBarProps) {
       href: "/cart", 
       label: "Carrito", 
       icon: ShoppingCart,
-      badge: totalItems 
+      badge: cartCount 
     },
-    { href: "/dashboard", label: "Mi Tienda", icon: Store },
+    { 
+      href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
+      label: "Tienda", 
+      icon: Store 
+    },
   ];
+
+  const searchParams = useSearchParams();
+  const currentCategory = searchParams.get("category") || "todos";
 
   return (
     <>
@@ -108,6 +130,7 @@ export function MobileNavBar({ categories }: MobileNavBarProps) {
         open={isCategoryOpen} 
         onOpenChange={setIsCategoryOpen}
         onSelect={handleCategorySelect}
+        selectedCategory={currentCategory}
       />
 
       <QuickPublishModal 

@@ -24,6 +24,7 @@ import { Package, Image as ImageIcon, Plus, Loader2, CheckCircle2 } from "lucide
 import { createProduct } from "@/app/actions/products";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { ImageUpload } from "../upload/image-upload";
 
 interface Category {
   id: string;
@@ -164,11 +165,11 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
               </div>
               
               <div className="space-y-3">
-                <Label className="font-bold">Imágenes (Opcional por ahora)</Label>
-                <div className="border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted/50 transition-colors cursor-pointer group">
-                  <ImageIcon className="w-10 h-10 mb-2 group-hover:scale-110 transition-transform" />
-                  <p className="text-sm font-medium">Haz clic para subir fotos</p>
-                </div>
+                <ImageUpload 
+                  onImagesChange={(urls) => setFormData({...formData, imageUrls: urls})}
+                  maxImages={3}
+                  label="Fotos del producto"
+                />
               </div>
             </div>
           )}
