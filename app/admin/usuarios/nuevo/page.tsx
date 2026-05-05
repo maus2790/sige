@@ -1,4 +1,6 @@
 "use client";
+ 
+import * as React from "react";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -49,6 +51,10 @@ export default function NuevoUsuarioPage() {
       setIsLoading(false);
     }
   }
+
+  const handleAvatarChange = React.useCallback((urls: string[]) => {
+    setAvatarUrl(urls[0] || null);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -154,7 +160,7 @@ export default function NuevoUsuarioPage() {
 
                 <div className="pt-2">
                   <ImageUpload
-                    onImagesChange={(urls) => setAvatarUrl(urls[0] || null)}
+                    onImagesChange={handleAvatarChange}
                     maxImages={1}
                     folder="avatars"
                     label="Avatar del usuario"

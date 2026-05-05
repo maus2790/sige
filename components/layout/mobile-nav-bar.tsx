@@ -21,6 +21,7 @@ interface MobileNavBarProps {
 }
 
 export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
+  const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
   const totalItems = useCart((state) => state.getTotalItems());
@@ -54,12 +55,12 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
       onClick: () => setIsCategoryOpen(true),
       isActive: isCategoryOpen 
     },
-    { 
+    ...((pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`)) ? [{ 
       label: "Vender", 
       icon: Plus, 
       isAction: true,
       onClick: () => setIsPublishOpen(true) 
-    },
+    }] : []),
     { 
       href: "/cart", 
       label: "Carrito", 
@@ -73,7 +74,6 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
     },
   ];
 
-  const searchParams = useSearchParams();
   const currentCategory = searchParams.get("category") || "todos";
 
   return (

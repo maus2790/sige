@@ -278,7 +278,8 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
 // 7.4 CREAR PRODUCTO
 // ============================================
 
-export async function createProduct(formData: FormData) {
+export async function createProduct(data: any) {
+  console.log("createProduct action called with:", JSON.stringify(data));
   const user = await requireRole("seller");
 
   const store = await db
@@ -288,31 +289,46 @@ export async function createProduct(formData: FormData) {
     .get();
 
   if (!store) {
-    throw new Error("No tienes una tienda asociada. Contacta al soporte.");
+    console.error("Store not found for user:", user.id);
+    return { error: "No tienes una tienda asociada. Contacta al soporte." };
   }
 
-  const rawPrice = formData.get("price");
-  const rawStock = formData.get("stock");
+  // Si recibimos FormData, convertirlo a objeto (por compatibilidad)
+  let rawData = data;
+  if (data instanceof FormData) {
+    rawData = {
+      sku: data.get("sku"),
+      name: data.get("name"),
+      description: data.get("description"),
+      price: data.get("price"),
+      category: data.get("category"),
+      status: data.get("status"),
+      oferta: data.get("oferta"),
+      stock: data.get("stock"),
+      imageUrls: data.get("imageUrls"),
+    };
+  }
 
   const validatedFields = createProductSchema.safeParse({
-    sku: formData.get("sku") as string,
-    name: formData.get("name"),
-    description: formData.get("description"),
-    price: rawPrice ? parseFloat(rawPrice as string) : undefined,
-    category: formData.get("category"),
-    status: formData.get("status") || "Nuevo",
-    oferta: formData.get("oferta") ? parseInt(formData.get("oferta") as string) : undefined,
-    stock: rawStock ? parseInt(rawStock as string) : undefined,
+    sku: rawData.sku as string,
+    name: rawData.name,
+    description: rawData.description,
+    price: typeof rawData.price === 'string' ? parseFloat(rawData.price) : rawData.price,
+    category: rawData.category,
+    status: rawData.status || "Nuevo",
+    oferta: typeof rawData.oferta === 'string' ? parseInt(rawData.oferta) : (rawData.oferta || 0),
+    stock: typeof rawData.stock === 'string' ? parseInt(rawData.stock) : (rawData.stock || 0),
   });
 
   if (!validatedFields.success) {
     const firstError = validatedFields.error.issues[0];
+    console.warn("Validation failed:", firstError.message);
     return {
       error: firstError.message,
       fields: {
-        name: formData.get("name") as string,
-        description: formData.get("description") as string,
-        category: formData.get("category") as string,
+        name: rawData.name as string,
+        description: rawData.description as string,
+        category: rawData.category as string,
       },
     };
   }
@@ -320,8 +336,16 @@ export async function createProduct(formData: FormData) {
   const { sku, name, description, price, category, status, oferta, stock } = validatedFields.data;
 
   // Procesar imágenes
-  const imageUrlsJson = formData.get("imageUrls") as string;
-  const imageUrls: ProductImageUrls = imageUrlsJson ? JSON.parse(imageUrlsJson) : [];
+  let imageUrls: ProductImageUrls = [];
+  if (rawData.imageUrls) {
+    try {
+      imageUrls = typeof rawData.imageUrls === 'string' 
+        ? JSON.parse(rawData.imageUrls) 
+        : rawData.imageUrls;
+    } catch (e) {
+      console.error("Error parsing imageUrls:", e);
+    }
+  }
 
   const productId = generateId();
 
@@ -357,17 +381,19 @@ export async function createProduct(formData: FormData) {
         precioVenta: price,
         precioAdquisicion: 0,
         ofertaPorcentaje: oferta || 0,
-        isPublished: true, // Quick publish sets it as published
+        isPublished: true,
         updatedAt: new Date(),
       });
     });
 
+    console.log("Product created successfully:", productId);
+    revalidatePath("/");
     revalidatePath("/dashboard/productos");
     revalidatePath("/productos");
     return { success: true, productId };
   } catch (error) {
     console.error("Error in transaction:", error);
-    return { error: "Error al crear el producto. Intenta de nuevo." };
+    return { error: "Error al crear el producto en la base de datos." };
   }
 }
 

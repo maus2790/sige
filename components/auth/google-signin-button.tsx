@@ -12,7 +12,7 @@ export function GoogleSignInButton({ callbackUrl }: { callbackUrl?: string }) {
   const handleGoogleClick = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: callbackUrl || "/" }, { prompt: "select_account" });
+      await signIn("google", { callbackUrl: callbackUrl || "/" });
     } catch (error) {
       console.error("Error signing in with Google:", error);
       setIsLoading(false);

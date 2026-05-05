@@ -10,6 +10,8 @@ import { getStoreProducts } from "@/app/actions/storefront";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
+import { useStoreInfiniteScroll } from "@/hooks/use-infinite-scroll";
+
 interface StoreData {
   id: string;
   name: string;
@@ -27,10 +29,16 @@ interface StoreFeedProps {
 }
 
 export function StoreFeed({ store, initialProducts }: StoreFeedProps) {
-  const [products, setProducts] = useState(initialProducts);
-  const [page, setPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(initialProducts.length === 20);
-  const [isFetchingNextPage, setIsFetchingNextPage] = useState(false);
+  const { 
+    data, 
+    fetchNextPage, 
+    hasNextPage, 
+    isFetchingNextPage, 
+    isLoading 
+  } = useStoreInfiniteScroll({ 
+    storeId: store.id, 
+    initialData: initialProducts 
+  });
 
   const { ref, inView } = useInView({
     threshold: 0,
@@ -39,23 +47,11 @@ export function StoreFeed({ store, initialProducts }: StoreFeedProps) {
 
   useEffect(() => {
     if (inView && hasNextPage && !isFetchingNextPage) {
-      loadMore();
+      fetchNextPage();
     }
-  }, [inView, hasNextPage, isFetchingNextPage]);
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const loadMore = async () => {
-    setIsFetchingNextPage(true);
-    const nextPage = page + 1;
-    const newProducts = await getStoreProducts(store.id, nextPage);
-    
-    if (newProducts.length < 20) {
-      setHasNextPage(false);
-    }
-    
-    setProducts([...products, ...newProducts]);
-    setPage(nextPage);
-    setIsFetchingNextPage(false);
-  };
+  const products: any[] = data?.pages.flatMap((page: any) => page) || [];
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -65,13 +61,13 @@ export function StoreFeed({ store, initialProducts }: StoreFeedProps) {
         <div className="relative z-10 max-w-5xl mx-auto flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border-4 border-white/20 shadow-2xl mb-6 bg-white/10 backdrop-blur-md">
             <AvatarImage src={store.logoUrl || ""} alt={store.name} />
-            <AvatarFallback className="text-3xl font-black bg-white/20">
+            <AvatarFallback className="text-3xl font-black bg-white/70">
               {store.name.substring(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          
+
           <div className="flex items-center gap-2 mb-2">
-            <h1 className="text-3xl md:text-5xl font-black tracking-tight drop-shadow-lg">
+            <h1 className="text-3xl md:text-5xl font-black tracking-tight drop-shadow-lg text-white/95">
               {store.name}
             </h1>
             {store.verified && (
@@ -80,7 +76,7 @@ export function StoreFeed({ store, initialProducts }: StoreFeedProps) {
               </Badge>
             )}
           </div>
-          
+
           <p className="text-blue-50 max-w-2xl mx-auto font-medium mb-6 line-clamp-2">
             {store.description || "Bienvenidos a nuestra tienda oficial en SIGE Mercado."}
           </p>
@@ -124,9 +120,9 @@ export function StoreFeed({ store, initialProducts }: StoreFeedProps) {
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-              {products.map((product, index) => (
-                <div 
-                  key={product.id} 
+              {products.map((product: any, index: number) => (
+                <div
+                  key={product.id}
                   className="animate-in fade-in slide-in-from-bottom-8 duration-700"
                   style={{ animationDelay: `${(index % 10) * 50}ms` }}
                 >

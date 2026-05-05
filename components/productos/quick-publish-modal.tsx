@@ -26,6 +26,8 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ImageUpload } from "../upload/image-upload";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 interface Category {
   id: string;
   name: string;
@@ -51,27 +53,25 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
   });
 
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleNext = () => setStep((s) => s + 1);
   const handlePrev = () => setStep((s) => s - 1);
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    const data = new FormData();
-    data.append("name", formData.name);
-    data.append("description", formData.description);
-    data.append("category", formData.category);
-    data.append("price", formData.price);
-    data.append("stock", formData.stock);
-    data.append("imageUrls", JSON.stringify(formData.imageUrls));
-
-    const result = await createProduct(data);
+    const result = await createProduct(formData);
 
     if (result?.error) {
       toast.error(result.error);
       setIsLoading(false);
     } else {
       toast.success("¡Producto publicado con éxito!");
+      
+      // Invalidar cache de productos para que aparezca el nuevo
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["store-products"] });
+      
       setIsLoading(false);
       onOpenChange(false);
       setStep(1);
@@ -86,6 +86,10 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
       router.refresh();
     }
   };
+
+  const handleImagesChange = React.useCallback((urls: string[]) => {
+    setFormData(prev => ({ ...prev, imageUrls: urls }));
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -166,7 +170,7 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
               
               <div className="space-y-3">
                 <ImageUpload 
-                  onImagesChange={(urls) => setFormData({...formData, imageUrls: urls})}
+                  onImagesChange={handleImagesChange}
                   maxImages={3}
                   label="Fotos del producto"
                 />

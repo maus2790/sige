@@ -1,4 +1,6 @@
 "use client";
+ 
+import * as React from "react";
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -72,6 +74,10 @@ export default function EditarUsuarioPage() {
 
     setIsSaving(false);
   }
+
+  const handleAvatarChange = React.useCallback((urls: string[]) => {
+    setAvatarUrl(urls[0] || null);
+  }, []);
 
   if (isLoading) {
     return (
@@ -180,7 +186,7 @@ export default function EditarUsuarioPage() {
 
                 <div className="pt-2">
                   <ImageUpload
-                    onImagesChange={(urls) => setAvatarUrl(urls[0] || null)}
+                    onImagesChange={handleAvatarChange}
                     initialImages={user.image ? [user.image] : []}
                     maxImages={1}
                     folder="avatars"

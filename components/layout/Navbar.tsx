@@ -261,14 +261,16 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
       </header>
 
       {/* FAB Desktop para Publicación Rápida */}
-      <div className="fixed bottom-8 right-8 z-50 hidden md:block">
-        <Button 
-          onClick={() => setIsPublishOpen(true)}
-          className="w-16 h-16 rounded-2xl bg-brand-gradient text-white shadow-premium hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 border-none group"
-        >
-          <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-500" />
-        </Button>
-      </div>
+      {(pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`)) && (
+        <div className="fixed bottom-8 right-8 z-50 hidden md:block">
+          <Button 
+            onClick={() => setIsPublishOpen(true)}
+            className="w-16 h-16 rounded-2xl bg-brand-gradient text-white shadow-premium hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 border-none group"
+          >
+            <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-500" />
+          </Button>
+        </div>
+      )}
 
       <QuickPublishModal 
         categories={categories}

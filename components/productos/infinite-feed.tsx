@@ -111,7 +111,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           <div className="inline-flex items-center justify-center p-4 bg-white/20 rounded-2xl backdrop-blur-md mb-6 shadow-glass border border-white/20">
             <ShoppingBag className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 drop-shadow-lg">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 drop-shadow-lg text-white">
             SIGE Mercado <br className="md:hidden" /> Lo mejor de Bolivia
           </h1>
           <p className="text-lg md:text-xl text-blue-50 mb-8 max-w-2xl mx-auto font-medium drop-shadow-sm">

@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,19 +33,26 @@ export function ImageUpload({
   label = "Imágenes"
 }: ImageUploadProps) {
   // Inicializar estado con las imágenes existentes
-  const [imageItems, setImageItems] = useState<ImageItem[]>(
+  const [imageItems, setImageItems] = React.useState<ImageItem[]>(
     initialImages.map(url => ({ url, isUploading: false }))
   );
 
+  const onImagesChangeRef = React.useRef(onImagesChange);
+  
+  React.useEffect(() => {
+    onImagesChangeRef.current = onImagesChange;
+  }, [onImagesChange]);
+
   // Sincronizar con el componente padre cuando cambien las URLs finales
-  useEffect(() => {
+  React.useEffect(() => {
     const finalUrls = imageItems
       .filter(item => !item.isUploading)
       .map(item => item.url);
-    onImagesChange(finalUrls);
-  }, [imageItems, onImagesChange]);
+    
+    onImagesChangeRef.current(finalUrls);
+  }, [imageItems]);
 
-  const handleUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = React.useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
@@ -100,7 +107,7 @@ export function ImageUpload({
     event.target.value = "";
   }, [imageItems, maxImages]);
 
-  const handleRemove = useCallback((index: number) => {
+  const handleRemove = React.useCallback((index: number) => {
     setImageItems(prev => {
       const item = prev[index];
       if (item.previewUrl) {
@@ -112,7 +119,7 @@ export function ImageUpload({
   }, []);
 
   // Limpiar memoria de los ObjectURLs al desmontar
-  useEffect(() => {
+  React.useEffect(() => {
     return () => {
       imageItems.forEach(item => {
         if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
