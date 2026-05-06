@@ -10,7 +10,6 @@ const navItems = [
   { href: "/dashboard/productos", label: "Productos", icon: Package },
   { href: "/dashboard/inventario", label: "Inventario", icon: Package },
   { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingCart },
-  { href: "/dashboard/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

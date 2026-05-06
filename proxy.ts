@@ -26,7 +26,6 @@ const publicPatterns = [
   '/productos/',
   '/tiendas/',
   '/categories/',
-  '/gift-card/',
 ];
 
 // ============================================

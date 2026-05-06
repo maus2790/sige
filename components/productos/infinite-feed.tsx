@@ -3,9 +3,10 @@
 import { useInView } from "react-intersection-observer";
 import { useEffect, useState } from "react";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import Link from "next/link";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag, X } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag, X, Gift } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -119,6 +120,27 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </p>
         </div>
       </div>
+
+      {/* Floating Gift Card Button */}
+      {!search && (
+        <Link 
+          href="/gift-cards" 
+          className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-50 group"
+        >
+          <div className="relative">
+            {/* Ping animation effect */}
+            <span className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-20 group-hover:opacity-40"></span>
+            
+            <Button 
+              size="lg" 
+              className="relative w-14 h-14 md:w-auto md:h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 flex items-center justify-center md:px-6"
+            >
+              <Gift className="w-6 h-6 md:mr-2 animate-bounce-slow" />
+              <span className="hidden md:inline font-black tracking-tight">Gift Cards</span>
+            </Button>
+          </div>
+        </Link>
+      )}
 
       {/* Floating Search & Filters */}
       <div className={`sticky top-20 z-30 transition-all duration-300 px-4 max-w-3xl mx-auto -mt-16 mb-6 ${isScrolled ? 'top-4 drop-shadow-2xl' : ''}`}>

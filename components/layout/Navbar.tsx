@@ -19,7 +19,8 @@ import {
   ChevronDown,
   ShoppingCart,
   Download,
-  Plus
+  Plus,
+  Gift
 } from "lucide-react";
 
 import { usePWAInstall } from "@/hooks/use-pwa-install";
@@ -131,6 +132,16 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   </Link>
                 )}
 
+                {/* Gift Card Button Desktop */}
+                {activeUser && (
+                  <Link href="/gift-cards" className="hidden md:block mr-2">
+                    <Button variant="outline" className="relative overflow-hidden rounded-full border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold group border-2">
+                      <Gift className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                      <span className="relative z-10">Regalar</span>
+                    </Button>
+                  </Link>
+                )}
+
                 {/* Carrito Desktop */}
                 <Link href="/cart" className="hidden md:block">
                   <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
@@ -181,6 +192,20 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                           </Link>
                         </DropdownMenuItem>
                       )}
+
+                      <DropdownMenuItem asChild>
+                        <Link href="/mis-compras" className="cursor-pointer flex items-center">
+                          <ShoppingBag className="mr-2 h-4 w-4" />
+                          <span>Mis Compras</span>
+                        </Link>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem asChild>
+                        <Link href="/gift-cards" className="cursor-pointer flex items-center">
+                          <Gift className="mr-2 h-4 w-4" />
+                          <span>Mis Gift Cards</span>
+                        </Link>
+                      </DropdownMenuItem>
 
                       {myStoreId && pathname !== `/tienda/${myStoreId}` && (
                         <DropdownMenuItem asChild>

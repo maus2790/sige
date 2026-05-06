@@ -23,7 +23,6 @@ const navItems = [
   { href: "/dashboard/inventario", label: "Inventario", icon: Package },
   { href: "/dashboard/comercial", label: "Comercial", icon: ShoppingBag },
   { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingCart },
-  { href: "/dashboard/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
