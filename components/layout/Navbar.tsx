@@ -20,7 +20,8 @@ import {
   ShoppingCart,
   Download,
   Plus,
-  Gift
+  Gift,
+  Sparkles
 } from "lucide-react";
 
 import { usePWAInstall } from "@/hooks/use-pwa-install";
@@ -63,6 +64,9 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
   useEffect(() => {
     setMounted(true);
+    const handler = () => setIsPublishOpen(true);
+    window.addEventListener('open-publish-modal', handler);
+    return () => window.removeEventListener('open-publish-modal', handler);
   }, []);
 
   const activeUser = session?.user;
@@ -88,7 +92,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
     await signOut({ callbackUrl: "/" });
   };
 
-  if (pathname.startsWith("/auth") || pathname.startsWith("/gift-card")) {
+  if (pathname.startsWith("/auth")) {
     return null;
   }
 
@@ -102,7 +106,12 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
               <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
                 <ShoppingBag className="w-6 h-6 text-white" />
               </div>
-              <span className="text-2xl font-black text-brand-gradient tracking-tighter uppercase">SIGE</span>
+              <div className="flex flex-col">
+                <span className="text-2xl font-black text-brand-gradient tracking-tighter uppercase leading-none">SIGE</span>
+                {pathname.startsWith("/gift-cards") && (
+                  <span className="text-[10px] font-bold text-primary tracking-widest uppercase opacity-80 leading-none mt-0.5">Gift Cards</span>
+                )}
+              </div>
             </Link>
           </div>
 
@@ -132,15 +141,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   </Link>
                 )}
 
-                {/* Gift Card Button Desktop */}
-                {activeUser && (
-                  <Link href="/gift-cards" className="hidden md:block mr-2">
-                    <Button variant="outline" className="relative overflow-hidden rounded-full border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-bold group border-2">
-                      <Gift className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
-                      <span className="relative z-10">Regalar</span>
-                    </Button>
-                  </Link>
-                )}
+
 
                 {/* Carrito Desktop */}
                 <Link href="/cart" className="hidden md:block">
@@ -285,18 +286,6 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
         </div>
       </header>
 
-      {/* FAB Desktop para Publicación Rápida */}
-      {(pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`)) && (
-        <div className="fixed bottom-8 right-8 z-50 hidden md:block">
-          <Button 
-            onClick={() => setIsPublishOpen(true)}
-            className="w-16 h-16 rounded-2xl bg-brand-gradient text-white shadow-premium hover:shadow-2xl hover:scale-110 active:scale-95 transition-all duration-300 border-none group"
-          >
-            <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-500" />
-          </Button>
-        </div>
-      )}
-
       <QuickPublishModal 
         categories={categories}
         open={isPublishOpen}
@@ -305,4 +294,3 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
     </>
   );
 }
-

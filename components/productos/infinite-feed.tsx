@@ -6,7 +6,7 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import Link from "next/link";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag, X, Gift } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag, X, Gift, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,81 +105,99 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-brand-gradient text-white pb-16 pt-12 px-4 sm:px-6 lg:px-8 shadow-premium rounded-b-[2.5rem] md:rounded-b-[4rem] mb-8">
+      {/* Hero Section - Altura Original Restaurada */}
+      <div className="relative overflow-hidden bg-brand-gradient text-white pb-16 pt-12 px-4 sm:px-6 lg:px-8 shadow-premium rounded-b-[2.5rem] md:rounded-b-[4rem] mb-0">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+
         <div className="relative z-10 max-w-4xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
-          <div className="inline-flex items-center justify-center p-4 bg-white/20 rounded-2xl backdrop-blur-md mb-6 shadow-glass border border-white/20">
-            <ShoppingBag className="w-10 h-10 text-white" />
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-white/30 animate-bounce-slow">
+              <ShoppingBag className="w-10 h-10 text-white" />
+            </div>
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 drop-shadow-lg text-white">
-            SIGE Mercado <br className="md:hidden" /> Lo mejor de Bolivia
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter mb-4 drop-shadow-2xl text-white uppercase">
+            SIGE Market
           </h1>
-          <p className="text-lg md:text-xl text-blue-50 mb-8 max-w-2xl mx-auto font-medium drop-shadow-sm">
-            Explora el mercado global con productos locales, envíos seguros y la mejor experiencia de compra.
+          <p className="text-xl md:text-2xl text-blue-50 font-black mb-2 drop-shadow-sm opacity-95 tracking-tight">
+            Lo Mejor de Bolivia
+          </p>
+          <p className="text-sm md:text-lg text-blue-100/80 mb-6 max-w-2xl mx-auto font-medium">
+            Explora y encuentra los mejores productos locales.....
           </p>
         </div>
       </div>
 
-      {/* Floating Gift Card Button */}
-      {!search && (
-        <Link 
-          href="/gift-cards" 
-          className="fixed bottom-24 right-6 md:bottom-10 md:right-10 z-50 group"
-        >
-          <div className="relative">
-            {/* Ping animation effect */}
-            <span className="absolute inset-0 rounded-full bg-blue-500 animate-ping opacity-20 group-hover:opacity-40"></span>
-            
-            <Button 
-              size="lg" 
-              className="relative w-14 h-14 md:w-auto md:h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 flex items-center justify-center md:px-6"
-            >
-              <Gift className="w-6 h-6 md:mr-2 animate-bounce-slow" />
-              <span className="hidden md:inline font-black tracking-tight">Gift Cards</span>
-            </Button>
-          </div>
-        </Link>
-      )}
-
-      {/* Floating Search & Filters */}
-      <div className={`sticky top-20 z-30 transition-all duration-300 px-4 max-w-3xl mx-auto -mt-16 mb-6 ${isScrolled ? 'top-4 drop-shadow-2xl' : ''}`}>
-        <div className="glass-card rounded-2xl p-1.5 flex items-center gap-2 border border-white/20 dark:border-white/10">
-          <div className="relative flex-1">
-            <input
-              id="mobile-search"
-              type="text"
-              placeholder="¿Qué estás buscando hoy?"
-              onChange={(e) => handleSearch(e.target.value)}
-              className="w-full h-10 pl-11 pr-4 rounded-xl bg-transparent border-none focus:ring-0 focus:outline-none text-foreground placeholder:text-muted-foreground font-medium text-sm"
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          </div>
-          
-          <div className="flex items-center gap-2 pr-2">
-            <Select 
-              value={category} 
-              onValueChange={updateCategory}
-            >
-              <SelectTrigger className="h-9 w-[130px] rounded-xl text-xs bg-muted/50 border-0 focus:ring-1 focus:ring-primary/20">
-                <SelectValue placeholder="Categoría" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border/50 shadow-glass">
-                {categoriesList.map((cat) => (
-                  <SelectItem key={cat.value} value={cat.value} className="text-sm py-2">
-                    <span className="flex items-center gap-2">
-                      <span>{cat.icon}</span>
-                      <span>{cat.label}</span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      {/* Mobile Gift Card FAB — Más elegante y compacto */}
+      <Link
+        href="/gift-cards"
+        className="fixed bottom-24 right-6 z-40 md:hidden"
+      >
+        <div className="relative group">
+          <span className="absolute inset-0 rounded-full bg-linear-to-tr from-pink-500 to-purple-500 animate-pulse opacity-20"></span>
+          <div className="relative w-14 h-14 rounded-full bg-linear-to-tr from-pink-500 via-purple-600 to-indigo-600 text-white shadow-xl flex items-center justify-center transition-all active:scale-90 border border-white/30">
+            <Gift className="w-6 h-6" />
           </div>
         </div>
-      </div>
+      </Link>
 
-      {/* Selected Category Indicator */}
+      {/* Sticky Action Bar - Desktop & Mobile (Ajustado al borde del hero) */}
+      <div className={`sticky top-16 z-40 transition-all duration-300 px-4 w-full max-w-6xl mx-auto -mt-6 mb-8 ${isScrolled ? 'drop-shadow-2xl' : ''}`}>
+        <div className="flex items-center gap-3">
+          
+          {/* Botón VENDER (Pill llamativa con animación de brillo y bordes más coloridos) */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
+            className="hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+          >
+            <Plus className="h-5 w-5" />
+            Vender
+          </button>
+
+          {/* Buscador Central (Bordes más definidos) */}
+          <div className="glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
+            <div className="relative flex-1">
+              <input
+                id="mobile-search"
+                type="text"
+                placeholder="¿Qué estás buscando?"
+                onChange={(e) => handleSearch(e.target.value)}
+                className="w-full h-10 pl-11 pr-4 rounded-xl bg-transparent border-none focus:ring-0 focus:outline-none text-foreground placeholder:text-zinc-500 dark:placeholder:text-zinc-400 font-bold text-sm"
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+            </div>
+            
+            <div className="hidden sm:flex items-center pr-1">
+              <Select 
+                value={category} 
+                onValueChange={updateCategory}
+              >
+                <SelectTrigger className="h-9 w-[120px] rounded-xl text-[10px] font-black uppercase bg-muted/50 border-0 focus:ring-0">
+                  <SelectValue placeholder="TODO" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border/50 shadow-glass">
+                  {categoriesList.map((cat) => (
+                    <SelectItem key={cat.value} value={cat.value} className="text-xs py-2">
+                      <span className="flex items-center gap-2">
+                        <span>{cat.icon}</span>
+                        <span>{cat.label}</span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Botón GIFT CARDS (Pill llamativa con animación de brillo y bordes más coloridos) */}
+          <Link
+            href="/gift-cards"
+            className="hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+          >
+            <Gift className="h-5 w-5" />
+            Gift Cards
+          </Link>
+        </div>
+      </div>
       {category !== "todos" && (
         <div className="container mx-auto px-4 mb-6 animate-in fade-in slide-in-from-top-2 duration-300">
           <div className="flex items-center gap-2">

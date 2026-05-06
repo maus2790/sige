@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Home, ShoppingCart, Plus, Package, Store } from "lucide-react";
+import { Home, ShoppingCart, Plus, Package, Store, Gift } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { CategorySheet } from "@/components/productos/category-sheet";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
@@ -34,9 +34,10 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
     setMounted(true);
   }, []);
 
-  // Mostrar en Mercado y en Tiendas
+  // Mostrar en Mercado, Tiendas y Gift Cards
   const isStorePage = pathname.startsWith("/tienda/");
-  if (pathname !== "/" && !isStorePage) return null;
+  const isGiftCardPage = pathname.startsWith("/gift-cards");
+  if (pathname !== "/" && !isStorePage && !isGiftCardPage) return null;
 
   const cartCount = mounted ? totalItems : 0;
 
@@ -55,10 +56,15 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
       onClick: () => setIsCategoryOpen(true),
       isActive: isCategoryOpen 
     },
-    ...((pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`)) ? [{ 
+    ...(isGiftCardPage ? [{
+      label: "Regalar",
+      icon: Gift,
+      isAction: true,
+      onClick: () => router.push("/gift-cards/buy")
+    }] : (pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`)) ? [{ 
       label: "Vender", 
       icon: Plus, 
-      isAction: true,
+      isAction: true, 
       onClick: () => setIsPublishOpen(true) 
     }] : []),
     { 

@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AddToCartButton } from "./add-to-cart-button";
+import { useCart } from "@/hooks/use-cart";
+import { cn } from "@/lib/utils";
 
 interface ProductCardProps {
   product: {
@@ -38,21 +40,35 @@ interface ProductCardProps {
 
 export function ProductCard({ product }: ProductCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [isClicked, setIsClicked] = useState(false);
+  const { items } = useCart();
+  const isInCart = items.some((item) => item.id === product.id);
   const [isLoading, setIsLoading] = useState(true);
   const mainImage = product.imageUrls?.[0] || null;
-
   const router = useRouter();
 
-  const handleCardClick = () => {
-    router.push(`/productos/${product.id}`);
+  const handleCardClick = (e: React.MouseEvent) => {
+    // En móviles, el primer click muestra opciones. El segundo o click en botón navega.
+    if (window.innerWidth < 768) {
+      if (!isClicked) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsClicked(true);
+      }
+    } else {
+      router.push(`/productos/${product.id}`);
+    }
   };
 
   return (
     <div
       onClick={handleCardClick}
-      className="group relative overflow-hidden transition-all duration-500 shadow-md hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.12)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.25)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-2xl bg-card/50 backdrop-blur-md"
+      className={`group relative overflow-hidden transition-all duration-500 shadow-md hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.12)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.25)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-2xl bg-card/50 backdrop-blur-md ${isClicked ? "ring-2 ring-primary ring-offset-2" : ""}`}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsClicked(false);
+      }}
     >
         {/* Ribbons */}
         <div className="absolute top-0 right-0 z-30 pointer-events-none w-32 h-32 overflow-hidden">
@@ -89,8 +105,8 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* Imagen */}
-        <div className="aspect-square relative overflow-hidden bg-muted">
+        {/* Imagen - Reducida de aspect-square a aspect-4/3 */}
+        <div className="aspect-4/3 relative overflow-hidden bg-muted">
           {mainImage ? (
             <>
               {isLoading && (
@@ -102,8 +118,8 @@ export function ProductCard({ product }: ProductCardProps) {
                 src={mainImage}
                 alt={product.name}
                 width={400}
-                height={400}
-                className={`w-full h-full object-cover transition-transform duration-500 ${isHovered ? "scale-110" : "scale-100"
+                height={300}
+                className={`w-full h-full object-cover transition-transform duration-500 ${isHovered || isClicked ? "scale-110" : "scale-100"
                   } ${isLoading ? "opacity-0" : "opacity-100"}`}
                 onLoad={() => setIsLoading(false)}
               />
@@ -131,20 +147,6 @@ export function ProductCard({ product }: ProductCardProps) {
                 <span className="text-2xl font-black text-brand-gradient">
                   Bs. {product.comercialConfig.precioOferta.toFixed(2)}
                 </span>
-                {(product.comercialConfig.fechaFinOferta || product.comercialConfig.limiteCompra) && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {product.comercialConfig.fechaFinOferta && (
-                      <span className="text-[9px] font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-1.5 py-0.5 rounded-full">
-                        ⏱ {Math.max(0, Math.ceil((new Date(product.comercialConfig.fechaFinOferta).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} días
-                      </span>
-                    )}
-                    {product.comercialConfig.limiteCompra && (
-                      <span className="text-[9px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-full">
-                        Límite: {product.comercialConfig.limiteCompra} u.
-                      </span>
-                    )}
-                  </div>
-                )}
               </>
             ) : (
               <span className="text-2xl font-black text-brand-gradient">
@@ -152,57 +154,62 @@ export function ProductCard({ product }: ProductCardProps) {
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2">
             <Eye className="w-3 h-3" />
-            <span>{product.views || 0}</span>
+            <span>{product.views || 0} visualizaciones</span>
           </div>
         </CardContent>
 
-        {/* Botones flotantes en hover */}
+        {/* Botones flotantes (Revertido a animación desde abajo con degradado) */}
         <div
-          className={`absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/90 via-black/40 to-transparent dark:from-primary/30 dark:via-background/90 dark:to-transparent dark:backdrop-blur-[2px] transition-all duration-300 flex flex-col gap-2 ${isHovered ? "translate-y-0" : "translate-y-full"
+          className={`absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/95 via-black/70 to-transparent dark:from-primary/40 dark:via-background/95 dark:to-transparent dark:backdrop-blur-[1px] transition-all duration-300 flex flex-col gap-2 z-40 ${isHovered || isClicked ? "translate-y-0" : "translate-y-full"
             }`}
         >
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 w-full animate-in slide-in-from-bottom-4 duration-500">
             <Button 
-              className="flex-1 gap-2 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white dark:border-white/20" 
-              size="sm" 
-              variant="secondary"
+              className="w-full h-11 rounded-2xl font-black text-xs uppercase tracking-wider bg-blue-50/80 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50 dark:hover:bg-blue-900/50 shadow-sm backdrop-blur-sm cursor-pointer" 
+              variant="outline"
               onClick={(e) => {
                 e.stopPropagation();
                 router.push(`/productos/${product.id}`);
               }}
             >
-              <Eye className="w-4 h-4" />
-              Detalles
+              <Eye className="w-4 h-4 mr-2" />
+              Ver Detalles
             </Button>
             
             <AddToCartButton 
               product={product} 
-              size="sm" 
-              showText={false}
-              className="w-10 h-10 rounded-xl"
+              variant="outline"
+              size="default" 
+              showText={true}
+              className={cn(
+                "w-full h-11 rounded-2xl font-black text-xs uppercase tracking-wider shadow-sm backdrop-blur-sm cursor-pointer",
+                isInCart 
+                  ? "bg-red-50/80 text-red-700 border-red-200 hover:bg-red-100 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800/50 dark:hover:bg-red-900/50" 
+                  : "bg-emerald-50/80 text-emerald-700 border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800/50 dark:hover:bg-emerald-900/50"
+              )}
             />
           </div>
-          
-          <Link href={`/comprar/${product.id}`} className="w-full">
-            <Button 
-              className="w-full gap-2 rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.3)] dark:shadow-[0_0_20px_rgba(37,99,235,0.5)]" 
-              size="sm" 
-              variant="gradient"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ShoppingCart className="w-4 h-4" />
-              Comprar ahora
-            </Button>
-          </Link>
+
+          {/* Botón para cerrar en móvil */}
+          <button
+            className="md:hidden text-white/60 text-[9px] font-bold uppercase tracking-[0.2em] py-1"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsClicked(false);
+            }}
+          >
+            Cerrar opciones
+          </button>
         </div>
 
-        {/* Botón de favorito (corazón) */}
+        {/* Botón de favorito (corazón) - Oculto en móviles para simplificar */}
         <button
-          className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-accent"
+          className="absolute top-2 right-2 p-2 rounded-full bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-300 hover:bg-accent hidden md:block z-30"
           onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             // TODO: Implementar favoritos
           }}
         >
