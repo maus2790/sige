@@ -87,7 +87,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
     await signOut({ callbackUrl: "/" });
   };
 
-  if (pathname.startsWith("/auth")) {
+  if (pathname.startsWith("/auth") || pathname.startsWith("/gift-card")) {
     return null;
   }
 

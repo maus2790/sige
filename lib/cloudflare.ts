@@ -135,15 +135,19 @@ export async function uploadImage(
   }
 
   // Validar tipo de archivo
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg"];
+  const allowedTypes = [
+    "image/jpeg", "image/png", "image/webp", "image/gif", "image/jpg",
+    "video/mp4", "video/webm", "video/quicktime"
+  ];
   if (!allowedTypes.includes(file.type)) {
-    throw new Error("Tipo de archivo no permitido. Solo imágenes (JPEG, PNG, WEBP, GIF)");
+    throw new Error("Tipo de archivo no permitido. Solo imágenes y videos (MP4, WebM, MOV).");
   }
 
-  // Validar tamaño (máximo 5MB)
-  const maxSize = 5 * 1024 * 1024;
+  // Validar tamaño (máximo 5MB para imágenes, 20MB para videos)
+  const isVideo = file.type.startsWith("video/");
+  const maxSize = isVideo ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
   if (file.size > maxSize) {
-    throw new Error("El archivo es demasiado grande. Máximo 5MB");
+    throw new Error(`El archivo es demasiado grande. Máximo ${isVideo ? "20MB" : "5MB"}`);
   }
 
   // Generar nombre único

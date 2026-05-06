@@ -10,7 +10,8 @@ import {
   Settings, 
   LayoutDashboard, 
   LogOut,
-  ShoppingBag
+  ShoppingBag,
+  Gift
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { handleLogout } from "@/app/actions/auth";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/dashboard/inventario", label: "Inventario", icon: Package },
   { href: "/dashboard/comercial", label: "Comercial", icon: ShoppingBag },
   { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingCart },
+  { href: "/dashboard/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];

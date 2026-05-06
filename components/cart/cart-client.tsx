@@ -15,15 +15,43 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { validateGiftCard } from "@/app/actions/gift-cards";
+import { Input } from "@/components/ui/input";
+import { Gift, Ticket } from "lucide-react";
 
 export function CartClient() {
   const { items, removeItem, updateQuantity, getTotalPrice, clearCart } = useCart();
   const [mounted, setMounted] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [giftCardCode, setGiftCardCode] = useState("");
+  const [appliedGiftCard, setAppliedGiftCard] = useState<any>(null);
+  const [isValidatingCode, setIsValidatingCode] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleApplyGiftCard = async () => {
+    if (!giftCardCode.trim()) return;
+    
+    setIsValidatingCode(true);
+    const result = await validateGiftCard(giftCardCode);
+    setIsValidatingCode(false);
+
+    if (result.success) {
+      setAppliedGiftCard(result.card);
+      toast.success(`Tarjeta de regalo aplicada: Bs. ${result.card.currentBalance}`);
+    } else {
+      toast.error(result.error);
+    }
+  };
+
+  const subtotal = getTotalPrice();
+  const giftCardDiscount = appliedGiftCard 
+    ? Math.min(subtotal, appliedGiftCard.currentBalance) 
+    : 0;
+  const total = subtotal - giftCardDiscount;
 
   if (!mounted) {
     return (
@@ -139,15 +167,63 @@ export function CartClient() {
             <div className="space-y-4 mb-8">
               <div className="flex justify-between text-muted-foreground">
                 <span>Subtotal</span>
-                <span className="font-bold text-foreground">Bs. {getTotalPrice().toFixed(2)}</span>
+                <span className="font-bold text-foreground">Bs. {subtotal.toFixed(2)}</span>
               </div>
+              
+              {/* Gift Card Input */}
+              <div className="pt-2">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="Código Gift Card" 
+                      className="pl-9 h-10 rounded-xl bg-muted/30 border-none"
+                      value={giftCardCode}
+                      onChange={(e) => setGiftCardCode(e.target.value.toUpperCase())}
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    className="h-10 rounded-xl border-primary/20 text-primary hover:bg-primary/5 px-4"
+                    onClick={handleApplyGiftCard}
+                    disabled={isValidatingCode || !giftCardCode}
+                  >
+                    {isValidatingCode ? <Loader2 className="w-4 h-4 animate-spin" /> : "Aplicar"}
+                  </Button>
+                </div>
+                {appliedGiftCard && (
+                  <div className="flex items-center justify-between mt-2 px-3 py-2 bg-primary/5 rounded-xl border border-primary/10 animate-in fade-in slide-in-from-top-1">
+                    <div className="flex items-center gap-2 text-xs font-bold text-primary">
+                      <Gift className="w-3 h-3" />
+                      <span>{appliedGiftCard.code}</span>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setAppliedGiftCard(null);
+                        setGiftCardCode("");
+                      }}
+                      className="text-xs text-muted-foreground hover:text-red-500"
+                    >
+                      Remover
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {giftCardDiscount > 0 && (
+                <div className="flex justify-between text-primary font-bold">
+                  <span>Gift Card</span>
+                  <span>- Bs. {giftCardDiscount.toFixed(2)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-muted-foreground">
                 <span>Envío</span>
                 <span className="text-green-500 font-bold uppercase text-xs bg-green-500/10 px-2 py-1 rounded-md">Gratis</span>
               </div>
               <div className="border-t pt-4 flex justify-between items-center">
                 <span className="text-lg font-bold">Total</span>
-                <span className="text-3xl font-black text-primary">Bs. {getTotalPrice().toFixed(2)}</span>
+                <span className="text-3xl font-black text-primary">Bs. {total.toFixed(2)}</span>
               </div>
             </div>
 

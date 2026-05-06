@@ -22,11 +22,11 @@ const publicRoutes = [
   '/categories/',
 ];
 
-// Rutas que comienzan con estos patrones (públicas)
 const publicPatterns = [
   '/productos/',
   '/tiendas/',
   '/categories/',
+  '/gift-card/',
 ];
 
 // ============================================
