@@ -11,7 +11,7 @@ async function WalletContent() {
     const userId = (session?.user as any)?.id;
     if (!userId) redirect('/auth/login');
 
-    const { sent, received } = await getUserGiftCards();
+    const { sent, received, saved } = await getUserGiftCards();
     const totalBalance = await getTotalBalance();
     const stats = await getGiftCardStats();
 
@@ -19,6 +19,7 @@ async function WalletContent() {
         <GiftCardWallet
             sent={sent as any[]}
             received={received as any[]}
+            saved={saved as any[]}
             totalBalance={totalBalance}
             stats={stats}
         />

@@ -13,6 +13,7 @@ import {
 interface GiftCardWalletProps {
   sent: any[];
   received: any[];
+  saved?: any[];
   totalBalance: number;
   stats: {
     totalCards: number;
@@ -25,8 +26,8 @@ interface GiftCardWalletProps {
   } | null;
 }
 
-export function GiftCardWallet({ sent, received, totalBalance, stats }: GiftCardWalletProps) {
-  const [activeTab, setActiveTab] = useState('received');
+export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats }: GiftCardWalletProps) {
+  const [activeTab, setActiveTab] = useState('sent');
 
   const activeReceived = received.filter(c => {
     const exp = c.expiresAt instanceof Date ? c.expiresAt.getTime() : Number(c.expiresAt);
@@ -91,17 +92,17 @@ export function GiftCardWallet({ sent, received, totalBalance, stats }: GiftCard
 
       {/* ── STATS ROW ── */}
       <div className="max-w-2xl mx-auto px-4 -mt-1 mb-6">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {[
-            { label: 'Recibidas', value: stats?.receivedCount ?? 0, sub: `${stats?.activeCount ?? 0} activas`, icon: Inbox, color: 'text-blue-500' },
             { label: 'Enviadas', value: stats?.sentCount ?? 0, sub: 'regalos', icon: Send, color: 'text-purple-500' },
+            { label: 'Recibidas', value: stats?.receivedCount ?? 0, sub: 'activas', icon: Inbox, color: 'text-blue-500' },
+            { label: 'Guardadas', value: saved?.length ?? 0, sub: 'billetera', icon: Wallet, color: 'text-amber-500' },
             { label: 'Expiradas', value: stats?.expiredCount ?? 0, sub: 'vencidas', icon: Clock, color: 'text-red-400' },
           ].map(({ label, value, sub, icon: Icon, color }) => (
-            <div key={label} className="bg-card rounded-2xl p-3 border shadow-sm text-center">
-              <Icon className={`h-5 w-5 mx-auto mb-1 ${color}`} />
-              <p className="text-xl font-black">{value}</p>
-              <p className="text-[10px] text-muted-foreground leading-tight">{label}</p>
-              <p className="text-[9px] text-muted-foreground/60">{sub}</p>
+            <div key={label} className="bg-card rounded-2xl p-2.5 border shadow-sm text-center">
+              <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />
+              <p className="text-lg font-black leading-none mb-1">{value}</p>
+              <p className="text-[9px] text-muted-foreground font-bold leading-tight">{label}</p>
             </div>
           ))}
         </div>
@@ -110,21 +111,35 @@ export function GiftCardWallet({ sent, received, totalBalance, stats }: GiftCard
       {/* ── CARDS TABS ── */}
       <div className="max-w-2xl mx-auto px-4 pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full h-11 rounded-2xl mb-5 bg-muted/60">
-            <TabsTrigger value="received" className="flex-1 rounded-xl gap-2 text-sm font-bold data-[state=active]:shadow-sm">
-              <Inbox className="h-4 w-4" />
-              Recibidas
-              {activeReceived.length > 0 && (
-                <span className="ml-1 bg-blue-500 text-white text-[10px] font-black rounded-full px-1.5 py-0.5">
-                  {activeReceived.length}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="sent" className="flex-1 rounded-xl gap-2 text-sm font-bold data-[state=active]:shadow-sm">
-              <Send className="h-4 w-4" />
+          <TabsList className="w-full h-11 rounded-2xl mb-5 bg-muted/60 p-1">
+            <TabsTrigger value="sent" className="flex-1 rounded-xl gap-1.5 text-xs font-bold data-[state=active]:shadow-sm">
+              <Send className="h-3.5 w-3.5" />
               Enviadas
             </TabsTrigger>
+            <TabsTrigger value="received" className="flex-1 rounded-xl gap-1.5 text-xs font-bold data-[state=active]:shadow-sm">
+              <Inbox className="h-3.5 w-3.5" />
+              Recibidas
+            </TabsTrigger>
+            <TabsTrigger value="saved" className="flex-1 rounded-xl gap-1.5 text-xs font-bold data-[state=active]:shadow-sm">
+              <Wallet className="h-3.5 w-3.5" />
+              Guardadas
+            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sent" className="space-y-4 mt-0">
+            {sent.length === 0 ? (
+              <EmptyState
+                icon={<Send className="h-10 w-10" />}
+                title="No has enviado ningún regalo"
+                description="Sorprende a alguien especial con una Gift Card del mercado SIGE."
+                action={{ label: 'Comprar Gift Card', href: '/gift-cards/buy' }}
+              />
+            ) : (
+              sent.map((gc) => (
+                <GiftCardCard key={gc.id} giftCard={gc} type="sent" />
+              ))
+            )}
+          </TabsContent>
 
           <TabsContent value="received" className="space-y-4 mt-0">
             {received.length === 0 ? (
@@ -141,17 +156,17 @@ export function GiftCardWallet({ sent, received, totalBalance, stats }: GiftCard
             )}
           </TabsContent>
 
-          <TabsContent value="sent" className="space-y-4 mt-0">
-            {sent.length === 0 ? (
+          <TabsContent value="saved" className="space-y-4 mt-0">
+            {(!saved || saved.length === 0) ? (
               <EmptyState
-                icon={<Gift className="h-10 w-10" />}
-                title="No has enviado ningún regalo"
-                description="Sorprende a alguien especial con una Gift Card del mercado SIGE."
-                action={{ label: 'Comprar Gift Card', href: '/gift-cards/buy' }}
+                icon={<Wallet className="h-10 w-10" />}
+                title="No tienes tarjetas guardadas"
+                description="Aquí aparecerán las tarjetas que compres para ti o que aún no hayas enviado."
+                action={{ label: 'Comprar para mí', href: '/gift-cards/buy' }}
               />
             ) : (
-              sent.map((gc) => (
-                <GiftCardCard key={gc.id} giftCard={gc} type="sent" />
+              saved.map((gc) => (
+                <GiftCardCard key={gc.id} giftCard={gc} type="received" />
               ))
             )}
           </TabsContent>

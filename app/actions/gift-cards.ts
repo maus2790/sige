@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { giftCards, products, stores, comercialConfig } from '@/db/schema';
+import { giftCards, products, stores, comercialConfig, users } from '@/db/schema';
 import { eq, or, desc, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -19,6 +19,24 @@ export async function getCurrentUser() {
     role: user.role as string || 'user',
     name: user.name as string || '',
   };
+}
+
+export async function getSIGEUsers() {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) return [];
+
+  // Fetch users excluding the current one
+  const allUsers = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+    })
+    .from(users)
+    .where(sql`${users.id} != ${currentUser.id}`)
+    .limit(50);
+
+  return allUsers;
 }
 
 function generateGiftCode(): string {
@@ -49,10 +67,11 @@ export async function getUserGiftCards() {
     )
     .orderBy(desc(giftCards.createdAt));
   
-  const sent = userGiftCards.filter(gc => gc.senderId === user.id);
-  const received = userGiftCards.filter(gc => gc.recipientId === user.id);
+  const sent = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId !== user.id);
+  const received = userGiftCards.filter(gc => gc.recipientId === user.id && gc.senderId !== user.id);
+  const saved = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId === user.id);
   
-  return { sent, received, all: userGiftCards };
+  return { sent, received, saved, all: userGiftCards };
 }
 
 export async function getGiftCardById(giftCardId: string) {
@@ -119,8 +138,9 @@ export async function getGiftCardStats() {
       )
     );
   
-  const sent = allCards.filter(c => c.senderId === user.id);
-  const received = allCards.filter(c => c.recipientId === user.id);
+  const sent = allCards.filter(c => c.senderId === user.id && c.recipientId !== user.id);
+  const received = allCards.filter(c => c.recipientId === user.id && c.senderId !== user.id);
+  const saved = allCards.filter(c => c.senderId === user.id && c.recipientId === user.id);
   
   const activeReceived = received.filter(c => 
     c.status === 'active' && c.expiresAt > new Date()
@@ -140,6 +160,7 @@ export async function getGiftCardStats() {
     totalCards: allCards.length,
     sentCount: sent.length,
     receivedCount: received.length,
+    savedCount: saved.length,
     activeCount: activeReceived.length,
     totalBalance,
     expiredCount: expiredReceived.length,
@@ -293,6 +314,7 @@ export async function purchaseGiftCard(data: {
   templateId?: number;
   businessId: string;
   productId?: string;
+  recipientId?: string;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -314,6 +336,7 @@ export async function purchaseGiftCard(data: {
     expiresAt,
     status: 'active',
     senderId: user.id,
+    recipientId: data.recipientId,
     recipientEmail: data.recipientEmail,
     recipientName: data.recipientName,
     businessId: data.businessId,
@@ -326,6 +349,22 @@ export async function purchaseGiftCard(data: {
 
   revalidatePath('/gift-cards');
   return { success: true, id };
+}
+
+export async function saveGiftCardToWallet(giftCardId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  await db
+    .update(giftCards)
+    .set({
+      recipientId: user.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(giftCards.id, giftCardId));
+
+  revalidatePath('/gift-cards');
+  return { success: true };
 }
 
 export async function searchGiftingProducts(query: string) {
