@@ -166,7 +166,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
               />
             ) : (
               saved.map((gc) => (
-                <GiftCardCard key={gc.id} giftCard={gc} type="received" />
+                <GiftCardCard key={gc.id} giftCard={gc} type="saved" />
               ))
             )}
           </TabsContent>

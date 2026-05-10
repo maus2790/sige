@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from "next-auth/next";
 import { nextauthConfig } from "@/lib/nextauth.config";
 import crypto from 'crypto';
+import { uploadImageFromBuffer } from '@/lib/cloudflare';
 
 export async function getCurrentUser() {
   const session = await getServerSession(nextauthConfig);
@@ -315,6 +316,9 @@ export async function purchaseGiftCard(data: {
   businessId: string;
   productId?: string;
   recipientId?: string;
+  occasion?: string;
+  cardImageUrl?: string;
+  receiptUrl?: string;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -343,12 +347,44 @@ export async function purchaseGiftCard(data: {
     productId: data.productId,
     message: data.message,
     templateId: data.templateId,
+    occasion: data.occasion,
+    cardImageUrl: data.cardImageUrl,
+    receiptUrl: data.receiptUrl,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
 
   revalidatePath('/gift-cards');
   return { success: true, id };
+}
+
+export async function updateGiftCardRecipient(data: {
+  giftCardId: string;
+  recipientName: string;
+  recipientEmail: string;
+  recipientId?: string;
+}) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const giftCard = await getGiftCardById(data.giftCardId);
+  if (!giftCard) return { error: 'Gift card no encontrada' };
+  if (giftCard.senderId !== user.id) return { error: 'No autorizado' };
+
+  await db
+    .update(giftCards)
+    .set({
+      recipientName: data.recipientName,
+      recipientEmail: data.recipientEmail,
+      recipientId: data.recipientId || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(giftCards.id, data.giftCardId));
+
+  revalidatePath('/gift-cards');
+  revalidatePath(`/gift-cards/${data.giftCardId}`);
+  
+  return { success: true };
 }
 
 export async function saveGiftCardToWallet(giftCardId: string) {
@@ -391,4 +427,52 @@ export async function searchGiftingProducts(query: string) {
     .limit(10);
   
   return results;
+}
+
+export async function uploadGiftCardImage(base64Image: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  try {
+    // Convert base64 to buffer
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    const result = await uploadImageFromBuffer(
+      buffer, 
+      `gift-card-${Date.now()}.png`, 
+      'image/png', 
+      'gift-cards'
+    );
+
+    return { success: true, url: result.url };
+  } catch (error) {
+    console.error('Error uploading gift card image:', error);
+    return { error: 'Error al subir la imagen' };
+  }
+}
+
+export async function uploadGiftCardReceipt(base64Image: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  try {
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+    
+    // Attempt to guess extension from base64 (default png)
+    const extension = base64Image.match(/^data:image\/(\w+);base64,/)?.[1] || 'png';
+    
+    const result = await uploadImageFromBuffer(
+      buffer, 
+      `receipt-${Date.now()}.${extension}`, 
+      `image/${extension}`, 
+      'receipts'
+    );
+
+    return { success: true, url: result.url };
+  } catch (error) {
+    console.error('Error uploading receipt image:', error);
+    return { error: 'Error al subir el comprobante' };
+  }
 }

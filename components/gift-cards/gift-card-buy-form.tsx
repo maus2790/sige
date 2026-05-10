@@ -9,20 +9,22 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Gift, Search, User, Mail, MessageCircle, Check, CreditCard, ChevronRight, ChevronLeft, Cake, Heart, GraduationCap, CalendarDays, Baby, Handshake, TreePine, Sparkles, Home, PartyPopper, Send, Wallet, Clock } from 'lucide-react';
-import { purchaseGiftCard, searchGiftingProducts, saveGiftCardToWallet, getSIGEUsers } from '@/app/actions/gift-cards';
+import { Gift, Search, User, Mail, MessageCircle, Check, CreditCard, ChevronRight, ChevronLeft, Cake, Heart, GraduationCap, CalendarDays, Baby, Handshake, TreePine, Sparkles, Home, PartyPopper, Send, Wallet, Clock, Upload, Plus } from 'lucide-react';
+import { purchaseGiftCard, searchGiftingProducts, saveGiftCardToWallet, getSIGEUsers, uploadGiftCardImage, uploadGiftCardReceipt } from '@/app/actions/gift-cards';
+import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
 import { useDebounce } from 'use-debounce';
 
 const TEMPLATES = [
-  { id: 1, name: 'Azul SIGE', className: 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900' },
-  { id: 2, name: 'Noche Oscura', className: 'bg-linear-to-br from-zinc-800 via-zinc-900 to-black' },
-  { id: 3, name: 'Oro Real', className: 'bg-linear-to-br from-yellow-400 via-amber-500 to-orange-600' },
-  { id: 4, name: 'Amor Eterno', className: 'bg-linear-to-br from-rose-500 via-pink-600 to-fuchsia-700' },
-  { id: 5, name: 'Esmeralda', className: 'bg-linear-to-br from-emerald-500 via-green-600 to-teal-800' },
-  { id: 6, name: 'Púrpura Galaxia', className: 'bg-linear-to-br from-purple-600 via-violet-700 to-indigo-950' },
-  { id: 7, name: 'Atardecer', className: 'bg-linear-to-br from-orange-400 via-red-500 to-rose-600' },
-  { id: 8, name: 'Neon Cyber', className: 'bg-zinc-950 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' },
+  { id: 1, name: 'BLUE CARD', className: 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900' },
+  { id: 2, name: 'BLACK CARD', className: 'bg-linear-to-br from-zinc-800 via-zinc-900 to-black' },
+  { id: 3, name: 'GOLD CARD', className: 'bg-linear-to-br from-yellow-400 via-amber-500 to-orange-600' },
+  { id: 4, name: 'ROSE CARD', className: 'bg-linear-to-br from-rose-500 via-pink-600 to-fuchsia-700' },
+  { id: 5, name: 'EMERALD CARD', className: 'bg-linear-to-br from-emerald-500 via-green-600 to-teal-800' },
+  { id: 6, name: 'PURPLE CARD', className: 'bg-linear-to-br from-purple-600 via-violet-700 to-indigo-950' },
+  { id: 7, name: 'ORANGE CARD', className: 'bg-linear-to-br from-orange-400 via-red-500 to-rose-600' },
+  { id: 8, name: 'NEON CARD', className: 'bg-zinc-950 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' },
 ];
 
 const EVENT_MESSAGES: Record<string, string[]> = {
@@ -103,6 +105,7 @@ const MAX_WORDS = 35;
 
 export function GiftCardBuyForm() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   
@@ -123,6 +126,21 @@ export function GiftCardBuyForm() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [isScheduled, setIsScheduled] = useState(false);
   const [purchasedId, setPurchasedId] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transfer' | 'tigo' | null>(null);
+
+  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setReceiptFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Generar código cuando se llega al paso 3
   useEffect(() => {
@@ -147,9 +165,10 @@ export function GiftCardBuyForm() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Refs for sliders
+  // Refs for sliders and capture
   const occasionsRef = useRef<HTMLDivElement>(null);
   const designsRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
     if (ref.current) {
@@ -198,6 +217,22 @@ export function GiftCardBuyForm() {
 
   const wordCount = message.trim().split(/\s+/).filter(w => w.length > 0).length;
 
+  const getOccasionIcon = (occ: string | null) => {
+    switch (occ) {
+      case 'cumpleaños': return <Cake className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'boda': return <Heart className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'graduación': return <GraduationCap className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'aniversario': return <CalendarDays className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'nacimiento': return <Baby className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'agradecimiento': return <Handshake className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'navidad': return <TreePine className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'san valentín': return <Sparkles className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'hogar': return <Home className="h-4 w-4 lg:h-5 lg:w-5" />;
+      case 'otros': return <PartyPopper className="h-4 w-4 lg:h-5 lg:w-5" />;
+      default: return <Gift className="h-4 w-4 lg:h-5 lg:w-5" />;
+    }
+  };
+
   const handlePurchase = async () => {
     const isFormValid = () => {
       if (!recipientName) return false;
@@ -214,23 +249,117 @@ export function GiftCardBuyForm() {
 
     setLoading(true);
     try {
+      let finalReceiptUrl = undefined;
+      let finalCardImageUrl = undefined;
+
+      // 1. Si hay comprobante de pago, subirlo a R2
+      if (receiptPreview && paymentMethod !== 'qr') {
+        toast.loading('Subiendo comprobante...', { id: 'upload-receipt' });
+        const receiptResult = await uploadGiftCardReceipt(receiptPreview);
+        if (receiptResult.success) {
+          finalReceiptUrl = receiptResult.url;
+          toast.success('Comprobante subido', { id: 'upload-receipt' });
+        } else {
+          toast.error('Error al subir comprobante', { id: 'upload-receipt' });
+        }
+      }
+
+      // 2. Generar imagen de la tarjeta SIEMPRE para guardarla
+      if (cardRef.current) {
+        toast.loading('Generando diseño final...', { id: 'card-image' });
+        try {
+          const dataUrl = await toPng(cardRef.current, { 
+            cacheBust: true,
+            pixelRatio: 2, // Use pixel ratio for higher quality instead of fixed width/height
+            style: { margin: '0' } // Removed borderRadius override to keep the original shape
+          });
+          const imgResult = await uploadGiftCardImage(dataUrl);
+          if (imgResult.success) {
+            finalCardImageUrl = imgResult.url;
+            toast.success('Diseño generado', { id: 'card-image' });
+          } else {
+            toast.error('Error al subir diseño', { id: 'card-image' });
+          }
+        } catch (e) {
+          console.error("Error generating card image", e);
+          toast.error('Error generando vista previa', { id: 'card-image' });
+        }
+      }
+
+      // 3. Procesar la compra en DB
+      toast.loading('Procesando compra...', { id: 'purchase' });
       const result = await purchaseGiftCard({
         amount,
         recipientEmail: deliveryMethod === 'sige' ? (sigeUsers.find(u => u.id === recipientId)?.email || '') : recipientEmail,
         recipientName: deliveryMethod === 'sige' ? (sigeUsers.find(u => u.id === recipientId)?.name || recipientName) : recipientName,
         message,
         templateId,
+        occasion: selectedEvent || undefined,
         businessId: selectedProduct?.storeId || 'SIGE-GLOBAL',
         productId: selectedProduct?.id,
-        recipientId: deliveryMethod === 'sige' ? recipientId : undefined
+        recipientId: deliveryMethod === 'sige' ? recipientId : undefined,
+        cardImageUrl: finalCardImageUrl,
+        receiptUrl: finalReceiptUrl
       });
 
       if (result.success) {
-        toast.success('¡Compra exitosa!');
+        toast.success('¡Compra exitosa!', { id: 'purchase' });
+        
+        // Si es WhatsApp, preparar el mensaje
+        if (deliveryMethod === 'whatsapp' && finalCardImageUrl) {
+          const senderName = session?.user?.name || "Un amigo/a"; 
+          const occasionEmoji = selectedEvent === 'cumpleaños' ? '🎂' : selectedEvent === 'boda' ? '❤️' : '🎁';
+          const text = `¡Hola ${recipientName}! ${senderName} te está regalando una Gift Card de Bs. ${amount.toFixed(2)} por ${selectedEvent || 'una ocasión especial'} ${occasionEmoji}\n\nMírala aquí: ${finalCardImageUrl}\n\n¡Disfrútalo!`;
+          
+          const waUrl = `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+          
+          // Usar un elemento a para mejor compatibilidad con bloqueadores de popups
+          const link = document.createElement('a');
+          link.href = waUrl;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+
+        // Redirigir a la sección de enviados después de un breve tiempo
+        // para dar tiempo a que se abra la pestaña de WhatsApp
+        setTimeout(() => {
+          router.push('/gift-cards?tab=sent');
+        }, 800);
+      } else {
+        toast.error('Error al procesar la compra', { id: 'purchase' });
+      }
+    } catch (error) {
+      toast.error('Algo salió mal');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveToWallet = async () => {
+    setLoading(true);
+    try {
+      const result = await purchaseGiftCard({
+        amount,
+        recipientName: 'Mi Inventario',
+        recipientEmail: 'me@sige.com', // Placeholder for "myself"
+        message,
+        templateId,
+        occasion: selectedEvent || undefined,
+        businessId: selectedProduct?.storeId || 'SIGE-GLOBAL',
+        productId: selectedProduct?.id,
+        recipientId: 'SELF' // Indicator for the action
+      });
+
+      if (result.success) {
+        toast.success('¡Guardada en tu billetera!');
         setPurchasedId(result.id);
+        setDeliveryMethod('sige'); // Default for self
+        setRecipientName('Mi Inventario');
         setStep(4);
       } else {
-        toast.error('Error al procesar la compra');
+        toast.error('Error al guardar');
       }
     } catch (error) {
       toast.error('Algo salió mal');
@@ -257,8 +386,8 @@ export function GiftCardBuyForm() {
   const selectedTemplate = TEMPLATES.find(t => t.id === templateId) || TEMPLATES[0];
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-6 lg:space-y-8 pb-20 px-0 md:px-6">
-      <div className="flex justify-between items-center mb-8 overflow-x-auto pb-2 scrollbar-hide">
+    <div className="w-full max-w-6xl mx-auto space-y-4 lg:space-y-6 pb-20 px-4 md:px-6">
+      <div className="flex justify-between items-center mb-4 overflow-x-auto pb-2 scrollbar-hide">
         {[1, 2, 3].map((s) => (
           <div key={s} className="flex items-center">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
@@ -275,9 +404,9 @@ export function GiftCardBuyForm() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-12 items-start relative">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-12 items-start relative">
         {/* Preview Area (Sticky at top on mobile, sticky at right on desktop) */}
-        <div className="w-full lg:order-2 sticky top-[64px] lg:top-24 z-40 bg-background/95 backdrop-blur-md lg:bg-transparent py-2 lg:py-0 border-b lg:border-none">
+        <div className="w-full lg:order-2 sticky top-[64px] lg:top-24 z-40 bg-background/95 backdrop-blur-md lg:bg-transparent py-1 lg:py-0 border-b lg:border-none">
           <div className="space-y-4">
             <div className="hidden lg:flex items-center justify-between px-2 max-w-[420px] mx-auto">
               <h3 className="font-bold text-lg flex items-center gap-2">
@@ -289,7 +418,10 @@ export function GiftCardBuyForm() {
               </Badge>
             </div>
 
-            <div className={`aspect-[1.9/1] lg:aspect-[1.8/1] w-full max-w-[420px] mx-auto rounded-2xl lg:rounded-3xl p-4 lg:p-5 text-white shadow-2xl relative overflow-hidden transition-all duration-700 ring-1 ring-white/20 ${selectedTemplate.className}`}>
+            <div 
+              ref={cardRef}
+              className={`aspect-[1.9/1] lg:aspect-[1.8/1] w-full max-w-[420px] mx-auto rounded-2xl lg:rounded-3xl p-4 lg:p-5 text-white shadow-2xl relative overflow-hidden transition-all duration-700 ring-1 ring-white/20 card-shine ${selectedTemplate.className}`}
+            >
               {/* Decorative elements */}
               <div className="absolute top-0 right-0 p-4 lg:p-6 opacity-10">
                 <Gift size={140} />
@@ -299,7 +431,7 @@ export function GiftCardBuyForm() {
                 <div className="flex justify-between items-start">
                   <div className="space-y-2 lg:space-y-4 flex-1">
                     <div className="h-8 w-8 lg:h-10 lg:w-10 rounded-lg lg:rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/40">
-                      <Gift className="h-4 w-4 lg:h-5 lg:w-5" />
+                      {getOccasionIcon(selectedEvent)}
                     </div>
                     
                     <div className="space-y-0.5 lg:space-y-1">
@@ -318,7 +450,7 @@ export function GiftCardBuyForm() {
 
                   <div className="text-right">
                     <p className="text-[8px] lg:text-[10px] font-black tracking-widest opacity-90 uppercase">SIGE DIGITAL</p>
-                    <p className="text-[6px] lg:text-[7px] font-bold opacity-60 tracking-wider">PLATINUM CARD</p>
+                    <p className="text-[6px] lg:text-[7px] font-bold opacity-60 tracking-wider">{selectedTemplate.name}</p>
                   </div>
                 </div>
 
@@ -365,123 +497,19 @@ export function GiftCardBuyForm() {
 
         {/* Form Area */}
         <div className="w-full lg:order-1 space-y-6">
+          {/* NUEVO PASO 1: PERSONALIZACIÓN */}
           {step === 1 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl">
-              <CardHeader>
+            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
                 <CardTitle className="text-2xl flex items-center gap-2">
-                  <Gift className="text-blue-600" />
-                  ¿Qué quieres regalar?
-                </CardTitle>
-                <CardDescription>
-                  Puedes regalar un monto específico o un producto del mercado.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 px-3 md:px-6">
-                <div className="space-y-4">
-                  <Label>Buscar un producto para regalar (Opcional)</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      placeholder="Busca por nombre de producto..."
-                      className="pl-10 h-12"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
-                  </div>
-                  
-                  {isSearching && <p className="text-sm text-muted-foreground animate-pulse">Buscando productos...</p>}
-                  
-                  {searchResults.length > 0 && (
-                    <div className="border rounded-xl divide-y overflow-hidden bg-card">
-                      {searchResults.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          className="w-full p-3 text-left hover:bg-muted transition-colors flex items-center gap-3"
-                          onClick={() => handleProductSelect(p)}
-                        >
-                          <div className="w-10 h-10 rounded bg-muted shrink-0 overflow-hidden">
-                            {p.imageUrls?.[0] && <img src={p.imageUrls[0]} alt={p.name} className="w-full h-full object-cover" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{p.name}</p>
-                            <p className="text-xs text-muted-foreground">{p.storeName}</p>
-                          </div>
-                          <p className="font-bold text-blue-600">Bs. {p.price}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedProduct && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Check className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <p className="text-sm font-bold">Producto seleccionado</p>
-                          <p className="text-xs text-muted-foreground">{selectedProduct.name}</p>
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedProduct(null)}>Cambiar</Button>
-                    </div>
-                  )}
-                </div>
-
-                {!selectedProduct && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <Label>O elige un monto</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {PREDEFINED_AMOUNTS.map((amt) => (
-                        <Button
-                          key={amt}
-                          type="button"
-                          variant={amount === amt ? 'default' : 'outline'}
-                          className={`h-12 text-lg font-bold ${amount === amt ? 'bg-blue-600' : ''}`}
-                          onClick={() => {
-                            setAmount(amt);
-                            setCustomAmount('');
-                          }}
-                        >
-                          Bs. {amt}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="relative pt-2">
-                      <Input
-                        placeholder="Otro monto personalizado..."
-                        type="number"
-                        className="h-12 text-center text-lg font-bold"
-                        value={customAmount}
-                        onChange={(e) => {
-                          setCustomAmount(e.target.value);
-                          setAmount(Number(e.target.value));
-                        }}
-                      />
-                      <span className="absolute left-4 top-[60%] -translate-y-1/2 text-muted-foreground font-bold">Bs.</span>
-                    </div>
-                  </div>
-                )}
-
-                <Button className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700" onClick={nextStep}>
-                  Siguiente
-                  <ChevronRight className="ml-2 h-5 w-5" />
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-
-          {step === 2 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <Sparkles className="text-blue-600" />
+                  <Sparkles className="h-6 w-6" />
                   Personaliza tu Regalo
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-white/80">
                   Elige una ocasión, escribe un mensaje y selecciona un diseño.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6 px-3 md:px-6">
+              <CardContent className="space-y-6 px-4 md:px-6 pt-6">
                 <div className="space-y-4 pt-2">
                   <div className="flex justify-between items-end">
                     <Label>¿Cuál es la ocasión? (Opcional)</Label>
@@ -631,12 +659,200 @@ export function GiftCardBuyForm() {
                   </div>
                 </div>
 
+                <Button className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700" onClick={nextStep}>
+                  Siguiente
+                  <ChevronRight className="ml-2 h-5 w-5" />
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PASO 2: MONTO Y PAGO */}
+          {step === 2 && (
+            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <CreditCard className="h-6 w-6" />
+                  Monto y Pago
+                </CardTitle>
+                <CardDescription className="text-white/80">
+                  Elige el valor del regalo y realiza el pago por QR.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6 p-4 md:p-6 pt-6">
+                <div className="space-y-4">
+                  <Label className="text-base font-bold">Elige un monto</Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {PREDEFINED_AMOUNTS.map((amt) => (
+                      <Button
+                        key={amt}
+                        type="button"
+                        variant={amount === amt ? 'default' : 'outline'}
+                        className={`h-12 text-lg font-bold rounded-xl ${amount === amt ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : ''}`}
+                        onClick={() => {
+                          setAmount(amt);
+                          setCustomAmount('');
+                        }}
+                      >
+                        Bs. {amt}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="relative pt-2">
+                    <Input
+                      placeholder="Monto personalizado..."
+                      type="number"
+                      className="h-14 text-center text-xl font-black rounded-xl border-2 focus:border-blue-500 bg-background"
+                      value={customAmount}
+                      onChange={(e) => {
+                        setCustomAmount(e.target.value);
+                        setAmount(Number(e.target.value));
+                      }}
+                    />
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-black text-lg">Bs.</span>
+                  </div>
+                </div>
+
+                <div className="bg-muted/50 dark:bg-muted/20 p-5 md:p-6 rounded-3xl border-2 border-slate-200 dark:border-slate-800 space-y-6">
+                  <div className="space-y-4">
+                    <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground text-center block">Selecciona Método de Pago</Label>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Button 
+                        type="button"
+                        variant={paymentMethod === 'qr' ? 'default' : 'outline'}
+                        className={`h-16 flex flex-col gap-1 rounded-2xl transition-all ${paymentMethod === 'qr' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-4 ring-blue-500/20' : ''}`}
+                        onClick={() => setPaymentMethod('qr')}
+                      >
+                        <Search className="h-5 w-5" />
+                        <span className="text-[10px] font-bold">QR Simple</span>
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant={paymentMethod === 'transfer' ? 'default' : 'outline'}
+                        className={`h-16 flex flex-col gap-1 rounded-2xl transition-all ${paymentMethod === 'transfer' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-4 ring-blue-500/20' : ''}`}
+                        onClick={() => setPaymentMethod('transfer')}
+                      >
+                        <Wallet className="h-5 w-5" />
+                        <span className="text-[10px] font-bold">Transf.</span>
+                      </Button>
+                      <Button 
+                        type="button"
+                        variant={paymentMethod === 'tigo' ? 'default' : 'outline'}
+                        className={`h-16 flex flex-col gap-1 rounded-2xl transition-all ${paymentMethod === 'tigo' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-4 ring-blue-500/20' : ''}`}
+                        onClick={() => setPaymentMethod('tigo')}
+                      >
+                        <MessageCircle className="h-5 w-5" />
+                        <span className="text-[10px] font-bold">Tigo Money</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {paymentMethod === 'qr' && (
+                    <div className="text-center space-y-3 animate-in zoom-in duration-300">
+                      <div className="w-44 h-44 mx-auto bg-white p-3 rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center">
+                        <img 
+                          src={`/payment_qr_placeholder_1778424633832.png`} 
+                          alt="QR de Pago" 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted-foreground font-medium">Escanea para pagar Bs. {amount.toFixed(2)}</p>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'transfer' && (
+                    <div className="bg-card p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 space-y-4 animate-in slide-in-from-bottom-2 duration-300">
+                      <h4 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400">Datos de Transferencia</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Banco</span>
+                          <span className="text-xs font-black uppercase">Banco Unión</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Cuenta</span>
+                          <span className="text-xs font-black uppercase">123456789</span>
+                        </div>
+                        <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Titular</span>
+                          <span className="text-xs font-black uppercase">SIGE DIGITAL S.R.L.</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">NIT/CI</span>
+                          <span className="text-xs font-black uppercase">987654321</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'tigo' && (
+                    <div className="bg-blue-600 dark:bg-blue-700 p-5 rounded-2xl text-white space-y-3 animate-in slide-in-from-bottom-2 duration-300 shadow-lg shadow-blue-500/20">
+                      <div className="flex items-center gap-3">
+                         <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                            <MessageCircle className="h-6 w-6" />
+                         </div>
+                         <div>
+                            <h4 className="text-xs font-black uppercase tracking-widest opacity-80 leading-none mb-1">Tigo Money</h4>
+                            <p className="text-sm font-bold">Transferencia Directa</p>
+                         </div>
+                      </div>
+                      <div className="pt-2 bg-black/10 p-4 rounded-xl">
+                        <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-1">Número de destino</p>
+                        <p className="text-3xl font-black tabular-nums tracking-tight">76543210</p>
+                        <p className="text-[9px] opacity-70 mt-2 font-medium">Asegúrate de transferir el monto exacto: Bs. {amount.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-bold flex items-center gap-2">
+                      <Upload className="h-4 w-4 text-blue-600" />
+                      Sube tu comprobante
+                    </Label>
+                    <div 
+                      className={`relative h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
+                        receiptFile ? 'border-green-500 bg-green-50/10 dark:bg-green-900/10' : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'
+                      }`}
+                      onClick={() => document.getElementById('receipt-upload')?.click()}
+                    >
+                      {receiptPreview ? (
+                        <div className="flex items-center gap-3 p-2 w-full">
+                          <div className="w-12 h-12 rounded-lg overflow-hidden border shrink-0">
+                            <img src={receiptPreview} alt="Comprobante" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold truncate">{receiptFile?.name}</p>
+                            <p className="text-[10px] text-green-600 flex items-center gap-1 font-bold">
+                              <Check className="h-3 w-3" /> LISTO
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <Plus className="h-6 w-6 text-slate-400 mb-1" />
+                          <p className="text-xs font-medium text-slate-500">Click para subir foto o PDF</p>
+                        </>
+                      )}
+                      <input 
+                        id="receipt-upload"
+                        type="file" 
+                        className="hidden" 
+                        accept="image/*,.pdf"
+                        onChange={handleReceiptUpload}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex gap-4">
-                  <Button variant="outline" className="flex-1 h-12" onClick={prevStep}>
+                  <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={prevStep}>
                     <ChevronLeft className="mr-2 h-5 w-5" />
                     Atrás
                   </Button>
-                  <Button className="flex-2 h-12 text-lg bg-blue-600 hover:bg-blue-700" onClick={nextStep}>
+                  <Button 
+                    className="flex-2 h-12 text-lg bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg" 
+                    onClick={nextStep}
+                    disabled={!amount || !receiptFile || !paymentMethod}
+                  >
                     Siguiente
                     <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -645,18 +861,19 @@ export function GiftCardBuyForm() {
             </Card>
           )}
 
+          {/* PASO 3: DESTINATARIO Y ENVÍO */}
           {step === 3 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden">
-              <CardHeader className="bg-blue-600 text-white p-6">
-                <CardTitle className="text-xl flex items-center gap-2">
+            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+                <CardTitle className="text-2xl flex items-center gap-2">
                   <User className="h-6 w-6" />
                   Destinatario y Envío
                 </CardTitle>
-                <CardDescription className="text-blue-100">
-                  ¿A quién enviamos este regalo y por qué medio?
+                <CardDescription className="text-white/80">
+                  Configura los detalles de entrega de tu regalo.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-4 md:p-6 space-y-6">
+              <CardContent className="p-4 md:p-6 space-y-6 pt-6">
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="recNameFinal">Nombre del destinatario</Label>
@@ -665,7 +882,7 @@ export function GiftCardBuyForm() {
                       <Input
                         id="recNameFinal"
                         placeholder="Nombre completo..."
-                        className="pl-10 h-12"
+                        className="pl-10 h-12 rounded-xl"
                         value={recipientName}
                         onChange={(e) => setRecipientName(e.target.value)}
                       />
@@ -677,36 +894,36 @@ export function GiftCardBuyForm() {
                     <div className="grid grid-cols-3 gap-2">
                       <Button
                         type="button"
-                        variant={deliveryMethod === 'email' ? 'default' : 'outline'}
-                        className={`h-14 flex flex-col gap-1 px-1 ${deliveryMethod === 'email' ? 'bg-blue-600' : ''}`}
-                        onClick={() => setDeliveryMethod('email')}
-                      >
-                        <Mail className="h-4 w-4" />
-                        <span className="text-[10px]">Por Email</span>
-                      </Button>
-                      <Button
-                        type="button"
                         variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'}
-                        className={`h-14 flex flex-col gap-1 px-1 ${deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+                        className={`h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700' : ''}`}
                         onClick={() => setDeliveryMethod('whatsapp')}
                       >
                         <MessageCircle className="h-4 w-4" />
-                        <span className="text-[10px]">WhatsApp</span>
+                        <span className="text-[10px] font-bold">WhatsApp</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={deliveryMethod === 'email' ? 'default' : 'outline'}
+                        className={`h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'email' ? 'bg-[#EA4335] hover:bg-[#D93025]' : ''}`}
+                        onClick={() => setDeliveryMethod('email')}
+                      >
+                        <Mail className="h-4 w-4" />
+                        <span className="text-[10px] font-bold">Por Email</span>
                       </Button>
                       <Button
                         type="button"
                         variant={deliveryMethod === 'sige' ? 'default' : 'outline'}
-                        className={`h-14 flex flex-col gap-1 px-1 ${deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+                        className={`h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
                         onClick={() => setDeliveryMethod('sige')}
                       >
                         <User className="h-4 w-4" />
-                        <span className="text-[10px]">Usuario SIGE</span>
+                        <span className="text-[10px] font-bold">Usuario SIGE</span>
                       </Button>
                     </div>
                   </div>
 
                   {deliveryMethod === 'email' && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                       <Label htmlFor="recEmailFinal">Correo electrónico</Label>
                       <div className="relative">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -714,7 +931,7 @@ export function GiftCardBuyForm() {
                           id="recEmailFinal"
                           type="email"
                           placeholder="correo@ejemplo.com"
-                          className="pl-10 h-12"
+                          className="pl-10 h-12 rounded-xl"
                           value={recipientEmail}
                           onChange={(e) => setRecipientEmail(e.target.value)}
                         />
@@ -723,7 +940,7 @@ export function GiftCardBuyForm() {
                   )}
 
                   {deliveryMethod === 'whatsapp' && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                       <Label htmlFor="recWa">Número de WhatsApp</Label>
                       <div className="relative">
                         <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -731,7 +948,7 @@ export function GiftCardBuyForm() {
                           id="recWa"
                           type="tel"
                           placeholder="+591 7XXXXXXX"
-                          className="pl-10 h-12"
+                          className="pl-10 h-12 rounded-xl"
                           value={whatsappNumber}
                           onChange={(e) => setWhatsappNumber(e.target.value)}
                         />
@@ -740,11 +957,11 @@ export function GiftCardBuyForm() {
                   )}
 
                   {deliveryMethod === 'sige' && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                       <Label htmlFor="sigeUser">Seleccionar Usuario SIGE</Label>
                       <select
                         id="sigeUser"
-                        className="w-full h-12 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                        className="w-full h-12 rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                         value={recipientId}
                         onChange={(e) => {
                           const uid = e.target.value;
@@ -765,29 +982,16 @@ export function GiftCardBuyForm() {
                       </select>
                     </div>
                   )}
-
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-bold text-blue-700 dark:text-blue-300">CÓDIGO GENERADO:</span>
-                      <Badge variant="outline" className="font-mono bg-white dark:bg-black">{giftCardCode}</Badge>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Este código se activará automáticamente después del pago.</p>
-                  </div>
                 </div>
 
                 <div className="pt-4 border-t space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold">Total a Pagar:</span>
-                    <span className="text-2xl font-black text-blue-600">Bs. {amount.toFixed(2)}</span>
-                  </div>
-                  
-                  <div className="flex gap-4">
-                    <Button variant="outline" className="flex-1 h-12" onClick={prevStep} disabled={loading}>
-                      <ChevronLeft className="mr-2 h-5 w-5" />
-                      Atrás
-                    </Button>
+                  <div className="grid grid-cols-1 gap-3">
                     <Button 
-                      className="flex-2 h-12 text-lg bg-blue-600 hover:bg-blue-700 shadow-lg" 
+                      className={`h-14 text-lg font-bold gap-2 rounded-2xl shadow-lg transition-all ${
+                        deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20' : 
+                        deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 
+                        'bg-[#EA4335] hover:bg-[#D93025] shadow-red-500/20'
+                      }`}
                       onClick={handlePurchase}
                       disabled={
                         loading || 
@@ -797,22 +1001,54 @@ export function GiftCardBuyForm() {
                         (deliveryMethod === 'sige' && !recipientId)
                       }
                     >
-                      {loading ? 'Procesando...' : 'Confirmar y Pagar'}
+                      {loading ? (
+                        'Procesando...'
+                      ) : (
+                        <>
+                          <Check className="h-5 w-5" />
+                          Finalizar y Enviar
+                        </>
+                      )}
+                    </Button>
+
+                    <Button 
+                      type="button"
+                      variant="secondary"
+                      className="h-12 rounded-2xl font-bold gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 border-none"
+                      onClick={handleSaveToWallet}
+                      disabled={loading}
+                    >
+                      <Wallet className="h-4 w-4" />
+                      Solo guardar en mi Billetera
                     </Button>
                   </div>
+                  
+                  <Button variant="ghost" className="w-full h-10 rounded-xl text-muted-foreground" onClick={prevStep} disabled={loading}>
+                    <ChevronLeft className="mr-2 h-4 w-4" />
+                    Regresar al pago
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           )}
 
           {step === 4 && (
-            <Card className="border-2 border-green-500/20 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500">
-              <div className="bg-green-600 p-8 text-white text-center">
+            <Card className={`border-2 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500 ${
+              deliveryMethod === 'whatsapp' ? 'border-green-500/20' : 
+              deliveryMethod === 'sige' ? 'border-purple-500/20' : 'border-red-500/20'
+            }`}>
+              <div className={`${
+                deliveryMethod === 'whatsapp' ? 'bg-green-600' : 
+                deliveryMethod === 'sige' ? 'bg-purple-600' : 'bg-[#EA4335]'
+              } p-8 text-white text-center transition-colors duration-500`}>
                 <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/40">
                   <Check className="h-10 w-10 text-white" />
                 </div>
                 <h2 className="text-2xl font-black mb-1">¡Compra Exitosa!</h2>
-                <p className="text-green-100 text-sm">Tu Gift Card ya está lista para ser usada o enviada.</p>
+                <p className="opacity-90 text-sm">Tu Gift Card ya está lista para ser enviada por {
+                  deliveryMethod === 'whatsapp' ? 'WhatsApp' : 
+                  deliveryMethod === 'sige' ? 'SIGE' : 'Email'
+                }.</p>
               </div>
               
               <CardContent className="p-6 md:p-8 space-y-6">
@@ -829,11 +1065,18 @@ export function GiftCardBuyForm() {
                   
                   <div className="grid grid-cols-1 gap-3">
                     <Button 
-                      className="h-14 text-lg bg-blue-600 hover:bg-blue-700 font-bold gap-2 shadow-lg shadow-blue-500/20"
+                      className={`h-14 text-lg font-bold gap-2 shadow-lg transition-all ${
+                        deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20' : 
+                        deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 
+                        'bg-[#EA4335] hover:bg-[#D93025] shadow-red-500/20'
+                      }`}
                       onClick={handleFinalSend}
                     >
-                      <Send className="h-5 w-5" />
-                      Enviar
+                      {deliveryMethod === 'whatsapp' && <MessageCircle className="h-5 w-5" />}
+                      {deliveryMethod === 'email' && <Mail className="h-5 w-5" />}
+                      {deliveryMethod === 'sige' && <User className="h-5 w-5" />}
+                      {deliveryMethod === 'email' ? 'Enviar por Email' : 
+                       deliveryMethod === 'whatsapp' ? 'Enviar por WhatsApp' : 'Enviar a Usuario SIGE'}
                     </Button>
                     
                     <Button 

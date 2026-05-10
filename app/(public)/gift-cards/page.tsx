@@ -3,7 +3,7 @@ import { nextauthConfig } from "@/lib/nextauth.config";
 import { redirect } from 'next/navigation';
 import { getUserGiftCards, getTotalBalance, getGiftCardStats } from '@/app/actions/gift-cards';
 import { Suspense } from 'react';
-import { GiftCardListSkeleton } from '@/components/gift-cards/gift-card-skeleton';
+import { GiftCardWalletSkeleton } from '@/components/gift-cards/gift-card-skeleton';
 import { GiftCardWallet } from '@/components/gift-cards/gift-card-wallet';
 
 async function WalletContent() {
@@ -28,7 +28,7 @@ async function WalletContent() {
 
 export default function GiftCardsPage() {
     return (
-        <Suspense fallback={<GiftCardListSkeleton />}>
+        <Suspense fallback={<GiftCardWalletSkeleton />}>
             <WalletContent />
         </Suspense>
     );
