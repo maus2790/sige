@@ -154,6 +154,11 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   console.log(`[Proxy] Request: ${pathname}`);
 
+  // 0. NUNCA interceptar rutas de API ni archivos estáticos de Next.js
+  if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
+    return NextResponse.next();
+  }
+
   // 2. Leer cookies de sesión manual
   let userId = request.cookies.get('user_id')?.value;
   let userRole = request.cookies.get('user_role')?.value;

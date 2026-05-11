@@ -127,19 +127,19 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
             ) : (
               <>
                 {/* Mercado Link Desktop */}
-                {pathname !== "/" && (
+                {activeUser && pathname !== "/" && (
                   <Link href="/" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
                     Market - Shop
                   </Link>
                 )}
 
-                {pathname !== "/gift-cards" && (
+                {activeUser && pathname !== "/gift-cards" && (
                   <Link href="/gift-cards" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
                     Gift Cards
                   </Link>
                 )}
 
-                {myStoreId && pathname !== `/tienda/${myStoreId}` && (
+                {activeUser && myStoreId && pathname !== `/tienda/${myStoreId}` && (
                   <Link href={`/tienda/${myStoreId}`} className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
                     Mi Tienda
                   </Link>
@@ -155,16 +155,18 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
 
                 {/* Carrito Desktop */}
-                <Link href="/cart" className="hidden md:block">
-                  <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
-                    <ShoppingCart className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                    {mounted && totalItems > 0 && (
-                      <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-primary border-2 border-background animate-in zoom-in duration-300">
-                        {totalItems}
-                      </Badge>
-                    )}
-                  </Button>
-                </Link>
+                {activeUser && (
+                  <Link href="/cart" className="hidden md:block">
+                    <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
+                      <ShoppingCart className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                      {mounted && totalItems > 0 && (
+                        <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-primary border-2 border-background animate-in zoom-in duration-300">
+                          {totalItems}
+                        </Badge>
+                      )}
+                    </Button>
+                  </Link>
+                )}
 
                 {activeUser && (
                   <Button variant="ghost" size="icon" className="relative rounded-full">
