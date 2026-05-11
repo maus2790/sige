@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole, getCurrentUser } from "./auth";
+import { sendOneSignalNotification } from "@/lib/onesignal";
 
 // ============================================
 // TIPOS Y ESQUEMAS
@@ -185,6 +186,22 @@ export async function createOrder(formData: FormData) {
         updatedAt: new Date()
       })
       .where(eq(inventory.productId, productId));
+  }
+
+  // Obtener la tienda para notificar al vendedor
+  const store = await db
+    .select({ userId: stores.userId, name: stores.name })
+    .from(stores)
+    .where(eq(stores.id, product.storeId))
+    .get();
+
+  if (store?.userId) {
+    await sendOneSignalNotification({
+      userIds: [store.userId],
+      title: `¡Nueva compra en ${store.name}! 🛍️`,
+      message: `${buyerName} ha comprado ${quantity}x ${product.name}.`,
+      url: `/dashboard/pedidos` // Asumiendo que esta es la ruta para ver pedidos
+    });
   }
 
   revalidatePath(`/productos/${productId}`);

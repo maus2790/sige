@@ -100,8 +100,8 @@ const EVENT_MESSAGES: Record<string, string[]> = {
   ]
 };
 
-const PREDEFINED_AMOUNTS = [50, 100, 200, 500];
-const MAX_WORDS = 35;
+const PREDEFINED_AMOUNTS = [10, 20, 50, 100, 150, 200, 300, 500, 1000];
+const MAX_CHARS = 60;
 
 export function GiftCardBuyForm() {
   const router = useRouter();
@@ -118,7 +118,7 @@ export function GiftCardBuyForm() {
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [templateId, setTemplateId] = useState(1);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'whatsapp' | 'sige'>('email');
+  const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'whatsapp' | 'sige'>('whatsapp');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [recipientId, setRecipientId] = useState<string>('');
   const [sigeUsers, setSigeUsers] = useState<any[]>([]);
@@ -158,6 +158,10 @@ export function GiftCardBuyForm() {
       getSIGEUsers().then(setSigeUsers);
     }
   }, [step, giftCardCode, sigeUsers.length]);
+  
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
   
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -207,15 +211,14 @@ export function GiftCardBuyForm() {
   };
 
   const handleMessageChange = (val: string) => {
-    const words = val.trim().split(/\s+/).filter(w => w.length > 0);
-    if (words.length <= MAX_WORDS || val.length < message.length) {
+    if (val.length <= MAX_CHARS) {
       setMessage(val);
     } else {
-      toast.error(`Máximo ${MAX_WORDS} palabras para evitar deformar la tarjeta`);
+      toast.error(`Máximo ${MAX_CHARS} caracteres para evitar deformar la tarjeta`);
     }
   };
 
-  const wordCount = message.trim().split(/\s+/).filter(w => w.length > 0).length;
+  const charCount = message.length;
 
   const getOccasionIcon = (occ: string | null) => {
     switch (occ) {
@@ -270,8 +273,21 @@ export function GiftCardBuyForm() {
         try {
           const dataUrl = await toPng(cardRef.current, { 
             cacheBust: true,
-            pixelRatio: 2, // Use pixel ratio for higher quality instead of fixed width/height
-            style: { margin: '0' } // Removed borderRadius override to keep the original shape
+            pixelRatio: 2, 
+            style: { margin: '0' },
+            fontEmbedCSS: '', // Avoid CSS rules access errors for fonts
+            filter: (node: any) => {
+              // Skip style/link tags that might have CORS issues
+              if (node.tagName === 'STYLE' || node.tagName === 'LINK') {
+                try {
+                  const sheet = (node as any).sheet;
+                  if (sheet && !sheet.cssRules) return false;
+                } catch (e) {
+                  return false;
+                }
+              }
+              return true;
+            }
           });
           const imgResult = await uploadGiftCardImage(dataUrl);
           if (imgResult.success) {
@@ -357,7 +373,7 @@ export function GiftCardBuyForm() {
         setPurchasedId(result.id);
         setDeliveryMethod('sige'); // Default for self
         setRecipientName('Mi Inventario');
-        setStep(4);
+        setStep(6);
       } else {
         toast.error('Error al guardar');
       }
@@ -386,34 +402,40 @@ export function GiftCardBuyForm() {
   const selectedTemplate = TEMPLATES.find(t => t.id === templateId) || TEMPLATES[0];
 
   return (
-    <div className="w-full max-w-6xl mx-auto space-y-4 lg:space-y-6 pb-20 px-4 md:px-6">
-      <div className="flex justify-between items-center mb-4 overflow-x-auto pb-2 scrollbar-hide">
-        {[1, 2, 3].map((s) => (
-          <div key={s} className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
-              step >= s ? 'bg-blue-600 text-white' : 'bg-muted text-muted-foreground'
-            }`}>
-              {step > s ? <Check className="h-5 w-5" /> : s}
+    <div className="w-full pb-20">
+      {/* Indicador de Pasos Sticky Full Width */}
+      {/* Indicador de Pasos Sticky Full Width */}
+      <div className="sticky top-[64px] z-50 bg-[#f2f4ff]/80 dark:bg-[#081623]/80 backdrop-blur-xl py-4 mb-8 border-b border-muted/10 shadow-sm w-full">
+        <div className="max-w-4xl mx-auto px-4 md:px-6 flex justify-between items-center">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <div key={s} className={`flex items-center ${s < 5 ? 'flex-1' : ''}`}>
+              <div className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-700 shadow-md ${
+                step >= s ? `${selectedTemplate.className} text-white scale-105` : 'bg-muted text-muted-foreground'
+              }`}>
+                {step > s ? <Check className="h-4 w-4" /> : s}
+              </div>
+              {s < 5 && (
+                <div className={`flex-1 h-1 mx-1 rounded-full transition-all duration-1000 ${
+                  step > s ? `${selectedTemplate.className}` : 'bg-muted'
+                }`} />
+              )}
             </div>
-            {s < 3 && (
-              <div className={`w-12 h-1 md:w-24 mx-2 rounded ${
-                step > s ? 'bg-blue-600' : 'bg-muted'
-              }`} />
-            )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-12 items-start relative">
-        {/* Preview Area (Sticky at top on mobile, sticky at right on desktop) */}
-        <div className="w-full lg:order-2 sticky top-[64px] lg:top-24 z-40 bg-background/95 backdrop-blur-md lg:bg-transparent py-1 lg:py-0 border-b lg:border-none">
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-12 items-start relative">
+          {/* Preview Area (Sticky below the steps on mobile) */}
+          {/* Preview Area (Sticky below the steps on mobile) */}
+          <div className="w-full lg:order-2 sticky top-[130px] lg:top-32 z-40 bg-[#f2f4ff] dark:bg-[#081623] lg:bg-transparent! lg:backdrop-blur-none! py-1 lg:py-0 border-b lg:border-none! shadow-sm lg:shadow-none!">
           <div className="space-y-4">
             <div className="hidden lg:flex items-center justify-between px-2 max-w-[420px] mx-auto">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <Check className="h-5 w-5 text-green-500" />
                 Vista Previa
               </h3>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <Badge variant="outline" className="bg-transparent border-blue-200/50 text-blue-700 dark:text-blue-300">
                 Premium
               </Badge>
             </div>
@@ -439,13 +461,7 @@ export function GiftCardBuyForm() {
                       <p className="text-sm lg:text-lg font-bold truncate leading-none">{recipientName || '________'}</p>
                     </div>
 
-                    {message && (
-                      <div className="bg-black/10 backdrop-blur-sm px-2 lg:px-3 py-1 lg:py-1.5 rounded-lg border border-white/5 max-w-[85%]">
-                        <p className="text-[9px] lg:text-[10px] italic opacity-90 leading-none truncate">
-                          "{message}"
-                        </p>
-                      </div>
-                    )}
+
                   </div>
 
                   <div className="text-right">
@@ -460,6 +476,15 @@ export function GiftCardBuyForm() {
                     <p className="text-[6px] lg:text-[7px] opacity-60 uppercase tracking-[0.2em] font-bold mb-0.5">Código de Canje</p>
                     <p className="text-[9px] lg:text-[11px] font-mono font-black tracking-widest bg-white/15 px-3 py-0.5 lg:py-1 rounded-full backdrop-blur-md border border-white/20 shadow-lg ring-1 ring-white/10">
                       {giftCardCode}
+                    </p>
+                  </div>
+                )}
+
+                {/* Mensaje centrado */}
+                {message && (
+                  <div className="bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 w-full my-2">
+                    <p className="text-[10px] lg:text-xs italic opacity-90 leading-none text-center whitespace-nowrap overflow-hidden">
+                      "{message.slice(0, MAX_CHARS)}"
                     </p>
                   </div>
                 )}
@@ -486,7 +511,7 @@ export function GiftCardBuyForm() {
               </div>
             </div>
 
-            <div className="hidden lg:grid grid-cols-1 gap-3 bg-blue-600/5 dark:bg-blue-400/5 rounded-2xl p-4 border border-blue-600/10">
+            <div className="hidden lg:grid grid-cols-1 gap-3 p-2">
               <p className="text-[10px] text-muted-foreground flex items-center gap-2">
                 <Check className="h-3 w-3 text-green-500" />
                 Entrega instantánea por email y app.
@@ -590,8 +615,8 @@ export function GiftCardBuyForm() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
                       <Label htmlFor="msg">Mensaje personal (Opcional)</Label>
-                      <span className={`text-[10px] font-bold ${wordCount >= MAX_WORDS ? 'text-red-500' : 'text-muted-foreground'}`}>
-                        {wordCount}/{MAX_WORDS} palabras
+                      <span className={`text-[10px] font-bold ${charCount >= MAX_CHARS ? 'text-red-500' : 'text-muted-foreground'}`}>
+                        {MAX_CHARS - charCount} caracteres restantes
                       </span>
                     </div>
                     <Textarea
@@ -599,110 +624,150 @@ export function GiftCardBuyForm() {
                       placeholder="Escribe algo bonito aquí..."
                       rows={3}
                       value={message}
+                      maxLength={MAX_CHARS}
                       onChange={(e) => handleMessageChange(e.target.value)}
-                      className={wordCount >= MAX_WORDS ? 'border-red-200 focus-visible:ring-red-500' : ''}
+                      className={charCount >= MAX_CHARS ? 'border-red-200 focus-visible:ring-red-500' : ''}
                     />
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-end">
-                      <Label>Elige un diseño</Label>
-                      <span className="text-[10px] text-muted-foreground">Explora estilos exclusivos</span>
-                    </div>
-
-                    <div className="relative group">
-                      <Button 
-                        type="button"
-                        variant="secondary" 
-                        size="icon" 
-                        className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex border border-muted"
-                        onClick={() => scroll(designsRef, 'left')}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-
-                      <div 
-                        ref={designsRef}
-                        className="flex overflow-x-auto gap-4 pb-4 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth"
-                      >
-                        {TEMPLATES.map((tpl) => (
-                          <button
-                            key={tpl.id}
-                            type="button"
-                            className={`h-20 min-w-[140px] rounded-2xl transition-all shrink-0 snap-start relative overflow-hidden flex flex-col items-center justify-center border-2 ${
-                              templateId === tpl.id ? 'border-blue-500 scale-105 shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'
-                            } ${tpl.className}`}
-                            onClick={() => setTemplateId(tpl.id)}
-                          >
-                            <span className="text-[10px] text-white font-black uppercase tracking-widest px-2 text-center bg-black/20 backdrop-blur-sm py-1 rounded-lg">
-                              {tpl.name}
-                            </span>
-                            {templateId === tpl.id && (
-                              <div className="absolute top-1 right-1 bg-blue-500 rounded-full p-0.5 shadow-md">
-                                <Check className="h-3 w-3 text-white" />
-                              </div>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-
-                      <Button 
-                        type="button"
-                        variant="secondary" 
-                        size="icon" 
-                        className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex border border-muted"
-                        onClick={() => scroll(designsRef, 'right')}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
                   </div>
                 </div>
 
-                <Button className="w-full h-12 text-lg bg-blue-600 hover:bg-blue-700" onClick={nextStep}>
-                  Siguiente
+                <Button 
+                  className={`w-full h-12 text-lg rounded-xl transition-all duration-300 hover:brightness-110 border-none shadow-lg text-white ${selectedTemplate.className}`} 
+                  onClick={nextStep}
+                >
+                  Elegir Diseño
                   <ChevronRight className="ml-2 h-5 w-5" />
                 </Button>
               </CardContent>
             </Card>
           )}
 
-          {/* PASO 2: MONTO Y PAGO */}
+          {/* PASO 2: DISEÑO */}
           {step === 2 && (
             <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
               <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
                 <CardTitle className="text-2xl flex items-center gap-2">
-                  <CreditCard className="h-6 w-6" />
-                  Monto y Pago
+                  <Sparkles className="h-6 w-6" />
+                  Elige un Diseño
                 </CardTitle>
                 <CardDescription className="text-white/80">
-                  Elige el valor del regalo y realiza el pago por QR.
+                  Selecciona el estilo visual que más te guste.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6 p-4 md:p-6 pt-6">
+              <CardContent className="space-y-6 px-4 md:px-6 pt-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <Label>Estilos exclusivos</Label>
+                    <span className="text-[10px] text-muted-foreground">Desliza para explorar</span>
+                  </div>
+
+                  <div className="relative group">
+                    <Button 
+                      type="button"
+                      variant="secondary" 
+                      size="icon" 
+                      className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex border border-muted"
+                      onClick={() => scroll(designsRef, 'left')}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+
+                    <div 
+                      ref={designsRef}
+                      className="flex overflow-x-auto gap-4 pb-4 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth"
+                    >
+                      {TEMPLATES.map((tpl) => (
+                        <button
+                          key={tpl.id}
+                          type="button"
+                          className={`h-24 min-w-[160px] rounded-2xl transition-all shrink-0 snap-start relative overflow-hidden flex flex-col items-center justify-center border-2 ${
+                            templateId === tpl.id ? 'border-blue-500 scale-105 shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'
+                          } ${tpl.className}`}
+                          onClick={() => setTemplateId(tpl.id)}
+                        >
+                          <span className="text-[10px] text-white font-black uppercase tracking-widest px-2 text-center bg-black/20 backdrop-blur-sm py-1 rounded-lg">
+                            {tpl.name}
+                          </span>
+                          {templateId === tpl.id && (
+                            <div className="absolute top-1 right-1 bg-blue-500 rounded-full p-0.5 shadow-md">
+                              <Check className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    <Button 
+                      type="button"
+                      variant="secondary" 
+                      size="icon" 
+                      className="absolute -right-3 top-1/2 -translate-y-1/2 z-10 h-8 w-8 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity hidden md:flex border border-muted"
+                      onClick={() => scroll(designsRef, 'right')}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={prevStep}>
+                    <ChevronLeft className="mr-2 h-5 w-5" />
+                    Atrás
+                  </Button>
+                  <Button 
+                    className={`flex-2 h-12 text-lg rounded-xl transition-all duration-300 hover:brightness-110 border-none shadow-lg text-white ${selectedTemplate.className}`} 
+                    onClick={nextStep}
+                  >
+                    Siguiente: Monto
+                    <ChevronRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PASO 3: MONTO */}
+          {step === 3 && (
+            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <CreditCard className="h-6 w-6" />
+                  Monto del Regalo
+                </CardTitle>
+                <CardDescription className="text-white/80">
+                  Elige el valor que tendrá tu tarjeta.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 space-y-6 pt-6">
                 <div className="space-y-4">
                   <Label className="text-base font-bold">Elige un monto</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {PREDEFINED_AMOUNTS.map((amt) => (
-                      <Button
-                        key={amt}
-                        type="button"
-                        variant={amount === amt ? 'default' : 'outline'}
-                        className={`h-12 text-lg font-bold rounded-xl ${amount === amt ? 'bg-blue-600 shadow-lg shadow-blue-500/20' : ''}`}
-                        onClick={() => {
-                          setAmount(amt);
-                          setCustomAmount('');
-                        }}
-                      >
-                        Bs. {amt}
-                      </Button>
-                    ))}
+                  <div className="relative group">
+                    <div className="flex overflow-x-auto gap-3 pb-4 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth">
+                      {PREDEFINED_AMOUNTS.map((amt) => (
+                        <Button
+                          key={amt}
+                          type="button"
+                          variant={amount === amt ? 'default' : 'outline'}
+                          className={`h-14 min-w-[100px] text-lg font-bold rounded-2xl shrink-0 snap-start transition-all duration-300 ${
+                            amount === amt 
+                              ? `${selectedTemplate.className} text-white shadow-lg border-none scale-105 ring-2 ring-white/20` 
+                              : 'bg-muted/30 hover:bg-muted/50 border-muted'
+                          }`}
+                          onClick={() => {
+                            setAmount(amt);
+                            setCustomAmount('');
+                          }}
+                        >
+                          Bs. {amt}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                   <div className="relative pt-2">
                     <Input
                       placeholder="Monto personalizado..."
                       type="number"
-                      className="h-14 text-center text-xl font-black rounded-xl border-2 focus:border-blue-500 bg-background"
+                      className="h-14 text-center text-base md:text-xl font-black rounded-2xl border-2 focus:border-blue-500 bg-background"
                       value={customAmount}
                       onChange={(e) => {
                         setCustomAmount(e.target.value);
@@ -713,7 +778,37 @@ export function GiftCardBuyForm() {
                   </div>
                 </div>
 
-                <div className="bg-muted/50 dark:bg-muted/20 p-5 md:p-6 rounded-3xl border-2 border-slate-200 dark:border-slate-800 space-y-6">
+                <div className="flex gap-4">
+                  <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={prevStep}>
+                    <ChevronLeft className="mr-2 h-5 w-5" />
+                    Atrás
+                  </Button>
+                  <Button 
+                    className={`flex-2 h-12 text-lg rounded-xl shadow-lg transition-all duration-300 hover:brightness-110 border-none text-white ${selectedTemplate.className}`} 
+                    onClick={nextStep}
+                    disabled={!amount}
+                  >
+                    Siguiente: Pago
+                    <ChevronRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PASO 4: PAGO */}
+          {step === 4 && (
+            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+                <CardTitle className="text-2xl flex items-center gap-2">
+                  <Wallet className="h-6 w-6" />
+                  Realiza tu Pago
+                </CardTitle>
+                <CardDescription className="text-white/80">
+                  Transfiere y sube tu comprobante para activar la tarjeta.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 md:p-6 space-y-6 pt-6">
                   <div className="space-y-4">
                     <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground text-center block">Selecciona Método de Pago</Label>
                     <div className="grid grid-cols-3 gap-3">
@@ -745,7 +840,6 @@ export function GiftCardBuyForm() {
                         <span className="text-[10px] font-bold">Tigo Money</span>
                       </Button>
                     </div>
-                  </div>
 
                   {paymentMethod === 'qr' && (
                     <div className="text-center space-y-3 animate-in zoom-in duration-300">
@@ -849,11 +943,11 @@ export function GiftCardBuyForm() {
                     Atrás
                   </Button>
                   <Button 
-                    className="flex-2 h-12 text-lg bg-blue-600 hover:bg-blue-700 rounded-xl shadow-lg" 
+                    className={`flex-2 h-12 text-lg rounded-xl shadow-lg transition-all duration-300 hover:brightness-110 border-none text-white ${selectedTemplate.className}`} 
                     onClick={nextStep}
                     disabled={!amount || !receiptFile || !paymentMethod}
                   >
-                    Siguiente
+                    Siguiente: Envío
                     <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
                 </div>
@@ -861,8 +955,8 @@ export function GiftCardBuyForm() {
             </Card>
           )}
 
-          {/* PASO 3: DESTINATARIO Y ENVÍO */}
-          {step === 3 && (
+          {/* PASO 5: DESTINATARIO Y ENVÍO */}
+          {step === 5 && (
             <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
               <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
                 <CardTitle className="text-2xl flex items-center gap-2">
@@ -1032,7 +1126,8 @@ export function GiftCardBuyForm() {
             </Card>
           )}
 
-          {step === 4 && (
+          {/* PASO FINAL: ÉXITO */}
+          {step === 6 && (
             <Card className={`border-2 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500 ${
               deliveryMethod === 'whatsapp' ? 'border-green-500/20' : 
               deliveryMethod === 'sige' ? 'border-purple-500/20' : 'border-red-500/20'
@@ -1140,5 +1235,6 @@ export function GiftCardBuyForm() {
         </div>
       </div>
     </div>
+  </div>
   );
 }

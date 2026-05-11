@@ -120,7 +120,7 @@ export function GiftCardDetail({ giftCard, userRole }: GiftCardDetailProps) {
                   <MessageCircle className="h-4 w-4" />
                   <span className="text-sm">Mensaje</span>
                 </div>
-                <p className="text-right max-w-[60%] italic">"{giftCard.message}"</p>
+                <p className="text-right max-w-full italic">"{giftCard.message.slice(0, 60)}"</p>
               </div>
             )}
             

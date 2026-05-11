@@ -4,8 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Gift, AlertCircle, CheckCircle, Calendar, ChevronRight, Send, Cake, Heart, GraduationCap, CalendarDays, Baby, Handshake, TreePine, Sparkles, Home, PartyPopper, Download, Eye, X } from 'lucide-react';
+import { Gift, AlertCircle, CheckCircle, Calendar, ChevronRight, Send, Cake, Heart, GraduationCap, CalendarDays, Baby, Handshake, TreePine, Sparkles, Home, PartyPopper, Download, Eye, X, Trash2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { deleteGiftCard } from '@/app/actions/gift-cards';
+import { toast } from 'sonner';
 
 const TEMPLATES = [
   { id: 1, name: 'BLUE CARD', className: 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900' },
@@ -47,6 +49,22 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
   const isExpired = expiresAtMs < Date.now();
   const isFullyRedeemed = giftCard.balance <= 0;
   const [showPreview, setShowPreview] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm('¿Estás seguro de que deseas eliminar permanentemente esta tarjeta?')) return;
+    
+    setIsDeleting(true);
+    const result = await deleteGiftCard(giftCard.id);
+    if (result.error) {
+      toast.error(result.error);
+      setIsDeleting(false);
+    } else {
+      toast.success('Tarjeta eliminada correctamente');
+      setShowPreview(false);
+    }
+  };
 
   const handleDownload = async () => {
     if (!giftCard.cardImageUrl) return;
@@ -99,6 +117,19 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
               <Gift size={120} />
             </div>
 
+            {(isExpired || isFullyRedeemed) && (
+              <Button
+                variant="destructive"
+                size="icon"
+                className={`absolute top-4 right-4 z-30 h-8 w-8 lg:h-9 lg:w-9 rounded-full bg-red-600/80 hover:bg-red-600 border border-white/20 backdrop-blur-md shadow-xl transition-all ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+                onClick={handleDelete}
+                disabled={isDeleting}
+                title="Eliminar tarjeta"
+              >
+                <Trash2 className="h-4 w-4 lg:h-4 lg:w-4 text-white" />
+              </Button>
+            )}
+
             <div className="relative z-10 h-full flex flex-col justify-between">
               <div className="flex justify-between items-start">
                 <div className="space-y-1 lg:space-y-3 flex-1 min-w-0">
@@ -146,9 +177,9 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
 
               {/* Message snippet if exists */}
               {giftCard.message && type !== 'saved' && (
-                <div className="bg-black/10 backdrop-blur-sm px-2 py-1 rounded border border-white/5 max-w-[80%] my-1">
-                  <p className="text-[9px] italic opacity-90 leading-none truncate">
-                    "{giftCard.message}"
+                <div className="bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 w-full my-2">
+                  <p className="text-[10px] italic opacity-90 leading-none text-center whitespace-nowrap overflow-hidden">
+                    "{giftCard.message.slice(0, 60)}"
                   </p>
                 </div>
               )}

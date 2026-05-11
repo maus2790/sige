@@ -34,10 +34,9 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
     setMounted(true);
   }, []);
 
-  // Mostrar en Mercado, Tiendas y Gift Cards
+  // Mostrar en Mercado y Tiendas. Ocultar en Gift Cards porque tiene su propio menú inferior.
   const isStorePage = pathname.startsWith("/tienda/");
-  const isGiftCardPage = pathname.startsWith("/gift-cards");
-  if (pathname !== "/" && !isStorePage && !isGiftCardPage) return null;
+  if (pathname !== "/" && !isStorePage) return null;
 
   const cartCount = mounted ? totalItems : 0;
 
@@ -56,12 +55,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
       onClick: () => setIsCategoryOpen(true),
       isActive: isCategoryOpen 
     },
-    ...(isGiftCardPage ? [{
-      label: "Regalar",
-      icon: Gift,
-      isAction: true,
-      onClick: () => router.push("/gift-cards/buy")
-    }] : (pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`)) ? [{ 
+    ...(pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`) ? [{ 
       label: "Vender", 
       icon: Plus, 
       isAction: true, 

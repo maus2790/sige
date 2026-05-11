@@ -116,13 +116,13 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter mb-4 drop-shadow-2xl text-white uppercase">
-            SIGE Market
+            SIGE Market - Shop
           </h1>
           <p className="text-xl md:text-2xl text-blue-50 font-black mb-2 drop-shadow-sm opacity-95 tracking-tight">
-            Lo Mejor de Bolivia
+            Sigue a SIGE y consigue
           </p>
           <p className="text-sm md:text-lg text-blue-100/80 mb-6 max-w-2xl mx-auto font-medium">
-            Explora y encuentra los mejores productos locales.....
+            Donde seguir es conseguir los mejores productos de Bolivia en un solo lugar
           </p>
         </div>
       </div>

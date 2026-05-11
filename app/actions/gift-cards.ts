@@ -8,7 +8,8 @@ import { redirect } from 'next/navigation';
 import { getServerSession } from "next-auth/next";
 import { nextauthConfig } from "@/lib/nextauth.config";
 import crypto from 'crypto';
-import { uploadImageFromBuffer } from '@/lib/cloudflare';
+import { uploadImageFromBuffer, deleteImage, extractKeyFromUrl } from '@/lib/cloudflare';
+import { sendOneSignalNotification } from '@/lib/onesignal';
 
 export async function getCurrentUser() {
   const session = await getServerSession(nextauthConfig);
@@ -354,6 +355,16 @@ export async function purchaseGiftCard(data: {
     updatedAt: new Date(),
   });
 
+  // Notificar al receptor si es usuario de SIGE
+  if (data.recipientId) {
+    await sendOneSignalNotification({
+      userIds: [data.recipientId],
+      title: "¡Has recibido un regalo! 🎁",
+      message: `${user.name || 'Alguien'} te ha enviado una Gift Card de Bs. ${data.amount.toFixed(2)}.`,
+      url: `/gift-cards/${id}`
+    });
+  }
+
   revalidatePath('/gift-cards');
   return { success: true, id };
 }
@@ -474,5 +485,50 @@ export async function uploadGiftCardReceipt(base64Image: string) {
   } catch (error) {
     console.error('Error uploading receipt image:', error);
     return { error: 'Error al subir el comprobante' };
+  }
+}
+
+export async function deleteGiftCard(id: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  try {
+    const card = await getGiftCardById(id);
+    if (!card) return { error: 'Tarjeta no encontrada' };
+
+    // Verificar permisos: solo el creador o el destinatario pueden borrarla
+    if (card.senderId !== user.id && card.recipientId !== user.id) {
+      return { error: 'No tienes permiso para eliminar esta tarjeta' };
+    }
+
+    // Verificar condición: solo se puede borrar si el saldo es 0 o está vencida
+    const isExpired = new Date(card.expiresAt) < new Date();
+    if (card.balance > 0 && !isExpired) {
+      return { error: 'No puedes eliminar una tarjeta activa que aún tiene saldo' };
+    }
+
+    // Intentar eliminar las imágenes asociadas en Cloudflare R2
+    if (card.cardImageUrl) {
+      const imageKey = extractKeyFromUrl(card.cardImageUrl);
+      if (imageKey) {
+        await deleteImage(imageKey).catch(e => console.error("Error al borrar imagen de R2:", e));
+      }
+    }
+
+    if (card.receiptUrl) {
+      const receiptKey = extractKeyFromUrl(card.receiptUrl);
+      if (receiptKey) {
+        await deleteImage(receiptKey).catch(e => console.error("Error al borrar comprobante de R2:", e));
+      }
+    }
+
+    // Eliminar el registro de la base de datos
+    await db.delete(giftCards).where(eq(giftCards.id, id));
+
+    revalidatePath('/gift-cards');
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting gift card:', error);
+    return { error: 'Error interno al intentar eliminar la tarjeta' };
   }
 }

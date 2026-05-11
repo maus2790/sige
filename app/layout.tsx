@@ -8,6 +8,7 @@ import { MobileNavBar } from "@/components/layout/mobile-nav-bar";
 import { Providers } from "./providers";
 import { getCategories } from "./actions/categories";
 import { getMyStoreId } from "./actions/storefront";
+import { OneSignalProvider } from "@/components/providers/onesignal-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -50,13 +51,15 @@ export default async function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <Navbar categories={categories} myStoreId={myStoreId} />
-          <div className="min-h-screen">
-            {children}
-          </div>
-          <MobileNavBar categories={categories} myStoreId={myStoreId} />
-          <Toaster />
-          <RegisterSW />
+          <OneSignalProvider>
+            <Navbar categories={categories} myStoreId={myStoreId} />
+            <div className="min-h-screen">
+              {children}
+            </div>
+            <MobileNavBar categories={categories} myStoreId={myStoreId} />
+            <Toaster />
+            <RegisterSW />
+          </OneSignalProvider>
         </Providers>
       </body>
     </html>

@@ -102,15 +102,20 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
-            <Link href="/" className="flex items-center gap-2 group">
+            <Link 
+              href={pathname.startsWith("/gift-cards") ? "/gift-cards" : "/"} 
+              className="flex items-center gap-2 group"
+            >
               <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
                 <ShoppingBag className="w-6 h-6 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="text-2xl font-black text-brand-gradient tracking-tighter uppercase leading-none">SIGE</span>
-                {pathname.startsWith("/gift-cards") && (
-                  <span className="text-[10px] font-bold text-primary tracking-widest uppercase opacity-80 leading-none mt-0.5">Gift Cards</span>
-                )}
+                <span className="text-2xl font-black text-brand-gradient tracking-tighter uppercase leading-none">
+                  SIGE
+                </span>
+                <span className="text-[10px] font-bold text-primary tracking-widest uppercase opacity-80 leading-none mt-0.5">
+                  {pathname.startsWith("/gift-cards") ? "Gift Cards" : "Market - Shop"}
+                </span>
               </div>
             </Link>
           </div>
@@ -124,7 +129,13 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                 {/* Mercado Link Desktop */}
                 {pathname !== "/" && (
                   <Link href="/" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
-                    Mercado
+                    Market - Shop
+                  </Link>
+                )}
+
+                {pathname !== "/gift-cards" && (
+                  <Link href="/gift-cards" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                    Gift Cards
                   </Link>
                 )}
 
@@ -189,7 +200,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         <DropdownMenuItem asChild>
                           <Link href="/" className="cursor-pointer flex items-center">
                             <ShoppingBag className="mr-2 h-4 w-4" />
-                            <span>Mercado</span>
+                            <span>Market - Shop</span>
                           </Link>
                         </DropdownMenuItem>
                       )}
