@@ -357,11 +357,22 @@ export async function purchaseGiftCard(data: {
 
   // Notificar al receptor si es usuario de SIGE
   if (data.recipientId) {
+    // 1. Notificación Push
     await sendOneSignalNotification({
       userIds: [data.recipientId],
       title: "¡Has recibido un regalo! 🎁",
       message: `${user.name || 'Alguien'} te ha enviado una Gift Card de Bs. ${data.amount.toFixed(2)}.`,
       url: `/gift-cards/${id}`
+    });
+
+    // 2. Notificación en Base de Datos (para la lista en la campana)
+    const { createNotification } = await import('./notifications');
+    await createNotification({
+      userId: data.recipientId,
+      title: "¡Has recibido un regalo! 🎁",
+      message: `${user.name || 'Alguien'} te ha enviado una Gift Card de Bs. ${data.amount.toFixed(2)}.`,
+      type: 'gift_card',
+      link: `/gift-cards/${id}`
     });
   }
 

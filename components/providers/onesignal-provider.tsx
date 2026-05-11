@@ -1,12 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
 import OneSignal from 'react-onesignal';
 import { useSession } from 'next-auth/react';
+
+interface OneSignalContextType {
+  isInitialized: boolean;
+  isSubscribed: boolean;
+  subscribe: () => Promise<void>;
+}
+
+const OneSignalContext = createContext<OneSignalContextType>({
+  isInitialized: false,
+  isSubscribed: false,
+  subscribe: async () => {},
+});
+
+export const useOneSignal = () => useContext(OneSignalContext);
 
 export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
 
   useEffect(() => {
     const initOneSignal = async () => {
@@ -21,30 +36,23 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         await OneSignal.init({
           appId: appId,
           notifyButton: {
-            enable: true,
-            displayPredicate: () => true, // Mostrar siempre
-            prenotify: true,
+            enable: false,
+            prenotify: false,
             showCredit: false,
-            text: {
-              'tip.state.unsubscribed': 'Suscríbete a las notificaciones',
-              'tip.state.subscribed': 'Estás suscrito a las notificaciones',
-              'tip.state.blocked': 'Has bloqueado las notificaciones',
-              'message.prenotify': 'Haz clic para suscribirte a las notificaciones de SIGE',
-              'message.action.subscribed': '¡Gracias por suscribirte!',
-              'message.action.resubscribed': 'Estás suscrito nuevamente',
-              'message.action.unsubscribed': 'Ya no recibirás notificaciones',
-              'dialog.main.title': 'Gestionar Notificaciones',
-              'dialog.main.button.subscribe': 'SUSCRIBIRSE',
-              'dialog.main.button.unsubscribe': 'CANCELAR SUSCRIPCIÓN',
-              'dialog.blocked.title': 'Desbloquear Notificaciones',
-              'dialog.blocked.message': 'Sigue las instrucciones para permitir las notificaciones:',
-              'message.action.subscribing': 'Suscribiendo...'
-            }
+            text: {} as any,
           },
-          allowLocalhostAsSecureOrigin: true, // Para pruebas en localhost
-          serviceWorkerPath: 'OneSignalSDKWorker.js',
+          allowLocalhostAsSecureOrigin: true,
+          serviceWorkerPath: '/OneSignalSDKWorker.js',
           serviceWorkerParam: { scope: '/' },
         });
+
+        const pushEnabled = await OneSignal.Notifications.permission;
+        setIsSubscribed(pushEnabled);
+
+        OneSignal.Notifications.addEventListener('permissionChange', (permission) => {
+          setIsSubscribed(permission);
+        });
+
         setIsInitialized(true);
       } catch (error) {
         console.error('Error inicializando OneSignal:', error);
@@ -56,27 +64,32 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isInitialized]);
 
-  // Login a OneSignal cuando cambie la sesión (vincular usuario de SIGE con OneSignal)
   useEffect(() => {
     const loginUser = async () => {
       const userId = (session?.user as any)?.id;
       if (isInitialized && userId) {
         try {
           await OneSignal.login(userId);
-          console.log('OneSignal login successful for:', userId);
         } catch (error) {
           console.error('Error in OneSignal login:', error);
         }
-      } else if (isInitialized && !userId) {
-        // Opcional: logout si la sesión termina
-        try {
-          await OneSignal.logout();
-        } catch (error) {}
       }
     };
 
     loginUser();
   }, [session, isInitialized]);
 
-  return <>{children}</>;
+  const subscribe = async () => {
+    try {
+      await OneSignal.Notifications.requestPermission();
+    } catch (error) {
+      console.error('Error al solicitar permiso:', error);
+    }
+  };
+
+  return (
+    <OneSignalContext.Provider value={{ isInitialized, isSubscribed, subscribe }}>
+      {children}
+    </OneSignalContext.Provider>
+  );
 }

@@ -27,6 +27,8 @@ import {
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useCart } from "@/hooks/use-cart";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
+import { NotificationCenter } from "./notification-center";
+
 
 import { Button } from "@/components/ui/button";
 import {
@@ -168,11 +170,9 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   </Link>
                 )}
 
+                {/* Centro de Notificaciones */}
                 {activeUser && (
-                  <Button variant="ghost" size="icon" className="relative rounded-full">
-                    <Bell className="w-5 h-5 text-muted-foreground" />
-                    <span className="absolute top-1 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-background"></span>
-                  </Button>
+                  <NotificationCenter />
                 )}
 
                 {activeUser ? (

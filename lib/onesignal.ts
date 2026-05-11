@@ -21,19 +21,28 @@ export async function sendOneSignalNotification({
     return { success: false, error: "No target users" };
   }
 
+  // Ensure absolute URL
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://sige.click";
+  let finalUrl = url || baseUrl;
+  if (finalUrl.startsWith('/')) {
+    finalUrl = `${baseUrl}${finalUrl}`;
+  }
+
   const payload = {
     app_id: ONESIGNAL_APP_ID,
-    // Use the custom external_id that we set via OneSignal.login(userId) on the frontend
-    include_aliases: {
-      external_id: userIds
-    },
+    // Using include_external_user_ids for better compatibility with v1 API
+    include_external_user_ids: userIds,
     target_channel: "push",
     headings: { en: title, es: title },
     contents: { en: message, es: message },
-    url: url || "https://sige.click",
+    url: finalUrl,
+    // Add some visual enhancements
+    chrome_web_icon: `${baseUrl}/icons/icon-192.png`,
+    android_accent_color: "FF0000FF", // SIGE Blue
   };
 
   try {
+    console.log("Sending OneSignal notification to:", userIds);
     const response = await fetch("https://onesignal.com/api/v1/notifications", {
       method: "POST",
       headers: {
@@ -49,7 +58,7 @@ export async function sendOneSignalNotification({
       console.log("OneSignal notification sent successfully:", data);
       return { success: true, data };
     } else {
-      console.error("OneSignal API error:", data);
+      console.error("OneSignal API error details:", JSON.stringify(data, null, 2));
       return { success: false, error: data };
     }
   } catch (error) {

@@ -7,3 +7,4 @@ export * from "./push-subscriptions";
 export * from "./inventory";
 export * from "./comercial-config";
 export * from './gift-cards';
+export * from './notifications';
