@@ -42,8 +42,8 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
             text: {} as any,
           },
           allowLocalhostAsSecureOrigin: true,
-          serviceWorkerPath: '/OneSignalSDKWorker.js',
-          serviceWorkerParam: { scope: '/' },
+          // Dejamos que OneSignal maneje el registro del SW automáticamente
+          // Solo asegúrate de que el archivo esté en /public/OneSignalSDKWorker.js
         });
 
         const pushEnabled = await OneSignal.Notifications.permission;

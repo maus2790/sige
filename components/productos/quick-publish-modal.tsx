@@ -9,6 +9,14 @@ import {
   DialogDescription,
   DialogFooter
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +33,7 @@ import { createProduct } from "@/app/actions/products";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ImageUpload } from "../upload/image-upload";
-
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface Category {
@@ -52,6 +60,7 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
     imageUrls: [] as string[],
   });
 
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -67,8 +76,6 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
       setIsLoading(false);
     } else {
       toast.success("¡Producto publicado con éxito!");
-      
-      // Invalidar cache de productos para que aparezca el nuevo
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["store-products"] });
       
@@ -91,125 +98,145 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
     setFormData(prev => ({ ...prev, imageUrls: urls }));
   }, []);
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] rounded-4xl p-0 overflow-hidden border-none shadow-premium">
-        <div className="bg-brand-gradient p-8 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-3xl font-black tracking-tight text-white">
-              Publicación Rápida
-            </DialogTitle>
-            <DialogDescription className="text-blue-100 font-medium">
-              Vende tu producto en segundos. Paso {step} de 2.
-            </DialogDescription>
-          </DialogHeader>
+  const formContentNode = (
+    <>
+      <div className="bg-brand-gradient p-8 text-white">
+        <div className="space-y-1">
+          <h2 className="text-3xl font-black tracking-tight text-white leading-none">
+            Publicación Rápida
+          </h2>
+          <p className="text-blue-100 font-medium text-sm">
+            Vende tu producto en segundos. Paso {step} de 2.
+          </p>
         </div>
+      </div>
 
-        <div className="p-8 space-y-6">
-          {step === 1 ? (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="p-6 md:p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+        {step === 1 ? (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="space-y-2">
+              <Label className="font-bold">¿Qué estás vendiendo?</Label>
+              <Input 
+                placeholder="Ej: iPhone 15 Pro Max" 
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                className="h-12 rounded-xl"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">Categoría</Label>
+              <Select 
+                value={formData.category} 
+                onValueChange={(v) => setFormData({...formData, category: v})}
+              >
+                <SelectTrigger className="h-12 rounded-xl">
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+                <SelectContent className="z-100">
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="font-bold">Descripción corta</Label>
+              <Textarea 
+                placeholder="Cuéntanos un poco más..." 
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                className="rounded-xl resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="font-bold">¿Qué estás vendiendo?</Label>
+                <Label className="font-bold text-primary">Precio (Bs.)</Label>
                 <Input 
-                  placeholder="Ej: iPhone 15 Pro Max" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  type="number" 
+                  placeholder="0.00" 
+                  value={formData.price}
+                  onChange={(e) => setFormData({...formData, price: e.target.value})}
+                  className="h-12 rounded-xl border-primary/20 focus:ring-primary/20 text-lg font-bold"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold">Stock disponible</Label>
+                <Input 
+                  type="number" 
+                  value={formData.stock}
+                  onChange={(e) => setFormData({...formData, stock: e.target.value})}
                   className="h-12 rounded-xl"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="font-bold">Categoría</Label>
-                <Select 
-                  value={formData.category} 
-                  onValueChange={(v) => setFormData({...formData, category: v})}
-                >
-                  <SelectTrigger className="h-12 rounded-xl">
-                    <SelectValue placeholder="Selecciona una categoría" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="font-bold">Descripción corta</Label>
-                <Textarea 
-                  placeholder="Cuéntanos un poco más..." 
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  className="rounded-xl resize-none"
-                  rows={3}
-                />
-              </div>
             </div>
-          ) : (
-            <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="font-bold text-primary">Precio (Bs.)</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="0.00" 
-                    value={formData.price}
-                    onChange={(e) => setFormData({...formData, price: e.target.value})}
-                    className="h-12 rounded-xl border-primary/20 focus:ring-primary/20 text-lg font-bold"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold">Stock disponible</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.stock}
-                    onChange={(e) => setFormData({...formData, stock: e.target.value})}
-                    className="h-12 rounded-xl"
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <ImageUpload 
-                  onImagesChange={handleImagesChange}
-                  maxImages={3}
-                  label="Fotos del producto"
-                />
-              </div>
+            
+            <div className="space-y-3">
+              <ImageUpload 
+                onImagesChange={handleImagesChange}
+                maxImages={3}
+                label="Fotos del producto"
+              />
             </div>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        <DialogFooter className="p-8 pt-0 flex gap-3 sm:justify-between items-center">
-          {step === 2 && (
-            <Button variant="ghost" onClick={handlePrev} disabled={isLoading}>
-              Atrás
-            </Button>
-          )}
-          <div className="flex-1" />
-          {step === 1 ? (
-            <Button 
-              className="rounded-full px-8 h-12 font-bold" 
-              onClick={handleNext}
-              disabled={!formData.name || !formData.category || !formData.description}
-            >
-              Siguiente
-            </Button>
-          ) : (
-            <Button 
-              className="rounded-full px-10 h-12 font-black bg-brand-gradient text-white border-0 shadow-lg hover:shadow-xl transition-all" 
-              onClick={handleSubmit}
-              disabled={isLoading || !formData.price}
-            >
-              {isLoading ? (
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              ) : (
-                <CheckCircle2 className="w-5 h-5 mr-2" />
-              )}
-              Publicar Ahora
-            </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <div className="p-6 md:p-8 pt-0 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm sticky bottom-0 border-t md:border-none">
+        {step === 2 && (
+          <Button variant="ghost" onClick={handlePrev} disabled={isLoading} className="rounded-xl">
+            Atrás
+          </Button>
+        )}
+        <div className="flex-1" />
+        {step === 1 ? (
+          <Button 
+            className="rounded-full px-8 h-12 font-bold" 
+            onClick={handleNext}
+            disabled={!formData.name || !formData.category || !formData.description}
+          >
+            Siguiente
+          </Button>
+        ) : (
+          <Button 
+            className="rounded-full px-10 h-12 font-black bg-brand-gradient text-white border-0 shadow-lg hover:shadow-xl transition-all" 
+            onClick={handleSubmit}
+            disabled={isLoading || !formData.price}
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : (
+              <CheckCircle2 className="w-5 h-5 mr-2" />
+            )}
+            Publicar Ahora
+          </Button>
+        )}
+      </div>
+    </>
+  );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-premium bg-background">
+          <DialogTitle className="sr-only">Publicación Rápida</DialogTitle>
+          <DialogDescription className="sr-only">Completa los datos para vender tu producto.</DialogDescription>
+          {formContentNode}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="p-0 overflow-hidden border-none rounded-t-[2.5rem] h-auto max-h-[90vh]">
+        <SheetTitle className="sr-only">Publicación Rápida</SheetTitle>
+        <SheetDescription className="sr-only">Completa los datos para vender tu producto.</SheetDescription>
+        {formContentNode}
+      </SheetContent>
+    </Sheet>
   );
 }

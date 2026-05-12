@@ -339,7 +339,7 @@ export async function purchaseGiftCard(data: {
     amount: data.amount,
     balance: data.amount,
     expiresAt,
-    status: 'active',
+    status: 'pending_payment',
     senderId: user.id,
     recipientId: data.recipientId,
     recipientEmail: data.recipientEmail,
@@ -354,27 +354,6 @@ export async function purchaseGiftCard(data: {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
-
-  // Notificar al receptor si es usuario de SIGE
-  if (data.recipientId) {
-    // 1. Notificación Push
-    await sendOneSignalNotification({
-      userIds: [data.recipientId],
-      title: "¡Has recibido un regalo! 🎁",
-      message: `${user.name || 'Alguien'} te ha enviado una Gift Card de Bs. ${data.amount.toFixed(2)}.`,
-      url: `/gift-cards/${id}`
-    });
-
-    // 2. Notificación en Base de Datos (para la lista en la campana)
-    const { createNotification } = await import('./notifications');
-    await createNotification({
-      userId: data.recipientId,
-      title: "¡Has recibido un regalo! 🎁",
-      message: `${user.name || 'Alguien'} te ha enviado una Gift Card de Bs. ${data.amount.toFixed(2)}.`,
-      type: 'gift_card',
-      link: `/gift-cards/${id}`
-    });
-  }
 
   revalidatePath('/gift-cards');
   return { success: true, id };
@@ -542,4 +521,96 @@ export async function deleteGiftCard(id: string) {
     console.error('Error deleting gift card:', error);
     return { error: 'Error interno al intentar eliminar la tarjeta' };
   }
+}
+
+// ============================================
+// VERIFICACIÓN DE GIFT CARDS (ASISTENTE)
+// ============================================
+
+export async function getPendingGiftCards() {
+  const sessionUser = await getCurrentUser();
+  if (!sessionUser || (sessionUser.role !== "assistant" && sessionUser.role !== "superadmin")) {
+    return [];
+  }
+
+  const pendingCards = await db
+    .select({
+      giftCard: giftCards,
+      senderName: users.name,
+      senderEmail: users.email,
+    })
+    .from(giftCards)
+    .leftJoin(users, eq(giftCards.senderId, users.id))
+    .where(eq(giftCards.status, "pending_payment"))
+    .orderBy(desc(giftCards.createdAt))
+    .all();
+
+  return pendingCards.map(record => ({
+    ...record.giftCard,
+    senderName: record.senderName || "Usuario Desconocido",
+    senderEmail: record.senderEmail || "Sin email",
+  }));
+}
+
+export async function verifyGiftCardPayment(giftCardId: string, action: "approve" | "reject", notes?: string) {
+  const sessionUser = await getCurrentUser();
+  if (!sessionUser || (sessionUser.role !== "assistant" && sessionUser.role !== "superadmin")) {
+    return { error: "No autorizado" };
+  }
+
+  const giftCard = await db
+    .select()
+    .from(giftCards)
+    .where(eq(giftCards.id, giftCardId))
+    .get();
+
+  if (!giftCard) {
+    return { error: "Gift Card no encontrada" };
+  }
+
+  if (giftCard.status !== "pending_payment") {
+    return { error: "Esta Gift Card ya fue procesada" };
+  }
+
+  const newStatus = action === "approve" ? "active" : "cancelled";
+
+  await db
+    .update(giftCards)
+    .set({
+      status: newStatus,
+      updatedAt: new Date(),
+    })
+    .where(eq(giftCards.id, giftCardId));
+
+  // Si se aprueba, enviar la notificación pendiente
+  if (action === "approve" && giftCard.recipientId) {
+    // Obtener info del remitente para el mensaje
+    const sender = await db.select().from(users).where(eq(users.id, giftCard.senderId)).get();
+    const senderName = sender?.name || "Alguien";
+
+    await sendOneSignalNotification({
+      userIds: [giftCard.recipientId],
+      title: "¡Has recibido un regalo! 🎁",
+      message: `${senderName} te ha enviado una Gift Card de Bs. ${giftCard.amount.toFixed(2)}.`,
+      url: `/gift-cards/${giftCardId}`
+    });
+
+    const { createNotification } = await import('./notifications');
+    await createNotification({
+      userId: giftCard.recipientId,
+      title: "¡Has recibido un regalo! 🎁",
+      message: `${senderName} te ha enviado una Gift Card de Bs. ${giftCard.amount.toFixed(2)}.`,
+      type: 'gift_card',
+      link: `/gift-cards/${giftCardId}`
+    });
+  }
+
+  revalidatePath("/assistant/pagos-pendientes");
+  revalidatePath("/assistant");
+  revalidatePath("/gift-cards");
+
+  return {
+    success: true,
+    message: action === "approve" ? "Gift Card activada correctamente" : "Pago de Gift Card rechazado",
+  };
 }

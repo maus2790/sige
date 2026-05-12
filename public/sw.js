@@ -1,4 +1,8 @@
-const CACHE_NAME = 'sige-v1';
+// public/sw.js
+// Importar OneSignal para evitar conflictos con el Service Worker de la PWA
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
+const CACHE_NAME = 'sige-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -34,31 +38,44 @@ self.addEventListener('activate', (event) => {
 
 // Interceptar fetch requests con estrategia Network First
 self.addEventListener('fetch', (event) => {
-  // Omitir llamadas a la API y autenticación
-  if (event.request.url.includes('/api/') || event.request.url.includes('/auth/')) {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // 1. Omitir esquemas no soportados (extensiones de Chrome, etc.)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
+  // 2. Omitir métodos no soportados por el Cache API (solo permite GET)
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // 3. Omitir llamadas a la API y autenticación
+  if (url.pathname.includes('/api/') || url.pathname.includes('/auth/')) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
+    fetch(request)
       .then((response) => {
         // Si la respuesta es válida, clonarla y guardarla en caché
         if (response && response.status === 200 && response.type === 'basic') {
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(request, responseToCache);
           });
         }
         return response;
       })
       .catch(() => {
         // Si falla la red, intentar buscar en caché
-        return caches.match(event.request).then((response) => {
+        return caches.match(request).then((response) => {
           if (response) {
             return response;
           }
           // Si no está en caché y es navegación, mostrar página offline
-          if (event.request.mode === 'navigate') {
+          if (request.mode === 'navigate') {
             return caches.match('/offline');
           }
           return new Response('Sin conexión', {
@@ -68,4 +85,4 @@ self.addEventListener('fetch', (event) => {
         });
       })
   );
-});
+});

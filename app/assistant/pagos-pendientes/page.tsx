@@ -29,10 +29,12 @@ import {
   Phone,
   Mail,
   MapPin,
+  Gift,
   Package
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPendingPayments, verifyPayment } from "@/app/actions/orders";
+import { getPendingGiftCards, verifyGiftCardPayment } from "@/app/actions/gift-cards";
 
 interface PendingPayment {
   id: string;
@@ -52,46 +54,75 @@ interface PendingPayment {
   status: string;
 }
 
+interface PendingGiftCard {
+  id: string;
+  amount: number;
+  balance: number;
+  senderName: string;
+  senderEmail: string;
+  recipientEmail: string | null;
+  recipientName: string | null;
+  createdAt: Date;
+  receiptUrl: string | null;
+  status: string;
+}
+
 export default function PagosPendientesPage() {
   const [payments, setPayments] = useState<PendingPayment[]>([]);
   const [filteredPayments, setFilteredPayments] = useState<PendingPayment[]>([]);
+  
+  const [giftCards, setGiftCards] = useState<PendingGiftCard[]>([]);
+  const [filteredGiftCards, setFilteredGiftCards] = useState<PendingGiftCard[]>([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<PendingPayment | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-  const [activeTab, setActiveTab] = useState("todos");
   const [searchTerm, setSearchTerm] = useState("");
 
-  async function loadPayments() {
+  async function loadData() {
     setIsLoading(true);
-    const data = await getPendingPayments();
-    setPayments(data as PendingPayment[]);
+    const [ordersData, giftCardsData] = await Promise.all([
+      getPendingPayments(),
+      getPendingGiftCards()
+    ]);
+    
+    setPayments(ordersData as PendingPayment[]);
+    setGiftCards(giftCardsData as unknown as PendingGiftCard[]);
     setIsLoading(false);
   }
 
   useEffect(() => {
-    loadPayments();
+    loadData();
   }, []);
 
   useEffect(() => {
-    let filtered = [...payments];
-    
-    // Filtrar por búsqueda
+    // Filtrar Compras Directas
+    let fPayments = [...payments];
     if (searchTerm) {
-      filtered = filtered.filter(
+      fPayments = fPayments.filter(
         (p) =>
           p.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
           p.id.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+    setFilteredPayments(fPayments);
     
-    setFilteredPayments(filtered);
-  }, [payments, searchTerm]);
+    // Filtrar Gift Cards
+    let fGiftCards = [...giftCards];
+    if (searchTerm) {
+      fGiftCards = fGiftCards.filter(
+        (g) =>
+          g.senderName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (g.recipientName && g.recipientName.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          g.id.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    setFilteredGiftCards(fGiftCards);
+  }, [payments, giftCards, searchTerm]);
 
-  async function handleVerification(orderId: string, action: "approve" | "reject") {
+  async function handleOrderVerification(orderId: string, action: "approve" | "reject") {
     setProcessingId(orderId);
-    
     const formData = new FormData();
     formData.append("action", action);
     if (action === "reject" && rejectReason) {
@@ -100,19 +131,37 @@ export default function PagosPendientesPage() {
 
     const result = await verifyPayment(orderId, formData);
 
-    if (result.error) {
-      toast.error(result.error);
-    } else {
+    if (result.error) toast.error(result.error);
+    else {
       toast.success(result.message);
-      await loadPayments();
-      setSelectedOrder(null);
+      await loadData();
       setRejectReason("");
     }
-
     setProcessingId(null);
   }
 
-  const getTotalPending = payments.reduce((sum, p) => sum + p.totalAmount, 0);
+  async function handleGiftCardVerification(giftCardId: string, action: "approve" | "reject") {
+    setProcessingId(giftCardId);
+    const result = await verifyGiftCardPayment(giftCardId, action, rejectReason);
+
+    if (result.error) toast.error(result.error);
+    else {
+      toast.success(result.message);
+      await loadData();
+      setRejectReason("");
+    }
+    setProcessingId(null);
+  }
+
+  const getTotalPendingOrders = payments.reduce((sum, p) => sum + p.totalAmount, 0);
+  const getTotalPendingGiftCards = giftCards.reduce((sum, g) => sum + g.amount, 0);
+  const totalPendingAmount = getTotalPendingOrders + getTotalPendingGiftCards;
+  const totalPendingCount = payments.length + giftCards.length;
+  
+  const uniqueClients = new Set([
+    ...payments.map(p => p.buyerName),
+    ...giftCards.map(g => g.senderName)
+  ]).size;
 
   if (isLoading) {
     return (
@@ -134,15 +183,6 @@ export default function PagosPendientesPage() {
           <Skeleton className="h-10 flex-1" />
           <Skeleton className="h-10 w-full md:w-64" />
         </div>
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-24 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
       </div>
     );
   }
@@ -162,8 +202,8 @@ export default function PagosPendientesPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-amber-600 font-medium">Pagos pendientes</p>
-                <p className="text-3xl font-bold text-amber-600">{payments.length}</p>
+                <p className="text-sm text-amber-600 font-medium">Pagos pendientes (Total)</p>
+                <p className="text-3xl font-bold text-amber-600">{totalPendingCount}</p>
               </div>
               <AlertCircle className="w-10 h-10 text-amber-500" />
             </div>
@@ -175,7 +215,7 @@ export default function PagosPendientesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-primary font-medium">Monto total pendiente</p>
-                <p className="text-3xl font-bold text-primary">Bs. {getTotalPending.toFixed(2)}</p>
+                <p className="text-3xl font-bold text-primary">Bs. {totalPendingAmount.toFixed(2)}</p>
               </div>
               <CreditCard className="w-10 h-10 text-primary" />
             </div>
@@ -187,9 +227,7 @@ export default function PagosPendientesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-green-600 font-medium">Clientes únicos</p>
-                <p className="text-3xl font-bold text-green-600">
-                  {new Set(payments.map(p => p.buyerName)).size}
-                </p>
+                <p className="text-3xl font-bold text-green-600">{uniqueClients}</p>
               </div>
               <CheckCircle className="w-10 h-10 text-green-500" />
             </div>
@@ -216,267 +254,266 @@ export default function PagosPendientesPage() {
         </svg>
       </div>
 
-      {/* Lista de pagos pendientes */}
-      {filteredPayments.length === 0 ? (
-        <Card>
-          <CardContent className="text-center py-12">
-            <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">¡No hay pagos pendientes!</h3>
-            <p className="text-muted-foreground">
-              {searchTerm ? "No se encontraron resultados para tu búsqueda." : "Todos los pagos han sido procesados correctamente."}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-4">
-          {filteredPayments.map((payment) => (
-            <Card key={payment.id} className="overflow-hidden hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex flex-col lg:flex-row justify-between gap-4">
-                  {/* Información del producto/comprador */}
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold text-lg">{payment.productName}</h3>
-                      <Badge variant="outline" className="text-xs">
-                        {payment.storeName}
-                      </Badge>
-                      <Badge variant="destructive" className="text-xs">
-                        Pendiente
-                      </Badge>
-                    </div>
+      <Tabs defaultValue="directas" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6 h-12">
+          <TabsTrigger value="directas" className="h-full gap-2">
+            <Package className="w-4 h-4" />
+            Compras Directas
+            {payments.length > 0 && (
+              <Badge variant="destructive" className="ml-2 rounded-full h-5 px-1.5">{payments.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="gift-cards" className="h-full gap-2">
+            <Gift className="w-4 h-4" />
+            Tarjetas Gift
+            {giftCards.length > 0 && (
+              <Badge variant="destructive" className="ml-2 rounded-full h-5 px-1.5">{giftCards.length}</Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Comprador:</span>
-                        <strong>{payment.buyerName}</strong>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-3 h-3 text-muted-foreground" />
-                        <strong>{payment.buyerPhone}</strong>
-                      </div>
-                      {payment.buyerEmail && (
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-3 h-3 text-muted-foreground" />
-                          <strong>{payment.buyerEmail}</strong>
-                        </div>
-                      )}
-                      {payment.buyerCi && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">CI/NIT:</span>
-                          <strong>{payment.buyerCi}</strong>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">Cantidad:</span>
-                        <strong>{payment.quantity} unidades</strong>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      <span>Solicitado el {new Date(payment.createdAt).toLocaleString("es-BO")}</span>
-                    </div>
-                  </div>
-
-                  {/* Monto y acciones */}
-                  <div className="flex flex-col items-end justify-between">
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Total a pagar</p>
-                      <p className="text-2xl font-bold text-primary">
-                        Bs. {payment.totalAmount.toFixed(2)}
-                      </p>
-                    </div>
-
-                    <div className="flex gap-2 mt-4">
-                      {/* Dialog para ver comprobante */}
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Eye className="w-4 h-4 mr-2" />
-                            Ver comprobante
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                          <DialogHeader>
-                            <DialogTitle>Comprobante de Pago</DialogTitle>
-                            <DialogDescription>
-                              Verifica que el comprobante coincida con los datos de la orden.
-                            </DialogDescription>
-                          </DialogHeader>
-                          {payment.paymentProofUrl ? (
-                            <div className="relative w-full h-[400px] border rounded-lg overflow-hidden">
-                              <Image
-                                src={payment.paymentProofUrl}
-                                alt="Comprobante de pago"
-                                fill
-                                className="object-contain"
-                              />
-                            </div>
-                          ) : (
-                            <div className="text-center py-8 text-muted-foreground">
-                              <AlertCircle className="w-12 h-12 mx-auto mb-2" />
-                              <p>No se ha subido ningún comprobante todavía.</p>
-                            </div>
-                          )}
-                          <DialogFooter className="gap-2">
-                            <Button
-                              variant="destructive"
-                              onClick={() => {
-                                handleVerification(payment.id, "reject");
-                                setSelectedOrder(null);
-                              }}
-                              disabled={processingId === payment.id}
-                            >
-                              {processingId === payment.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <XCircle className="w-4 h-4 mr-2" />
-                              )}
-                              Rechazar
-                            </Button>
-                            <Button
-                              onClick={() => {
-                                handleVerification(payment.id, "approve");
-                                setSelectedOrder(null);
-                              }}
-                              disabled={processingId === payment.id}
-                            >
-                              {processingId === payment.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                              )}
-                              Verificar
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-
-                      {/* Dialog para verificar rápido */}
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button size="sm" className="gap-2">
-                            <CheckCircle className="w-4 h-4" />
-                            Verificar rápido
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Verificar Pago</DialogTitle>
-                            <DialogDescription>
-                              Confirma la verificación del pago de {payment.buyerName}.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="py-4 space-y-4">
-                            <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                              <p className="text-sm font-medium">Detalles de la orden</p>
-                              <p className="text-sm text-muted-foreground mt-2">
-                                Producto: {payment.productName}<br />
-                                Monto: Bs. {payment.totalAmount.toFixed(2)}<br />
-                                Comprador: {payment.buyerName}<br />
-                                Cantidad: {payment.quantity} unidades
-                              </p>
-                            </div>
-                            <div className="space-y-2">
-                              <Label htmlFor="reason">Motivo de rechazo (opcional)</Label>
-                              <Textarea
-                                id="reason"
-                                placeholder="Ej: El comprobante no coincide con el monto..."
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <DialogFooter className="gap-2">
-                            <Button
-                              variant="destructive"
-                              onClick={() => handleVerification(payment.id, "reject")}
-                              disabled={processingId === payment.id}
-                            >
-                              {processingId === payment.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <XCircle className="w-4 h-4 mr-2" />
-                              )}
-                              Rechazar
-                            </Button>
-                            <Button
-                              onClick={() => handleVerification(payment.id, "approve")}
-                              disabled={processingId === payment.id}
-                            >
-                              {processingId === payment.id ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                              )}
-                              Verificar
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dirección de envío (si existe) */}
-                {payment.shippingAddress && (
-                  <div className="mt-4 pt-4 border-t flex items-start gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <span className="text-muted-foreground">Dirección de envío:</span>
-                      <span className="ml-2">{payment.shippingAddress}</span>
-                    </div>
-                  </div>
-                )}
+        <TabsContent value="directas" className="space-y-4">
+          {filteredPayments.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">¡No hay compras directas pendientes!</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? "No se encontraron resultados." : "Todos los pagos han sido procesados."}
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="space-y-4">
+              {filteredPayments.map((payment) => (
+                <Card key={payment.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row justify-between gap-4">
+                      {/* Información del producto/comprador */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg">{payment.productName}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {payment.storeName}
+                          </Badge>
+                          <Badge variant="destructive" className="text-xs">
+                            Pendiente
+                          </Badge>
+                        </div>
 
-      {/* Resumen adicional */}
-      {filteredPayments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumen de pagos pendientes</CardTitle>
-            <CardDescription>Distribución de los pagos por monto</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {(() => {
-                const ranges = [
-                  { min: 0, max: 100, label: "Menos de Bs. 100" },
-                  { min: 100, max: 500, label: "Bs. 100 - Bs. 500" },
-                  { min: 500, max: 1000, label: "Bs. 500 - Bs. 1000" },
-                  { min: 1000, max: Infinity, label: "Más de Bs. 1000" },
-                ];
-                
-                return ranges.map((range) => {
-                  const count = filteredPayments.filter(
-                    (p) => p.totalAmount >= range.min && p.totalAmount < range.max
-                  ).length;
-                  const percentage = (count / filteredPayments.length) * 100;
-                  
-                  return (
-                    <div key={range.label}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>{range.label}</span>
-                        <span className="font-medium">{count} pagos ({percentage.toFixed(0)}%)</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">Comprador:</span>
+                            <strong>{payment.buyerName}</strong>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-3 h-3 text-muted-foreground" />
+                            <strong>{payment.buyerPhone}</strong>
+                          </div>
+                          {payment.buyerEmail && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              <strong>{payment.buyerEmail}</strong>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">Cantidad:</span>
+                            <strong>{payment.quantity} unidades</strong>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>Solicitado el {new Date(payment.createdAt).toLocaleString("es-BO")}</span>
+                        </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div
-                          className="bg-primary rounded-full h-2"
-                          style={{ width: `${percentage}%` }}
-                        />
+
+                      {/* Monto y acciones */}
+                      <div className="flex flex-col items-end justify-between">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Total a pagar</p>
+                          <p className="text-2xl font-bold text-primary">
+                            Bs. {payment.totalAmount.toFixed(2)}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 mt-4">
+                          {/* Dialog para ver comprobante */}
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Eye className="w-4 h-4 mr-2" />
+                                Comprobante
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Comprobante de Pago</DialogTitle>
+                              </DialogHeader>
+                              {payment.paymentProofUrl ? (
+                                <div className="relative w-full h-[400px] border rounded-lg overflow-hidden">
+                                  <Image
+                                    src={payment.paymentProofUrl}
+                                    alt="Comprobante de pago"
+                                    fill
+                                    className="object-contain"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                                  <p>No se ha subido ningún comprobante.</p>
+                                </div>
+                              )}
+                              <DialogFooter className="gap-2">
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleOrderVerification(payment.id, "reject")}
+                                  disabled={processingId === payment.id}
+                                >
+                                  {processingId === payment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                                  Rechazar
+                                </Button>
+                                <Button
+                                  onClick={() => handleOrderVerification(payment.id, "approve")}
+                                  disabled={processingId === payment.id}
+                                >
+                                  {processingId === payment.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                                  Aprobar
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
                       </div>
                     </div>
-                  );
-                });
-              })()}
+                  </CardContent>
+                </Card>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="gift-cards" className="space-y-4">
+          {filteredGiftCards.length === 0 ? (
+            <Card>
+              <CardContent className="text-center py-12">
+                <CheckCircle className="w-16 h-16 mx-auto text-green-500 mb-4" />
+                <h3 className="text-xl font-semibold mb-2">¡No hay tarjetas Gift pendientes!</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? "No se encontraron resultados." : "Todos los pagos han sido procesados."}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {filteredGiftCards.map((card) => (
+                <Card key={card.id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col lg:flex-row justify-between gap-4">
+                      {/* Información de la Tarjeta */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-lg flex items-center gap-2">
+                            <Gift className="w-5 h-5 text-primary" /> Tarjeta de Regalo
+                          </h3>
+                          <Badge variant="destructive" className="text-xs">Pendiente</Badge>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">De:</span>
+                            <strong>{card.senderName}</strong>
+                          </div>
+                          {card.senderEmail && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              <strong>{card.senderEmail}</strong>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground">Para:</span>
+                            <strong>{card.recipientName || "Sin especificar"}</strong>
+                          </div>
+                          {card.recipientEmail && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="w-3 h-3 text-muted-foreground" />
+                              <strong>{card.recipientEmail}</strong>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          <span>Comprada el {new Date(card.createdAt).toLocaleString("es-BO")}</span>
+                        </div>
+                      </div>
+
+                      {/* Monto y acciones */}
+                      <div className="flex flex-col items-end justify-between">
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">Valor de la tarjeta</p>
+                          <p className="text-2xl font-bold text-primary">
+                            Bs. {card.amount.toFixed(2)}
+                          </p>
+                        </div>
+
+                        <div className="flex gap-2 mt-4">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <Eye className="w-4 h-4 mr-2" />
+                                Comprobante
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl">
+                              <DialogHeader>
+                                <DialogTitle>Comprobante de Pago (Gift Card)</DialogTitle>
+                              </DialogHeader>
+                              {card.receiptUrl ? (
+                                <div className="relative w-full h-[400px] border rounded-lg overflow-hidden">
+                                  <Image
+                                    src={card.receiptUrl}
+                                    alt="Comprobante de pago Gift Card"
+                                    fill
+                                    className="object-contain"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  <AlertCircle className="w-12 h-12 mx-auto mb-2" />
+                                  <p>Esta tarjeta no tiene un comprobante subido.</p>
+                                </div>
+                              )}
+                              <DialogFooter className="gap-2">
+                                <Button
+                                  variant="destructive"
+                                  onClick={() => handleGiftCardVerification(card.id, "reject")}
+                                  disabled={processingId === card.id}
+                                >
+                                  {processingId === card.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                                  Rechazar
+                                </Button>
+                                <Button
+                                  onClick={() => handleGiftCardVerification(card.id, "approve")}
+                                  disabled={processingId === card.id}
+                                >
+                                  {processingId === card.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                                  Aprobar
+                                </Button>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
