@@ -1,7 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +39,26 @@ interface GiftCardWalletProps {
 }
 
 export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats }: GiftCardWalletProps) {
-  const [activeTab, setActiveTab] = useState('sent');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = searchParams.get('tab') || 'sent';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sync activeTab with URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Optional: update URL without full reload
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`/gift-cards?${params.toString()}`, { scroll: false });
+  };
 
   // State for Check Balance feature
   const [code, setCode] = useState('');
@@ -159,7 +180,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
           ].map(({ id, label, value, icon: Icon, color }) => (
             <button 
               key={id} 
-              onClick={() => setActiveTab(id)}
+              onClick={() => handleTabChange(id)}
               className={`rounded-2xl p-2.5 border transition-all text-center w-full
                 ${activeTab === id ? 'bg-primary/5 border-primary/20 shadow-md ring-1 ring-primary/20 scale-105' : 'bg-card shadow-sm hover:bg-muted/50'}
               `}
@@ -174,7 +195,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
 
       {/* ── CARDS TABS ── */}
       <div className="max-w-4xl mx-auto px-4 pb-32">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           {/* Desktop tabs are now the stats cards above. Mobile tabs are the bottom nav below. */}
 
           {/* ── MOBILE HISTORY BUTTON ── */}
@@ -182,7 +203,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => setActiveTab('history')} 
+              onClick={() => handleTabChange('history')} 
               className={`text-xs h-8 rounded-full ${activeTab === 'history' ? 'bg-primary/10 text-primary border-primary/30' : 'text-muted-foreground'}`}
             >
               <Clock className="w-3.5 h-3.5 mr-1.5" />
@@ -407,49 +428,6 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
         </Tabs>
       </div>
 
-      {/* ── CUSTOM BOTTOM NAVIGATION FOR GIFT CARDS ── */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1)]">
-        <div className="flex justify-around items-center h-16 px-2 pb-[env(safe-area-inset-bottom,0px)]">
-          <button
-            onClick={() => setActiveTab('sent')}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 transition-all duration-300 ${activeTab === 'sent' ? 'text-primary scale-110' : 'text-muted-foreground'}`}
-          >
-            <Send className={`w-5 h-5 ${activeTab === 'sent' ? 'drop-shadow-[0_0_8px_rgba(37,99,235,0.3)]' : ''}`} />
-            <span className={`text-[10px] font-medium ${activeTab === 'sent' ? 'font-bold' : ''}`}>Enviados</span>
-          </button>
-          
-          <button
-            onClick={() => setActiveTab('received')}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1 transition-all duration-300 ${activeTab === 'received' ? 'text-primary scale-110' : 'text-muted-foreground'}`}
-          >
-            <Inbox className={`w-5 h-5 ${activeTab === 'received' ? 'drop-shadow-[0_0_8px_rgba(37,99,235,0.3)]' : ''}`} />
-            <span className={`text-[10px] font-medium ${activeTab === 'received' ? 'font-bold' : ''}`}>Recibidos</span>
-          </button>
-
-          {/* Central Action Button */}
-          <Link href="/gift-cards/buy" className="relative -top-5 flex items-center justify-center">
-            <div className="w-14 h-14 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-90 transition-all border-4 border-background flex items-center justify-center group">
-              <Gift className="w-7 h-7 group-hover:scale-110 transition-transform duration-300" />
-            </div>
-          </Link>
-
-          <button
-            onClick={() => setActiveTab('check')}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1 transition-all duration-300 ${activeTab === 'check' ? 'text-primary scale-110' : 'text-muted-foreground'}`}
-          >
-            <Search className={`w-5 h-5 ${activeTab === 'check' ? 'drop-shadow-[0_0_8px_rgba(37,99,235,0.3)]' : ''}`} />
-            <span className={`text-[10px] font-medium ${activeTab === 'check' ? 'font-bold' : ''}`}>Saldo</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('saved')}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 transition-all duration-300 ${activeTab === 'saved' ? 'text-primary scale-110' : 'text-muted-foreground'}`}
-          >
-            <Wallet className={`w-5 h-5 ${activeTab === 'saved' ? 'drop-shadow-[0_0_8px_rgba(37,99,235,0.3)]' : ''}`} />
-            <span className={`text-[10px] font-medium ${activeTab === 'saved' ? 'font-bold' : ''}`}>Guardados</span>
-          </button>
-        </div>
-      </nav>
     </div>
   );
 }

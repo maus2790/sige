@@ -28,7 +28,8 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
-import { Package, Image as ImageIcon, Plus, Loader2, CheckCircle2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Package, Image as ImageIcon, Plus, Loader2, CheckCircle2, Globe, Lock } from "lucide-react";
 import { createProduct } from "@/app/actions/products";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
@@ -58,6 +59,7 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
     price: "",
     stock: "1",
     imageUrls: [] as string[],
+    isPublished: true,
   });
 
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -89,6 +91,7 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
         price: "",
         stock: "1",
         imageUrls: [],
+        isPublished: true,
       });
       router.refresh();
     }
@@ -99,19 +102,19 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
   }, []);
 
   const formContentNode = (
-    <>
-      <div className="bg-brand-gradient p-8 text-white">
+    <div className="flex flex-col max-h-[90vh] md:max-h-[85vh] w-full">
+      <div className="flex-none bg-brand-gradient p-6 md:p-8 text-white">
         <div className="space-y-1">
-          <h2 className="text-3xl font-black tracking-tight text-white leading-none">
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-none">
             Publicación Rápida
           </h2>
-          <p className="text-blue-100 font-medium text-sm">
+          <p className="text-blue-100 font-medium text-xs md:text-sm">
             Vende tu producto en segundos. Paso {step} de 2.
           </p>
         </div>
       </div>
 
-      <div className="p-6 md:p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+      <div className="flex-1 p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar">
         {step === 1 ? (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="space-y-2">
@@ -181,11 +184,29 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
                 label="Fotos del producto"
               />
             </div>
+
+            <div className="flex items-center justify-between p-4 rounded-xl border border-primary/10 bg-primary/5">
+              <div className="flex flex-col gap-1">
+                <Label className="font-bold flex items-center gap-2">
+                  {formData.isPublished ? <Globe className="w-4 h-4 text-primary" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
+                  Publicar en Market Shop
+                </Label>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  {formData.isPublished 
+                    ? "Visible para todos en el mercado." 
+                    : "Solo visible en tu tienda (Borrador)."}
+                </p>
+              </div>
+              <Switch 
+                checked={formData.isPublished}
+                onCheckedChange={(checked) => setFormData({...formData, isPublished: checked})}
+              />
+            </div>
           </div>
         )}
       </div>
 
-      <div className="p-6 md:p-8 pt-0 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm sticky bottom-0 border-t md:border-none">
+      <div className="flex-none p-6 md:p-8 pt-4 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm border-t border-border/50">
         {step === 2 && (
           <Button variant="ghost" onClick={handlePrev} disabled={isLoading} className="rounded-xl">
             Atrás
@@ -215,7 +236,7 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 
   if (isDesktop) {

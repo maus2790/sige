@@ -41,6 +41,7 @@ const createProductSchema = z.object({
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
   oferta: z.number().int().min(0).max(100).optional().default(0),
   stock: z.number().int().min(0).default(0),
+  isPublished: z.boolean().default(true),
 });
 
 const updateProductSchema = z.object({
@@ -306,6 +307,7 @@ export async function createProduct(data: any) {
       oferta: data.get("oferta"),
       stock: data.get("stock"),
       imageUrls: data.get("imageUrls"),
+      isPublished: data.get("isPublished") === "true",
     };
   }
 
@@ -318,6 +320,7 @@ export async function createProduct(data: any) {
     status: rawData.status || "Nuevo",
     oferta: typeof rawData.oferta === 'string' ? parseInt(rawData.oferta) : (rawData.oferta || 0),
     stock: typeof rawData.stock === 'string' ? parseInt(rawData.stock) : (rawData.stock || 0),
+    isPublished: rawData.isPublished !== undefined ? rawData.isPublished : true,
   });
 
   if (!validatedFields.success) {
@@ -333,7 +336,7 @@ export async function createProduct(data: any) {
     };
   }
 
-  const { sku, name, description, price, category, status, oferta, stock } = validatedFields.data;
+  const { sku, name, description, price, category, status, oferta, stock, isPublished } = validatedFields.data;
 
   // Procesar imágenes
   let imageUrls: ProductImageUrls = [];
@@ -381,7 +384,7 @@ export async function createProduct(data: any) {
         precioVenta: price,
         precioAdquisicion: 0,
         ofertaPorcentaje: oferta || 0,
-        isPublished: true,
+        isPublished: isPublished,
         updatedAt: new Date(),
       });
     });
@@ -399,6 +402,120 @@ export async function createProduct(data: any) {
 
 // ============================================
 // 7.5 ACTUALIZAR PRODUCTO
+// ============================================
+
+export async function publishProductToMarket(productId: string) {
+  const user = await requireRole("seller");
+
+  const existingProduct = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .get();
+
+  if (!existingProduct) {
+    throw new Error("Producto no encontrado");
+  }
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store || existingProduct.storeId !== store.id) {
+    throw new Error("No tienes permiso para publicar este producto");
+  }
+
+  await db
+    .update(comercialConfig)
+    .set({ isPublished: true, updatedAt: new Date() })
+    .where(eq(comercialConfig.productId, productId));
+
+  revalidatePath("/");
+  revalidatePath("/dashboard/productos");
+  revalidatePath(`/tienda/${store.id}`);
+  
+  return { success: true };
+}
+
+// ============================================
+// 7.6 DESPUBLICAR PRODUCTO (Pasar a Borrador)
+// ============================================
+
+export async function unpublishProduct(productId: string) {
+  const user = await requireRole("seller");
+
+  const existingProduct = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .get();
+
+  if (!existingProduct) throw new Error("Producto no encontrado");
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store || existingProduct.storeId !== store.id) {
+    throw new Error("No tienes permiso para modificar este producto");
+  }
+
+  await db
+    .update(comercialConfig)
+    .set({ isPublished: false, updatedAt: new Date() })
+    .where(eq(comercialConfig.productId, productId));
+
+  revalidatePath("/");
+  revalidatePath("/dashboard/productos");
+  revalidatePath(`/tienda/${store.id}`);
+
+  return { success: true };
+}
+
+// ============================================
+// 7.7 ELIMINAR PRODUCTO
+// ============================================
+
+export async function deleteProduct(productId: string) {
+  const user = await requireRole("seller");
+
+  const existingProduct = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .get();
+
+  if (!existingProduct) throw new Error("Producto no encontrado");
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store || existingProduct.storeId !== store.id) {
+    throw new Error("No tienes permiso para eliminar este producto");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.delete(comercialConfig).where(eq(comercialConfig.productId, productId));
+    await tx.delete(inventory).where(eq(inventory.productId, productId));
+    await tx.delete(products).where(eq(products.id, productId));
+  });
+
+  revalidatePath("/");
+  revalidatePath("/dashboard/productos");
+  revalidatePath(`/tienda/${store.id}`);
+
+  return { success: true };
+}
+
+// ============================================
+// 7.8 ACTUALIZAR PRODUCTO
 // ============================================
 
 export async function updateProduct(productId: string, formData: FormData) {
@@ -469,40 +586,7 @@ export async function updateProduct(productId: string, formData: FormData) {
   redirect("/dashboard/productos?updated=true");
 }
 
-// ============================================
-// 7.6 ELIMINAR PRODUCTO
-// ============================================
 
-export async function deleteProduct(productId: string) {
-  const user = await requireRole("seller");
-
-  const existingProduct = await db
-    .select()
-    .from(products)
-    .where(eq(products.id, productId))
-    .get();
-
-  if (!existingProduct) {
-    throw new Error("Producto no encontrado");
-  }
-
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, user.id))
-    .get();
-
-  if (!store || existingProduct.storeId !== store.id) {
-    throw new Error("No tienes permiso para eliminar este producto");
-  }
-
-  await db.delete(products).where(eq(products.id, productId));
-
-  // TODO: Eliminar imágenes de R2 (Fase 8)
-
-  revalidatePath("/dashboard/productos");
-  redirect("/dashboard/productos?deleted=true");
-}
 
 // ============================================
 // 7.2 GET PRODUCTS CURSOR (SCROLL INFINITO)

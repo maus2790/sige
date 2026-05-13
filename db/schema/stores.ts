@@ -8,6 +8,8 @@ export const stores = sqliteTable("stores", {
     address: text("address"),
     phone: text("phone"),
     logoUrl: text("logo_url"),
+    bannerUrl: text("banner_url"),
+    themeConfig: text("theme_config"), // JSON string for colors, etc.
     verified: integer("verified", { mode: "boolean" }).default(false),
     rating: real("rating").default(0),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),

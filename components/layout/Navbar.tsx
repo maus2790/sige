@@ -105,18 +105,51 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
           {/* Logo */}
           <div className="flex items-center gap-2">
             <Link 
-              href={pathname.startsWith("/gift-cards") ? "/gift-cards" : "/"} 
+              href={
+                pathname.startsWith("/gift-cards") ? "/gift-cards" : 
+                pathname.startsWith("/dashboard") ? "/dashboard" :
+                pathname.startsWith("/admin") ? "/admin" :
+                pathname.startsWith("/assistant") ? "/assistant" :
+                pathname.startsWith("/profile") ? "/profile" :
+                pathname.startsWith("/cart") ? "/cart" :
+                myStoreId && pathname.startsWith(`/tienda/${myStoreId}`) ? `/tienda/${myStoreId}` : 
+                "/"
+              } 
               className="flex items-center gap-2 group"
             >
               <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shadow-premium group-hover:scale-110 transition-transform duration-300">
-                <ShoppingBag className="w-6 h-6 text-white" />
+                {pathname.startsWith("/gift-cards") ? (
+                  <Gift className="w-6 h-6 text-white" />
+                ) : pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/assistant") ? (
+                  <LayoutDashboard className="w-6 h-6 text-white" />
+                ) : pathname.startsWith("/profile") ? (
+                  <User className="w-6 h-6 text-white" />
+                ) : pathname.startsWith("/cart") ? (
+                  <ShoppingCart className="w-6 h-6 text-white" />
+                ) : pathname.startsWith("/tienda") ? (
+                  <Store className="w-6 h-6 text-white" />
+                ) : (
+                  <ShoppingBag className="w-6 h-6 text-white" />
+                )}
               </div>
               <div className="flex flex-col">
                 <span className="text-2xl font-black text-brand-gradient tracking-tighter uppercase leading-none">
                   SIGE
                 </span>
                 <span className="text-[10px] font-bold text-primary tracking-widest uppercase opacity-80 leading-none mt-0.5">
-                  {pathname.startsWith("/gift-cards") ? "Gift Cards" : "Market - Shop"}
+                  {pathname.startsWith("/gift-cards") 
+                    ? "Gift Cards" 
+                    : pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/assistant")
+                    ? "Dashboard"
+                    : pathname.startsWith("/profile")
+                    ? "Mi Perfil"
+                    : pathname.startsWith("/cart")
+                    ? "Carrito de Compras"
+                    : myStoreId && pathname === `/tienda/${myStoreId}`
+                    ? "Mi Tienda"
+                    : pathname.startsWith("/tienda/")
+                    ? "Explorar Tienda"
+                    : "Market - Shop"}
                 </span>
               </div>
             </Link>
@@ -135,7 +168,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   </Link>
                 )}
 
-                {activeUser && pathname !== "/gift-cards" && (
+                {activeUser && !pathname.startsWith("/gift-cards") && (
                   <Link href="/gift-cards" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
                     Gift Cards
                   </Link>
@@ -196,6 +229,13 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                           </p>
                         </div>
                       </DropdownMenuLabel>
+                      <DropdownMenuItem asChild>
+                        <Link href="/profile" className="cursor-pointer flex items-center">
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Perfil</span>
+                        </Link>
+                      </DropdownMenuItem>
+
                       <DropdownMenuSeparator />
                       
                       {pathname !== "/" && (
@@ -207,19 +247,15 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         </DropdownMenuItem>
                       )}
 
-                      <DropdownMenuItem asChild>
-                        <Link href="/mis-compras" className="cursor-pointer flex items-center">
-                          <ShoppingBag className="mr-2 h-4 w-4" />
-                          <span>Mis Compras</span>
-                        </Link>
-                      </DropdownMenuItem>
 
-                      <DropdownMenuItem asChild>
-                        <Link href="/gift-cards" className="cursor-pointer flex items-center">
-                          <Gift className="mr-2 h-4 w-4" />
-                          <span>Mis Gift Cards</span>
-                        </Link>
-                      </DropdownMenuItem>
+                      {!pathname.startsWith("/gift-cards") && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/gift-cards" className="cursor-pointer flex items-center">
+                            <Gift className="mr-2 h-4 w-4" />
+                            <span>Mis Gift Cards</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
 
                       {myStoreId && pathname !== `/tienda/${myStoreId}` && (
                         <DropdownMenuItem asChild>
@@ -230,12 +266,6 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         </DropdownMenuItem>
                       )}
 
-                      <DropdownMenuItem asChild>
-                        <Link href="/profile" className="cursor-pointer flex items-center">
-                          <User className="mr-2 h-4 w-4" />
-                          <span>Perfil</span>
-                        </Link>
-                      </DropdownMenuItem>
 
                       {!pathname.startsWith("/dashboard") && !pathname.startsWith("/admin") && !pathname.startsWith("/assistant") && (
                         <DropdownMenuItem asChild>

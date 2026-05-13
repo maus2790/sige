@@ -241,6 +241,6 @@ export const config = {
      * - public directory (public assets)
      * - api routes (API endpoints)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api|sw.js|OneSignalSDKWorker.js|manifest.json).*)',
   ],
 };

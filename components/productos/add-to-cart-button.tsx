@@ -49,7 +49,7 @@ export function AddToCartButton({
       variant={isInCart ? "outline" : variant}
       size={size}
       className={cn(
-        "transition-all duration-300 active:scale-95",
+        "transition-all duration-300 active:scale-95 cursor-pointer",
         isInCart && "bg-red-50 text-red-600 border-red-200 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800/50",
         className
       )}

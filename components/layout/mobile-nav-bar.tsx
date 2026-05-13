@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Home, ShoppingCart, Plus, Package, Store, Gift } from "lucide-react";
+import { Home, ShoppingCart, Plus, Package, Store, Gift, User } from "lucide-react";
 import { useCart } from "@/hooks/use-cart";
 import { CategorySheet } from "@/components/productos/category-sheet";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
@@ -34,26 +34,24 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
     setMounted(true);
   }, []);
 
-  // Mostrar en Mercado y Tiendas. Ocultar en Gift Cards porque tiene su propio menú inferior.
+  // Mostrar en Mercado, Tiendas y Carrito. Ocultar en Gift Cards porque tiene su propio menú inferior.
   const isStorePage = pathname.startsWith("/tienda/");
-  if (pathname !== "/" && !isStorePage) return null;
+  const isCartPage = pathname === "/cart";
+  const isProfilePage = pathname === "/profile";
+  if (pathname !== "/" && !isStorePage && !isCartPage && !isProfilePage) return null;
 
   const cartCount = mounted ? totalItems : 0;
 
   const handleCategorySelect = (category: string) => {
-    // Si estamos en una tienda, redirigir al mercado con ese filtro
-    // O si el usuario prefiere filtrar la tienda, podríamos añadir lógica aquí.
-    // Por ahora, seguimos el comportamiento del mercado principal.
     router.push(`/?category=${encodeURIComponent(category)}`);
   };
 
   const navItems = [
     { href: "/", label: "Mercado", icon: Home },
     { 
-      label: "Categorías", 
-      icon: Package, 
-      onClick: () => setIsCategoryOpen(true),
-      isActive: isCategoryOpen 
+      href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
+      label: "Mi Tienda", 
+      icon: Store 
     },
     ...(pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`) ? [{ 
       label: "Vender", 
@@ -68,9 +66,9 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
       badge: cartCount 
     },
     { 
-      href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
-      label: "Tienda", 
-      icon: Store 
+      href: "/profile", 
+      label: "Perfil", 
+      icon: User 
     },
   ];
 
@@ -82,14 +80,14 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
         <div className="flex justify-around items-center h-16 px-2 pb-[env(safe-area-inset-bottom,0px)]">
           {navItems.map((item, index) => {
             const Icon = item.icon;
-            const isActive = item.href ? pathname === item.href : item.isActive;
+            const isActive = item.href ? pathname === item.href : false;
 
             if (item.isAction) {
               return (
                 <button
                   key={index}
                   onClick={item.onClick}
-                  className="relative -top-5 flex items-center justify-center"
+                  className="relative -top-5 flex items-center justify-center cursor-pointer"
                 >
                   <div className="w-14 h-14 rounded-full bg-brand-gradient text-white shadow-premium hover:shadow-2xl active:scale-90 transition-all border-4 border-background flex items-center justify-center group">
                     <Icon className="w-7 h-7 group-hover:scale-110 transition-transform duration-300" />
@@ -113,11 +111,11 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
             );
 
             return item.href ? (
-              <Link key={item.href} href={item.href} className="flex-1">
+              <Link key={item.href} href={item.href} className="flex-1 cursor-pointer">
                 {content}
               </Link>
             ) : (
-              <button key={index} onClick={item.onClick} className="flex-1">
+              <button key={index} onClick={item.onClick} className="flex-1 cursor-pointer">
                 {content}
               </button>
             );

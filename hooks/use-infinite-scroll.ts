@@ -28,17 +28,19 @@ interface UseStoreInfiniteScrollProps {
     storeId: string;
     limit?: number;
     initialData?: any;
+    search?: string;
 }
 
 export function useStoreInfiniteScroll({
     storeId,
     limit = 20,
     initialData,
+    search,
 }: UseStoreInfiniteScrollProps) {
     return useInfiniteQuery({
-        queryKey: ["store-products", storeId],
+        queryKey: ["store-products", storeId, search],
         queryFn: ({ pageParam = 1 }) =>
-            getStoreProducts(storeId, pageParam as number, limit),
+            getStoreProducts(storeId, pageParam as number, limit, search),
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => {
             return (lastPage as any[]).length === limit ? allPages.length + 1 : undefined;
