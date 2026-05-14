@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   Menu,
@@ -13,11 +13,10 @@ import {
   User,
   Store,
   LayoutDashboard,
-  ShoppingBag,
+  ShoppingCart,
   LogOut,
   X,
   ChevronDown,
-  ShoppingCart,
   Download,
   Plus,
   Gift,
@@ -25,9 +24,9 @@ import {
 } from "lucide-react";
 
 import { usePWAInstall } from "@/hooks/use-pwa-install";
-import { useCart } from "@/hooks/use-cart";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { NotificationCenter } from "./notification-center";
+import { useCart } from "@/hooks/use-cart";
 
 
 import { Button } from "@/components/ui/button";
@@ -59,16 +58,21 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
   const { data: session, status } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const pathname = usePathname();
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  const cart = useCart();
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
-  const totalItems = useCart((state) => state.getTotalItems());
   const [isPublishOpen, setIsPublishOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
-    const handler = () => setIsPublishOpen(true);
-    window.addEventListener('open-publish-modal', handler);
-    return () => window.removeEventListener('open-publish-modal', handler);
+    const handler = (e: any) => {
+      setEditingProduct(e.detail || null);
+      setIsPublishOpen(true);
+    };
+    window.addEventListener('open-publish-modal', handler as any);
+    return () => window.removeEventListener('open-publish-modal', handler as any);
   }, []);
 
   const activeUser = session?.user;
@@ -111,7 +115,6 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                 pathname.startsWith("/admin") ? "/admin" :
                 pathname.startsWith("/assistant") ? "/assistant" :
                 pathname.startsWith("/profile") ? "/profile" :
-                pathname.startsWith("/cart") ? "/cart" :
                 myStoreId && pathname.startsWith(`/tienda/${myStoreId}`) ? `/tienda/${myStoreId}` : 
                 "/"
               } 
@@ -124,12 +127,10 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   <LayoutDashboard className="w-6 h-6 text-white" />
                 ) : pathname.startsWith("/profile") ? (
                   <User className="w-6 h-6 text-white" />
-                ) : pathname.startsWith("/cart") ? (
-                  <ShoppingCart className="w-6 h-6 text-white" />
                 ) : pathname.startsWith("/tienda") ? (
                   <Store className="w-6 h-6 text-white" />
                 ) : (
-                  <ShoppingBag className="w-6 h-6 text-white" />
+                  <ShoppingCart className="w-6 h-6 text-white" />
                 )}
               </div>
               <div className="flex flex-col">
@@ -143,8 +144,6 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                     ? "Dashboard"
                     : pathname.startsWith("/profile")
                     ? "Mi Perfil"
-                    : pathname.startsWith("/cart")
-                    ? "Carrito de Compras"
                     : myStoreId && pathname === `/tienda/${myStoreId}`
                     ? "Mi Tienda"
                     : pathname.startsWith("/tienda/")
@@ -189,24 +188,22 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
 
 
-                {/* Carrito Desktop */}
-                {activeUser && (
-                  <Link href="/cart" className="hidden md:block">
-                    <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
-                      <ShoppingCart className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                      {mounted && totalItems > 0 && (
-                        <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-primary border-2 border-background animate-in zoom-in duration-300">
-                          {totalItems}
-                        </Badge>
-                      )}
-                    </Button>
-                  </Link>
-                )}
+
 
                 {/* Centro de Notificaciones */}
                 {activeUser && (
                   <NotificationCenter />
                 )}
+
+                {/* Carrito Link Desktop */}
+                <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer hidden md:flex items-center justify-center">
+                  <ShoppingCart className="h-5 w-5" />
+                  {mounted && cart.getTotalItems() > 0 && (
+                    <Badge className="absolute top-0 right-0 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-red-500 text-white border-none animate-in zoom-in duration-300 pointer-events-none">
+                      {cart.getTotalItems()}
+                    </Badge>
+                  )}
+                </Link>
 
                 {activeUser ? (
                   <DropdownMenu>
@@ -241,7 +238,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                       {pathname !== "/" && (
                         <DropdownMenuItem asChild>
                           <Link href="/" className="cursor-pointer flex items-center">
-                            <ShoppingBag className="mr-2 h-4 w-4" />
+                            <ShoppingCart className="mr-2 h-4 w-4" />
                             <span>Market - Shop</span>
                           </Link>
                         </DropdownMenuItem>
@@ -333,6 +330,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
         categories={categories}
         open={isPublishOpen}
         onOpenChange={setIsPublishOpen}
+        productToEdit={editingProduct}
       />
     </>
   );

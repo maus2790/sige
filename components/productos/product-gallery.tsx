@@ -30,11 +30,36 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
 
+    if (!showZoom) setShowZoom(true);
+
     const { left, top, width, height } = containerRef.current.getBoundingClientRect();
     const x = ((e.clientX - left) / width) * 100;
     const y = ((e.clientY - top) / height) * 100;
 
     setZoomPos({ x, y });
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    
+    // Prevent scrolling while zooming on image
+    if (showZoom) {
+      // e.preventDefault(); // Commented out to avoid passive listener warnings, but logic follows
+    }
+
+    const touch = e.touches[0];
+    const { left, top, width, height } = containerRef.current.getBoundingClientRect();
+    
+    // Check if touch is within bounds
+    if (touch.clientX >= left && touch.clientX <= left + width && 
+        touch.clientY >= top && touch.clientY <= top + height) {
+      if (!showZoom) setShowZoom(true);
+      const x = ((touch.clientX - left) / width) * 100;
+      const y = ((touch.clientY - top) / height) * 100;
+      setZoomPos({ x, y });
+    } else {
+      setShowZoom(false);
+    }
   };
 
   if (images.length === 0) {
@@ -49,11 +74,14 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
     <div className="flex flex-col gap-4">
       {/* Main Viewer */}
       <div 
-        className="relative aspect-square bg-card rounded-2xl overflow-hidden border shadow-sm group cursor-crosshair"
+        className="relative aspect-square bg-card rounded-2xl overflow-hidden border shadow-sm group cursor-crosshair touch-none"
         ref={containerRef}
         onMouseEnter={() => setShowZoom(true)}
         onMouseLeave={() => setShowZoom(false)}
         onMouseMove={handleMouseMove}
+        onTouchStart={() => setShowZoom(true)}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={() => setShowZoom(false)}
       >
         {/* Main Image */}
         <Image
@@ -61,7 +89,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
           alt={`${productName} - Imagen ${activeIndex + 1}`}
           fill
           className={cn(
-            "object-contain p-4 transition-opacity duration-300",
+            "object-cover p-0 transition-opacity duration-300",
             showZoom ? "opacity-0" : "opacity-100"
           )}
           priority

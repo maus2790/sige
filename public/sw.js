@@ -51,8 +51,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 3. Omitir llamadas a la API y autenticación
-  if (url.pathname.includes('/api/') || url.pathname.includes('/auth/')) {
+  // 3. Omitir llamadas a la API, autenticación y chunks internos de Next.js
+  if (
+    url.pathname.includes('/api/') || 
+    url.pathname.includes('/auth/') ||
+    url.pathname.includes('/_next/') || // Evita cachear chunks de Next.js que cambian en dev
+    url.pathname.includes('webpack') // Evita cachear archivos de hot reloading
+  ) {
     return;
   }
 

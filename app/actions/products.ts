@@ -3,13 +3,13 @@
 "use server";
 
 import { db } from "@/db";
-import { products, stores, inventory, comercialConfig } from "@/db/schema";
+import { products, stores, inventory, comercialConfig, users } from "@/db/schema";
 import { eq, and, desc, sql, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { requireRole } from "./auth";
+import { requireRole, getCurrentUser } from "./auth";
 
 // ============================================
 // TIPOS
@@ -40,6 +40,8 @@ const createProductSchema = z.object({
   category: z.string().min(1, "Selecciona una categoría"),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
   oferta: z.number().int().min(0).max(100).optional().default(0),
+  precioOferta: z.number().min(0).optional().nullable(),
+  diasPromocion: z.number().int().min(1).optional().nullable(),
   stock: z.number().int().min(0).default(0),
   isPublished: z.boolean().default(true),
 });
@@ -52,6 +54,9 @@ const updateProductSchema = z.object({
   category: z.string().min(1, "Selecciona una categoría").optional(),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).optional(),
   oferta: z.number().int().min(0).max(100).optional(),
+  precioOferta: z.number().min(0).optional().nullable(),
+  diasPromocion: z.number().int().min(1).optional().nullable(),
+  isPublished: z.boolean().optional(),
 });
 
 // ============================================
@@ -201,10 +206,18 @@ export async function getProductById(id: string) {
       product: products,
       inventory: inventory,
       comercialConfig: comercialConfig,
+      store: stores,
+      seller: {
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+      }
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
     .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
+    .leftJoin(stores, eq(products.storeId, stores.id))
+    .leftJoin(users, eq(stores.userId, users.id))
     .where(eq(products.id, id))
     .get();
 
@@ -212,13 +225,13 @@ export async function getProductById(id: string) {
     return null;
   }
 
-  const { product, inventory: productInventory, comercialConfig: productComercial } = result;
-
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, product.storeId))
-    .get();
+  const { 
+    product, 
+    inventory: productInventory, 
+    comercialConfig: productComercial, 
+    store, 
+    seller 
+  } = result;
 
   return {
     ...product,
@@ -228,6 +241,7 @@ export async function getProductById(id: string) {
     price: productComercial?.precioVenta ?? 0,
     oferta: productComercial?.ofertaPorcentaje ?? 0,
     store,
+    seller,
   };
 }
 
@@ -298,27 +312,31 @@ export async function createProduct(data: any) {
   let rawData = data;
   if (data instanceof FormData) {
     rawData = {
-      sku: data.get("sku"),
+      sku: data.get("sku") || undefined,
       name: data.get("name"),
       description: data.get("description"),
       price: data.get("price"),
       category: data.get("category"),
-      status: data.get("status"),
+      status: data.get("status") || undefined,
       oferta: data.get("oferta"),
       stock: data.get("stock"),
+      precioOferta: data.get("precioOferta"),
+      diasPromocion: data.get("diasPromocion"),
       imageUrls: data.get("imageUrls"),
       isPublished: data.get("isPublished") === "true",
     };
   }
 
   const validatedFields = createProductSchema.safeParse({
-    sku: rawData.sku as string,
+    sku: (rawData.sku as string) || undefined,
     name: rawData.name,
     description: rawData.description,
     price: typeof rawData.price === 'string' ? parseFloat(rawData.price) : rawData.price,
     category: rawData.category,
-    status: rawData.status || "Nuevo",
+    status: (rawData.status as any) || "Nuevo",
     oferta: typeof rawData.oferta === 'string' ? parseInt(rawData.oferta) : (rawData.oferta || 0),
+    precioOferta: typeof rawData.precioOferta === 'string' && rawData.precioOferta !== "" ? parseFloat(rawData.precioOferta) : (rawData.precioOferta || null),
+    diasPromocion: typeof rawData.diasPromocion === 'string' && rawData.diasPromocion !== "" ? parseInt(rawData.diasPromocion) : (rawData.diasPromocion || null),
     stock: typeof rawData.stock === 'string' ? parseInt(rawData.stock) : (rawData.stock || 0),
     isPublished: rawData.isPublished !== undefined ? rawData.isPublished : true,
   });
@@ -336,7 +354,7 @@ export async function createProduct(data: any) {
     };
   }
 
-  const { sku, name, description, price, category, status, oferta, stock, isPublished } = validatedFields.data;
+  const { sku, name, description, price, category, status, oferta, precioOferta, diasPromocion, stock, isPublished } = validatedFields.data;
 
   // Procesar imágenes
   let imageUrls: ProductImageUrls = [];
@@ -378,12 +396,20 @@ export async function createProduct(data: any) {
         updatedAt: new Date(),
       });
 
+      let fechaFinOferta: Date | null = null;
+      if (precioOferta && precioOferta > 0 && diasPromocion && diasPromocion > 0) {
+        fechaFinOferta = new Date();
+        fechaFinOferta.setDate(fechaFinOferta.getDate() + diasPromocion);
+      }
+
       await tx.insert(comercialConfig).values({
         id: generateId(),
         productId,
         precioVenta: price,
         precioAdquisicion: 0,
+        precioOferta: precioOferta && precioOferta > 0 ? precioOferta : null,
         ofertaPorcentaje: oferta || 0,
+        fechaFinOferta,
         isPublished: isPublished,
         updatedAt: new Date(),
       });
@@ -405,7 +431,10 @@ export async function createProduct(data: any) {
 // ============================================
 
 export async function publishProductToMarket(productId: string) {
-  const user = await requireRole("seller");
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+    throw new Error("No autorizado");
+  }
 
   const existingProduct = await db
     .select()
@@ -444,7 +473,10 @@ export async function publishProductToMarket(productId: string) {
 // ============================================
 
 export async function unpublishProduct(productId: string) {
-  const user = await requireRole("seller");
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+    throw new Error("No autorizado");
+  }
 
   const existingProduct = await db
     .select()
@@ -518,8 +550,11 @@ export async function deleteProduct(productId: string) {
 // 7.8 ACTUALIZAR PRODUCTO
 // ============================================
 
-export async function updateProduct(productId: string, formData: FormData) {
-  const user = await requireRole("seller");
+export async function updateProduct(productId: string, data: any) {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+    throw new Error("No autorizado");
+  }
 
   const existingProduct = await db
     .select()
@@ -541,18 +576,35 @@ export async function updateProduct(productId: string, formData: FormData) {
     throw new Error("No tienes permiso para editar este producto");
   }
 
-  const rawPrice = formData.get("price");
-  const rawStockActual = formData.get("stockActual");
-  const rawStockMinimo = formData.get("stockMinimo");
+  // Si recibimos FormData, convertirlo a objeto
+  let rawData = data;
+  if (data instanceof FormData) {
+    rawData = {
+      sku: data.get("sku") || undefined,
+      name: data.get("name"),
+      description: data.get("description"),
+      price: data.get("price"),
+      category: data.get("category"),
+      status: data.get("status") || undefined,
+      oferta: data.get("oferta"),
+      precioOferta: data.get("precioOferta"),
+      diasPromocion: data.get("diasPromocion"),
+      isPublished: data.get("isPublished") === "true",
+      imageUrls: data.get("imageUrls"),
+    };
+  }
 
   const validatedFields = updateProductSchema.safeParse({
-    sku: formData.get("sku") as string || undefined,
-    name: formData.get("name") || undefined,
-    description: formData.get("description") || undefined,
-    price: rawPrice ? parseFloat(rawPrice as string) : undefined,
-    category: formData.get("category") || undefined,
-    status: formData.get("status") as any || undefined,
-    oferta: formData.get("oferta") ? parseInt(formData.get("oferta") as string) : undefined,
+    sku: rawData.sku as string || undefined,
+    name: rawData.name || undefined,
+    description: rawData.description || undefined,
+    price: typeof rawData.price === 'string' ? parseFloat(rawData.price) : rawData.price,
+    category: rawData.category,
+    status: (rawData.status as any) || undefined,
+    oferta: typeof rawData.oferta === 'string' ? parseInt(rawData.oferta) : (rawData.oferta || 0),
+    precioOferta: typeof rawData.precioOferta === 'string' && rawData.precioOferta !== "" ? parseFloat(rawData.precioOferta) : (rawData.precioOferta || null),
+    diasPromocion: typeof rawData.diasPromocion === 'string' && rawData.diasPromocion !== "" ? parseInt(rawData.diasPromocion) : (rawData.diasPromocion || null),
+    isPublished: rawData.isPublished !== undefined ? rawData.isPublished : undefined,
   });
 
   if (!validatedFields.success) {
@@ -562,28 +614,70 @@ export async function updateProduct(productId: string, formData: FormData) {
     };
   }
 
-  const productData = validatedFields.data;
+  const { sku, name, description, price, category, status, oferta, precioOferta, diasPromocion, isPublished } = validatedFields.data;
 
   const productUpdate: any = {
-    ...productData,
     updatedAt: new Date(),
   };
 
-  // Procesar imágenes si se enviaron
-  const imageUrlsJson = formData.get("imageUrls") as string;
-  if (imageUrlsJson) {
-    productUpdate.imageUrls = JSON.parse(imageUrlsJson);
+  if (sku !== undefined) productUpdate.sku = sku;
+  if (name !== undefined) productUpdate.name = name;
+  if (description !== undefined) productUpdate.description = description;
+  if (category !== undefined) productUpdate.category = category;
+  if (status !== undefined) productUpdate.status = status;
+
+  // Procesar imágenes
+  if (rawData.imageUrls) {
+    try {
+      productUpdate.imageUrls = typeof rawData.imageUrls === 'string' 
+        ? JSON.parse(rawData.imageUrls) 
+        : rawData.imageUrls;
+    } catch (e) {
+      console.error("Error parsing imageUrls:", e);
+    }
   }
 
-  await db
-    .update(products)
-    .set(productUpdate)
-    .where(eq(products.id, productId));
+  const comercialUpdate: any = {
+    updatedAt: new Date(),
+  };
+
+  if (price !== undefined) comercialUpdate.precioVenta = price;
+  if (oferta !== undefined) comercialUpdate.ofertaPorcentaje = oferta;
+  if (precioOferta !== undefined) comercialUpdate.precioOferta = (precioOferta !== null && precioOferta > 0) ? precioOferta : null;
+  if (isPublished !== undefined) comercialUpdate.isPublished = isPublished;
+  
+  if (precioOferta && precioOferta > 0 && diasPromocion && diasPromocion > 0) {
+    const fechaFinOferta = new Date();
+    fechaFinOferta.setDate(fechaFinOferta.getDate() + diasPromocion);
+    comercialUpdate.fechaFinOferta = fechaFinOferta;
+  } else if (precioOferta === 0 || precioOferta === null) {
+    comercialUpdate.fechaFinOferta = null;
+  }
+
+  await db.transaction(async (tx) => {
+    if (Object.keys(productUpdate).length > 1) { // more than just updatedAt
+      await tx
+        .update(products)
+        .set(productUpdate)
+        .where(eq(products.id, productId));
+    }
+
+    if (Object.keys(comercialUpdate).length > 1) {
+      // Intentar actualizar, si no existe, la lógica es más compleja, pero asumimos que existe
+      await tx
+        .update(comercialConfig)
+        .set(comercialUpdate)
+        .where(eq(comercialConfig.productId, productId));
+    }
+  });
 
   revalidatePath(`/dashboard/productos/${productId}/editar`);
   revalidatePath("/dashboard/productos");
   revalidatePath(`/productos/${productId}`);
-  redirect("/dashboard/productos?updated=true");
+  revalidatePath(`/tienda/${existingProduct.storeId}`);
+  revalidatePath("/");
+
+  return { success: true };
 }
 
 
@@ -622,10 +716,15 @@ export async function getProductsCursor(
       product: products,
       inventory: inventory,
       comercialConfig: comercialConfig,
+      store: {
+        name: stores.name,
+        phone: stores.phone,
+      }
     })
     .from(products)
     .leftJoin(inventory, eq(products.id, inventory.productId))
     .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
+    .leftJoin(stores, eq(products.storeId, stores.id))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt))
     .limit(limit + 1)
@@ -637,6 +736,7 @@ export async function getProductsCursor(
     comercialConfig: r.comercialConfig,
     price: r.comercialConfig?.precioVenta ?? 0,
     oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
+    store: r.store,
   }));
 
   const hasMore = items.length > limit;

@@ -9,6 +9,7 @@ import { Providers } from "./providers";
 import { getCategories } from "./actions/categories";
 import { getMyStoreId } from "./actions/storefront";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -49,18 +50,27 @@ export default async function RootLayout({
 
   return (
     <html lang="es" suppressHydrationWarning>
+
       <body className={inter.className}>
-        <Providers>
-          <OneSignalProvider>
-            <Navbar categories={categories} myStoreId={myStoreId} />
-            <div className="min-h-screen">
-              {children}
-            </div>
-            <MobileNavBar categories={categories} myStoreId={myStoreId} />
-            <Toaster />
-            <RegisterSW />
-          </OneSignalProvider>
-        </Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+          enableColorScheme={false}
+        >
+          <Providers>
+            <OneSignalProvider>
+              <Navbar categories={categories} myStoreId={myStoreId} />
+              <div className="min-h-screen">
+                {children}
+              </div>
+              <MobileNavBar categories={categories} myStoreId={myStoreId} />
+              <Toaster />
+              <RegisterSW />
+            </OneSignalProvider>
+          </Providers>
+        </ThemeProvider>
       </body>
     </html>
   );

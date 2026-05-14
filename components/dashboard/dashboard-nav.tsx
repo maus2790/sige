@@ -10,7 +10,7 @@ import {
   Settings, 
   LayoutDashboard, 
   LogOut,
-  ShoppingBag,
+  Tags,
   Gift
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -21,7 +21,7 @@ const navItems = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
   { href: "/dashboard/productos", label: "Productos", icon: Package },
   { href: "/dashboard/inventario", label: "Inventario", icon: Package },
-  { href: "/dashboard/comercial", label: "Comercial", icon: ShoppingBag },
+  { href: "/dashboard/comercial", label: "Comercial", icon: Tags },
   { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
@@ -34,7 +34,7 @@ export function DashboardNav() {
     <aside className="hidden md:flex w-64 bg-background border-r min-h-screen p-4 flex-col sticky top-0 h-screen">
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-1">
-          <ShoppingBag className="w-6 h-6 text-primary" />
+          <ShoppingCart className="w-6 h-6 text-primary" />
           <h1 className="text-xl font-bold text-primary">SIGE</h1>
         </div>
         <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-1">

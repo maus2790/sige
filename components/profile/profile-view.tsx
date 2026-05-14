@@ -15,9 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   User, Mail, Phone, Shield, Store, Gift,
   Edit2, Save, X, Lock, Eye, EyeOff, LogOut,
-  ShoppingBag, Calendar, Star, ChevronRight, Sparkles,
+  ShoppingCart, Calendar, Star, ChevronRight, Sparkles,
   CheckCircle, Package, Settings, ArrowLeft, Camera,
-  Image as ImageIcon, Trash2
+  Image as ImageIcon, Trash2, LayoutDashboard
 } from 'lucide-react';
 import { ImageCropper } from './image-cropper';
 import {
@@ -571,7 +571,7 @@ export function ProfileView({ data }: ProfileViewProps) {
             {data.store && (
               <QuickLink href="/dashboard/pedidos" icon={Package} label="Mis Pedidos" desc="Historial de órdenes de venta" />
             )}
-            <QuickLink href="/dashboard" icon={ShoppingBag} label="Dashboard" desc="Panel de control del vendedor" />
+            <QuickLink href="/dashboard" icon={LayoutDashboard} label="Dashboard" desc="Panel de control del vendedor" />
           </div>
         </div>
 

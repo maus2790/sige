@@ -31,12 +31,7 @@ function ThemeColorUpdater() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="light"
-      enableSystem={false}
-      disableTransitionOnChange
-    >
+    <>
       <ThemeColorUpdater />
       <SessionProvider>
         <QueryProvider>
@@ -44,6 +39,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
           {children}
         </QueryProvider>
       </SessionProvider>
-    </ThemeProvider>
+    </>
   );
 }

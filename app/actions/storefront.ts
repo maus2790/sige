@@ -33,18 +33,37 @@ export async function getMyStoreId() {
   return store?.id || null;
 }
 
-export async function getStoreProducts(storeId: string, page: number = 1, limit: number = 20, search?: string) {
+export async function getStoreProducts(storeId: string, page: number = 1, limit: number = 20, search?: string, category?: string) {
   try {
     const offset = (page - 1) * limit;
 
+    const user = await getCurrentUser();
+    const isOwner = user && (await db.select().from(stores).where(and(eq(stores.id, storeId), eq(stores.userId, user.id))).get());
+
     const conditions = [
-      eq(products.storeId, storeId),
-      eq(comercialConfig.isPublished, true)
+      eq(products.storeId, storeId)
     ];
+    
+    if (category && category !== "todos") {
+      conditions.push(eq(products.category, category));
+    }
 
     if (search && search.trim() !== "") {
       const searchTerm = `%${search.trim()}%`;
-      conditions.push(sql`(${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm})`);
+      conditions.push(sql`(
+        ${products.name} LIKE ${searchTerm} OR 
+        COALESCE(${products.description}, '') LIKE ${searchTerm}
+      )`);
+      
+      // Si no es el dueño, solo mostrar publicados en la búsqueda
+      if (!isOwner) {
+        conditions.push(eq(comercialConfig.isPublished, true));
+      }
+      console.log(`Buscando tienda ${storeId}: "${search}" (isOwner: ${!!isOwner})`);
+    } else {
+      // Si no hay búsqueda, siempre mostrar solo los publicados en este feed
+      // Los borradores se cargan por separado en el componente StoreFeed
+      conditions.push(eq(comercialConfig.isPublished, true));
     }
 
     const items = await db
@@ -68,10 +87,15 @@ export async function getStoreProducts(storeId: string, page: number = 1, limit:
           isPublished: comercialConfig.isPublished,
           esDestacado: comercialConfig.esDestacado,
         },
+        store: {
+          name: stores.name,
+          phone: stores.phone,
+        }
       })
       .from(products)
       .leftJoin(inventory, eq(products.id, inventory.productId))
       .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
+      .leftJoin(stores, eq(products.storeId, stores.id))
       .where(and(...conditions))
       .orderBy(desc(products.createdAt))
       .limit(limit)
@@ -85,7 +109,7 @@ export async function getStoreProducts(storeId: string, page: number = 1, limit:
   }
 }
 
-export async function getStoreDrafts(storeId: string) {
+export async function getStoreDrafts(storeId: string, search?: string, category?: string) {
   try {
     // Verificar que es el dueño (se puede asumir que se valida en el componente o añadir chequeo aquí)
     const user = await getCurrentUser();
@@ -98,6 +122,23 @@ export async function getStoreDrafts(storeId: string) {
       .get();
       
     if (!store || store.id !== storeId) return [];
+
+    const conditions = [
+      eq(products.storeId, storeId),
+      eq(comercialConfig.isPublished, false)
+    ];
+
+    if (category && category !== "todos") {
+      conditions.push(eq(products.category, category));
+    }
+
+    if (search && search.trim() !== "") {
+      const searchTerm = `%${search.trim()}%`;
+      conditions.push(sql`(
+        ${products.name} LIKE ${searchTerm} OR 
+        COALESCE(${products.description}, '') LIKE ${searchTerm}
+      )`);
+    }
 
     const items = await db
       .select({
@@ -120,16 +161,16 @@ export async function getStoreDrafts(storeId: string) {
           isPublished: comercialConfig.isPublished,
           esDestacado: comercialConfig.esDestacado,
         },
+        store: {
+          name: stores.name,
+          phone: stores.phone,
+        }
       })
       .from(products)
       .leftJoin(inventory, eq(products.id, inventory.productId))
       .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
-      .where(
-        and(
-          eq(products.storeId, storeId),
-          eq(comercialConfig.isPublished, false)
-        )
-      )
+      .leftJoin(stores, eq(products.storeId, stores.id))
+      .where(and(...conditions))
       .orderBy(desc(products.createdAt))
       .all();
 

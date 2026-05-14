@@ -3,11 +3,11 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Home, ShoppingCart, Plus, Package, Store, Gift, User } from "lucide-react";
-import { useCart } from "@/hooks/use-cart";
+import { Home, Plus, Package, Store, Gift, User, ShoppingCart } from "lucide-react";
 import { CategorySheet } from "@/components/productos/category-sheet";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { Badge } from "@/components/ui/badge";
+import { useCart } from "@/hooks/use-cart";
 
 interface Category {
   id: string;
@@ -24,7 +24,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
-  const totalItems = useCart((state) => state.getTotalItems());
+  const cart = useCart();
   
   const [isCategoryOpen, setIsCategoryOpen] = React.useState(false);
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
@@ -34,36 +34,34 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
     setMounted(true);
   }, []);
 
-  // Mostrar en Mercado, Tiendas y Carrito. Ocultar en Gift Cards porque tiene su propio menú inferior.
+  // Mostrar en Mercado, Tiendas y Perfil. Ocultar en Gift Cards porque tiene su propio menú inferior.
   const isStorePage = pathname.startsWith("/tienda/");
-  const isCartPage = pathname === "/cart";
   const isProfilePage = pathname === "/profile";
-  if (pathname !== "/" && !isStorePage && !isCartPage && !isProfilePage) return null;
-
-  const cartCount = mounted ? totalItems : 0;
+  if (pathname !== "/" && !isStorePage && !isProfilePage) return null;
 
   const handleCategorySelect = (category: string) => {
     router.push(`/?category=${encodeURIComponent(category)}`);
   };
 
-  const navItems = [
+  const navItems: Array<{ href?: string; label: string; icon: any; isAction?: boolean; onClick?: () => void; badge?: number }> = [
     { href: "/", label: "Mercado", icon: Home },
     { 
       href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
-      label: "Mi Tienda", 
+      label: "Tienda", 
       icon: Store 
     },
     ...(pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`) ? [{ 
       label: "Vender", 
       icon: Plus, 
       isAction: true, 
-      onClick: () => setIsPublishOpen(true) 
+      onClick: () => setIsPublishOpen(true),
+      badge: 0
     }] : []),
     { 
       href: "/cart", 
       label: "Carrito", 
       icon: ShoppingCart,
-      badge: cartCount 
+      badge: mounted ? cart.getTotalItems() : 0 
     },
     { 
       href: "/profile", 

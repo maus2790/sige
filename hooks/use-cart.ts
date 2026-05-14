@@ -1,18 +1,20 @@
-import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 
-interface CartItem {
-  id: string;
+export interface CartItem {
+  id: string; // product id
   name: string;
   price: number;
-  imageUrls: string[];
-  category: string;
+  imageUrl: string;
   quantity: number;
+  storeId: string;
+  storeName: string;
+  maxStock: number;
 }
 
 interface CartStore {
   items: CartItem[];
-  addItem: (product: any) => void;
+  addItem: (item: Omit<CartItem, 'quantity'> & { quantity?: number }) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -24,57 +26,38 @@ export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
-      addItem: (product) => {
+      addItem: (item) => {
         const currentItems = get().items;
-        const existingItem = currentItems.find((item) => item.id === product.id);
-
+        const existingItem = currentItems.find((i) => i.id === item.id);
+        
         if (existingItem) {
-          return set({
-            items: currentItems.map((item) =>
-              item.id === product.id
-                ? { ...item, quantity: item.quantity + 1 }
-                : item
+          set({
+            items: currentItems.map((i) =>
+              i.id === item.id
+                ? { ...i, quantity: Math.min(i.quantity + (item.quantity || 1), i.maxStock) }
+                : i
             ),
           });
+        } else {
+          set({ items: [...currentItems, { ...item, quantity: item.quantity || 1 }] });
         }
-
-        set({
-          items: [
-            ...currentItems,
-            {
-              id: product.id,
-              name: product.name,
-              price: product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0,
-              imageUrls: product.imageUrls || [],
-              category: product.category || "General",
-              quantity: 1,
-            },
-          ],
-        });
       },
       removeItem: (id) => {
-        set({
-          items: get().items.filter((item) => item.id !== id),
-        });
+        set({ items: get().items.filter((i) => i.id !== id) });
       },
       updateQuantity: (id, quantity) => {
         set({
-          items: get().items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
+          items: get().items.map((i) =>
+            i.id === id ? { ...i, quantity: Math.max(1, Math.min(quantity, i.maxStock)) } : i
           ),
         });
       },
       clearCart: () => set({ items: [] }),
-      getTotalItems: () => {
-        return get().items.reduce((total, item) => total + item.quantity, 0);
-      },
-      getTotalPrice: () => {
-        return get().items.reduce((total, item) => total + item.price * item.quantity, 0);
-      },
+      getTotalItems: () => get().items.reduce((total, item) => total + item.quantity, 0),
+      getTotalPrice: () => get().items.reduce((total, item) => total + (item.price * item.quantity), 0),
     }),
     {
-      name: "cart-storage",
-      storage: createJSONStorage(() => localStorage),
+      name: 'sige-cart-storage',
     }
   )
 );

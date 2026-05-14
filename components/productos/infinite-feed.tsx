@@ -6,7 +6,7 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import Link from "next/link";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter, Home, Search, Tags, ShoppingBag, X, Gift, Plus } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags, ShoppingCart, X, Gift, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,7 +112,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
         <div className="relative z-10 max-w-4xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-white/30 animate-bounce-slow">
-              <ShoppingBag className="w-10 h-10 text-white" />
+              <ShoppingCart className="w-10 h-10 text-white" />
             </div>
           </div>
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter mb-4 drop-shadow-2xl text-white uppercase">

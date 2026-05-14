@@ -1,4 +1,5 @@
 import { getStoreDetails, getStoreProducts } from "@/app/actions/storefront";
+import { getCategories } from "@/app/actions/categories";
 import { StoreFeed } from "@/components/productos/store-feed";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
@@ -23,10 +24,11 @@ export async function generateMetadata({ params }: StorePageProps): Promise<Meta
 export default async function StorePage({ params }: StorePageProps) {
   const { id } = await params;
   
-  const [store, initialProducts, user] = await Promise.all([
+  const [store, initialProducts, user, categoriesList] = await Promise.all([
     getStoreDetails(id),
     getStoreProducts(id, 1, 20),
     getCurrentUser(),
+    getCategories(),
   ]);
 
   if (!store) {
@@ -41,6 +43,7 @@ export default async function StorePage({ params }: StorePageProps) {
         store={store} 
         initialProducts={initialProducts} 
         isOwner={isOwner}
+        categories={categoriesList}
       />
     </main>
   );

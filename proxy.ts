@@ -15,8 +15,8 @@ const publicRoutes = [
   '/manifest.json',
   '/productos',
   '/productos/',
-  '/tiendas',
-  '/tiendas/',
+  '/tienda',
+  '/tienda/',
   '/search',
   '/categories',
   '/categories/',
@@ -24,7 +24,7 @@ const publicRoutes = [
 
 const publicPatterns = [
   '/productos/',
-  '/tiendas/',
+  '/tienda/',
   '/categories/',
 ];
 

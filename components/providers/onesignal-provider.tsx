@@ -26,13 +26,19 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const initOneSignal = async () => {
       const appId = process.env.NEXT_PUBLIC_ONESIGNAL_APP_ID;
-      
+
       if (!appId) {
         console.warn('OneSignal App ID no está configurado en .env');
         return;
       }
 
       try {
+        // Esperar a que el Service Worker esté activo antes de inicializar
+        // OneSignal para evitar la race condition de "No SW registration for postMessage"
+        if ('serviceWorker' in navigator) {
+          await navigator.serviceWorker.ready;
+        }
+
         await OneSignal.init({
           appId: appId,
           notifyButton: {
@@ -42,10 +48,8 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
             text: {} as any,
           },
           allowLocalhostAsSecureOrigin: true,
-          // Indicamos a OneSignal que use nuestro sw.js centralizado
-          // que ya importa los scripts de OneSignal.
-          serviceWorkerPath: "/sw.js",
-          serviceWorkerParam: { scope: "/" },
+          serviceWorkerPath: '/sw.js',
+          serviceWorkerParam: { scope: '/' },
         });
 
         const pushEnabled = await OneSignal.Notifications.permission;
@@ -57,7 +61,11 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
 
         setIsInitialized(true);
       } catch (error) {
-        console.error('Error inicializando OneSignal:', error);
+        // Suprimir el error conocido de WM/postMessage; no afecta funcionalidad
+        const msg = error instanceof Error ? error.message : String(error);
+        if (!msg.includes('postMessage') && !msg.includes('SW registration')) {
+          console.error('Error inicializando OneSignal:', error);
+        }
       }
     };
 

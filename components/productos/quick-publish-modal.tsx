@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Package, Image as ImageIcon, Plus, Loader2, CheckCircle2, Globe, Lock } from "lucide-react";
-import { createProduct } from "@/app/actions/products";
+import { createProduct, updateProduct } from "@/app/actions/products";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { ImageUpload } from "../upload/image-upload";
@@ -47,9 +47,10 @@ interface QuickPublishModalProps {
   categories: Category[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  productToEdit?: any;
 }
 
-export function QuickPublishModal({ categories, open, onOpenChange }: QuickPublishModalProps) {
+export function QuickPublishModal({ categories, open, onOpenChange, productToEdit }: QuickPublishModalProps) {
   const [step, setStep] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -60,7 +61,48 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
     stock: "1",
     imageUrls: [] as string[],
     isPublished: true,
+    precioOferta: "",
+    oferta: "",
+    diasPromocion: "7",
   });
+  const [showPromo, setShowPromo] = React.useState(false);
+
+  const isEdit = !!productToEdit;
+
+  React.useEffect(() => {
+    if (productToEdit && open) {
+      setFormData({
+        name: productToEdit.name || "",
+        description: productToEdit.description || "",
+        category: productToEdit.category || "",
+        price: (productToEdit.comercialConfig?.precioVenta || productToEdit.price || "").toString(),
+        stock: (productToEdit.inventory?.stockActual || productToEdit.stock || "1").toString(),
+        imageUrls: productToEdit.imageUrls || [],
+        isPublished: productToEdit.comercialConfig?.isPublished !== undefined ? productToEdit.comercialConfig.isPublished : true,
+        precioOferta: (productToEdit.comercialConfig?.precioOferta || "").toString(),
+        oferta: (productToEdit.comercialConfig?.ofertaPorcentaje || "").toString(),
+        diasPromocion: "7",
+      });
+      setShowPromo(!!productToEdit.comercialConfig?.precioOferta);
+      setStep(1);
+    } else if (!open) {
+      // Reset when closed
+      setStep(1);
+      setFormData({
+        name: "",
+        description: "",
+        category: "",
+        price: "",
+        stock: "1",
+        imageUrls: [],
+        isPublished: true,
+        precioOferta: "",
+        oferta: "",
+        diasPromocion: "7",
+      });
+      setShowPromo(false);
+    }
+  }, [productToEdit, open]);
 
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const router = useRouter();
@@ -71,29 +113,56 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    const result = await createProduct(formData);
-
-    if (result?.error) {
-      toast.error(result.error);
-      setIsLoading(false);
-    } else {
-      toast.success("¡Producto publicado con éxito!");
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["store-products"] });
-      
-      setIsLoading(false);
-      onOpenChange(false);
-      setStep(1);
-      setFormData({
-        name: "",
-        description: "",
-        category: "",
-        price: "",
-        stock: "1",
-        imageUrls: [],
-        isPublished: true,
+    try {
+      // Prepare form data
+      const dataToSubmit = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (key === 'imageUrls') {
+          dataToSubmit.append(key, JSON.stringify(value));
+        } else if (key === 'precioOferta' || key === 'oferta' || key === 'diasPromocion') {
+          if (showPromo && value !== "") {
+            dataToSubmit.append(key, value.toString());
+          }
+        } else {
+          dataToSubmit.append(key, value.toString());
+        }
       });
-      router.refresh();
+
+      const result = isEdit 
+        ? await updateProduct(productToEdit.id, dataToSubmit)
+        : await createProduct(dataToSubmit);
+
+      if (result?.error) {
+        toast.error(result.error);
+        setIsLoading(false);
+      } else {
+        toast.success(isEdit ? "¡Producto actualizado con éxito!" : "¡Producto publicado con éxito!");
+        queryClient.invalidateQueries({ queryKey: ["products"] });
+        queryClient.invalidateQueries({ queryKey: ["store-products"] });
+        window.dispatchEvent(new CustomEvent('product-status-changed'));
+        
+        setIsLoading(false);
+        onOpenChange(false);
+        setStep(1);
+        setFormData({
+          name: "",
+          description: "",
+          category: "",
+          price: "",
+          stock: "1",
+          imageUrls: [],
+          isPublished: true,
+          precioOferta: "",
+          oferta: "",
+          diasPromocion: "7",
+        });
+        setShowPromo(false);
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Error submitting product:", error);
+      toast.error("Ocurrió un error inesperado. Por favor, inténtalo de nuevo.");
+      setIsLoading(false);
     }
   };
 
@@ -103,13 +172,13 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
 
   const formContentNode = (
     <div className="flex flex-col max-h-[90vh] md:max-h-[85vh] w-full">
-      <div className="flex-none bg-brand-gradient p-6 md:p-8 text-white">
+      <div className="flex-none bg-brand-gradient p-4 md:p-6 text-white">
         <div className="space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black tracking-tight text-white leading-none">
-            Publicación Rápida
+          <h2 className="text-xl md:text-2xl font-black tracking-tight text-white leading-none">
+            {isEdit ? "Edición de Producto" : "Publicación Rápida"}
           </h2>
-          <p className="text-blue-100 font-medium text-xs md:text-sm">
-            Vende tu producto en segundos. Paso {step} de 2.
+          <p className="text-blue-100 font-medium text-[10px] md:text-xs">
+            Vende tu producto en segundos. Paso {step} de 3.
           </p>
         </div>
       </div>
@@ -117,30 +186,32 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
       <div className="flex-1 p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar">
         {step === 1 ? (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="space-y-2">
-              <Label className="font-bold">¿Qué estás vendiendo?</Label>
-              <Input 
-                placeholder="Ej: iPhone 15 Pro Max" 
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="h-12 rounded-xl"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="font-bold">Categoría</Label>
-              <Select 
-                value={formData.category} 
-                onValueChange={(v) => setFormData({...formData, category: v})}
-              >
-                <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue placeholder="Selecciona una categoría" />
-                </SelectTrigger>
-                <SelectContent className="z-100">
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="space-y-2 md:col-span-3">
+                <Label className="font-bold">¿Qué estás vendiendo?</Label>
+                <Input 
+                  placeholder="Ej: iPhone 15 Pro Max" 
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="h-12! rounded-xl w-full"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="font-bold">Categoría</Label>
+                <Select 
+                  value={formData.category} 
+                  onValueChange={(v) => setFormData({...formData, category: v})}
+                >
+                  <SelectTrigger className="h-12! rounded-xl w-full">
+                    <SelectValue placeholder="Selecciona una categoría" />
+                  </SelectTrigger>
+                  <SelectContent className="z-100">
+                    {categories.map((cat) => (
+                      <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-2">
               <Label className="font-bold">Descripción corta</Label>
@@ -153,7 +224,7 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
               />
             </div>
           </div>
-        ) : (
+        ) : step === 2 ? (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -179,10 +250,85 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
             
             <div className="space-y-3">
               <ImageUpload 
+                key={productToEdit?.id || 'new'}
                 onImagesChange={handleImagesChange}
+                initialImages={formData.imageUrls}
                 maxImages={3}
                 label="Fotos del producto"
               />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+            <div className="rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
+              <div 
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/40 transition-colors"
+                onClick={() => setShowPromo(!showPromo)}
+              >
+                <div className="flex flex-col gap-1">
+                  <Label className="font-bold cursor-pointer text-green-600 dark:text-green-500">Configuración Comercial</Label>
+                  <p className="text-[10px] text-muted-foreground leading-tight">Añade precio de oferta y promoción.</p>
+                </div>
+                <Switch checked={showPromo} onCheckedChange={setShowPromo} />
+              </div>
+              
+              {showPromo && (
+                <div className="p-4 pt-0 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-green-600">Precio Oferta (Bs.)</Label>
+                      <Input 
+                        type="number" 
+                        placeholder="0.00" 
+                        value={formData.precioOferta}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const price = parseFloat(formData.price) || 0;
+                          let newOferta = formData.oferta;
+                          if (val > 0 && price > 0) {
+                            newOferta = Math.round(((price - val) / price) * 100).toString();
+                          } else if (e.target.value === "") {
+                            newOferta = "";
+                          }
+                          setFormData({...formData, precioOferta: e.target.value, oferta: newOferta});
+                        }}
+                        className="h-10 border-green-200 focus:ring-green-500 rounded-lg text-sm"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-green-600">% Descuento</Label>
+                      <Input 
+                        type="number" 
+                        min="0" max="100"
+                        placeholder="Ej: 20" 
+                        value={formData.oferta}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          const price = parseFloat(formData.price) || 0;
+                          let newPrecioOferta = formData.precioOferta;
+                          if (val > 0 && price > 0) {
+                            newPrecioOferta = (Math.round((price - (price * (val / 100))) * 100) / 100).toString();
+                          } else if (e.target.value === "") {
+                            newPrecioOferta = "";
+                          }
+                          setFormData({...formData, oferta: e.target.value, precioOferta: newPrecioOferta});
+                        }}
+                        className="h-10 border-green-200 focus:ring-green-500 rounded-lg text-sm"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold">Días en Promoción</Label>
+                    <Input 
+                      type="number" 
+                      min="1"
+                      value={formData.diasPromocion}
+                      onChange={(e) => setFormData({...formData, diasPromocion: e.target.value})}
+                      className="h-10 rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between p-4 rounded-xl border border-primary/10 bg-primary/5">
@@ -206,33 +352,33 @@ export function QuickPublishModal({ categories, open, onOpenChange }: QuickPubli
         )}
       </div>
 
-      <div className="flex-none p-6 md:p-8 pt-4 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm border-t border-border/50">
-        {step === 2 && (
-          <Button variant="ghost" onClick={handlePrev} disabled={isLoading} className="rounded-xl">
+      <div className="flex-none py-2 px-4 md:py-3 md:px-6 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm border-t border-border/50">
+        {step > 1 && (
+          <Button variant="ghost" onClick={handlePrev} disabled={isLoading} className="rounded-xl h-10 text-xs">
             Atrás
           </Button>
         )}
         <div className="flex-1" />
-        {step === 1 ? (
+        {step < 3 ? (
           <Button 
-            className="rounded-full px-8 h-12 font-bold" 
+            className="rounded-full px-8 h-10 font-bold text-xs" 
             onClick={handleNext}
-            disabled={!formData.name || !formData.category || !formData.description}
+            disabled={step === 1 ? (!formData.name || !formData.category || !formData.description) : !formData.price}
           >
             Siguiente
           </Button>
         ) : (
           <Button 
-            className="rounded-full px-10 h-12 font-black bg-brand-gradient text-white border-0 shadow-lg hover:shadow-xl transition-all" 
+            className="rounded-full px-10 h-10 font-black bg-brand-gradient text-white border-0 shadow-lg hover:shadow-xl transition-all text-xs" 
             onClick={handleSubmit}
-            disabled={isLoading || !formData.price}
+            disabled={isLoading}
           >
             {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
             ) : (
-              <CheckCircle2 className="w-5 h-5 mr-2" />
+              <CheckCircle2 className="w-4 h-4 mr-2" />
             )}
-            Publicar Ahora
+            {isEdit ? "Guardar" : "Publicar"}
           </Button>
         )}
       </div>
