@@ -71,7 +71,7 @@ export function CartView() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 pt-6 pb-32 md:pb-12 animate-in fade-in slide-in-from-bottom-8 duration-500">
+    <div className="max-w-5xl mx-auto px-4 pt-6 pb-48 md:pb-12 animate-in fade-in slide-in-from-bottom-8 duration-500">
       <div className="flex items-center gap-4 mb-8">
         <Link href="/">
           <Button variant="ghost" size="icon" className="rounded-full shrink-0">
@@ -219,6 +219,20 @@ export function CartView() {
               Los costos de envío se calcularán en el checkout
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile Checkout Bar */}
+      <div className="md:hidden fixed bottom-[64px] left-0 right-0 z-30 bg-background/95 backdrop-blur-lg border-t border-primary/10 p-4 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+        <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
+          <div className="flex flex-col">
+            <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total a pagar</span>
+            <span className="text-2xl font-black text-brand-gradient leading-none">{formatPrice(cart.getTotalPrice())}</span>
+          </div>
+          <Button className="flex-1 h-12 rounded-xl bg-brand-gradient text-white shadow-premium active:scale-95 transition-all font-bold gap-2">
+            <CreditCard className="w-4 h-4" />
+            Proceder al Pago
+          </Button>
         </div>
       </div>
     </div>

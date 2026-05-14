@@ -65,13 +65,11 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
   const cart = useCart();
   const mainImage = product.imageUrls?.[0] || null;
   const router = useRouter();
+  const isInCart = cart.items.some(item => item.id === product.id);
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (window.innerWidth < 768) {
       setIsClicked(!isClicked);
-    } else {
-      const targetUrl = `/productos/${product.id}${isFromStore ? '?from=store' : ''}`;
-      router.push(targetUrl);
     }
   };
 
@@ -175,65 +173,77 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
           </div>
         )}
 
-        {/* Imagen */}
-        <Link 
-          href={`/productos/${product.id}${isFromStore ? '?from=store' : ''}`}
-          onClick={(e) => e.stopPropagation()}
-          className="aspect-4/3 relative overflow-hidden bg-muted block cursor-pointer"
-        >
-          {mainImage ? (
-            <>
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              )}
-              <Image
-                src={mainImage}
-                alt={product.name}
-                width={400}
-                height={300}
-                className={`w-full h-full object-cover transition-transform duration-500 ${isHovered || isClicked ? "scale-110" : "scale-100"
-                  } ${isLoading ? "opacity-0" : "opacity-100"}`}
-                onLoad={() => setIsLoading(false)}
-              />
-            </>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <Package className="w-12 h-12" />
-            </div>
-          )}
+        {/* Contenedor de Imagen y Botón de Carrito */}
+        <div className="aspect-4/3 relative overflow-hidden bg-muted block">
+          <Link 
+            href={`/productos/${product.id}${isFromStore ? '?from=store' : ''}`}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full h-full block cursor-pointer"
+          >
+            {mainImage ? (
+              <>
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-20">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  </div>
+                )}
+                <Image
+                  src={mainImage}
+                  alt={product.name}
+                  width={400}
+                  height={300}
+                  className={`w-full h-full object-cover transition-transform duration-500 ${isHovered || isClicked ? "scale-110" : "scale-100"
+                    } ${isLoading ? "opacity-0" : "opacity-100"}`}
+                  onLoad={() => setIsLoading(false)}
+                />
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                <Package className="w-12 h-12" />
+              </div>
+            )}
+          </Link>
 
-          {/* Botón Añadir al Carrito Rápido */}
+          {/* Botón Añadir al Carrito Rápido - Movido fuera del Link */}
           {!isStoreOwner && !isDraft && (product.inventory?.stockActual ?? 0) > 0 && (
             <button
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 
-                const activePrice = product.comercialConfig?.precioOferta 
-                  ? product.comercialConfig.precioOferta 
-                  : (product.comercialConfig?.precioVenta || 0);
+                if (isInCart) {
+                  cart.removeItem(product.id);
+                  toast.info("Producto eliminado del carrito");
+                } else {
+                  const activePrice = product.comercialConfig?.precioOferta 
+                    ? product.comercialConfig.precioOferta 
+                    : (product.comercialConfig?.precioVenta || 0);
 
-                cart.addItem({
-                  id: product.id,
-                  name: product.name,
-                  price: activePrice,
-                  imageUrl: product.imageUrls?.[0] || "",
-                  quantity: 1,
-                  storeId: product.storeId || "",
-                  storeName: product.store?.name || "Vendedor",
-                  maxStock: product.inventory?.stockActual || 0
-                });
+                  cart.addItem({
+                    id: product.id,
+                    name: product.name,
+                    price: activePrice,
+                    imageUrl: product.imageUrls?.[0] || "",
+                    quantity: 1,
+                    storeId: product.storeId || "",
+                    storeName: product.store?.name || "Vendedor",
+                    maxStock: product.inventory?.stockActual || 0
+                  });
 
-                toast.success("¡Producto añadido al carrito!");
+                  toast.success("¡Producto añadido al carrito!");
+                }
               }}
-              className="absolute bottom-2 right-2 w-9 h-9 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 transition-all z-30 border border-white/20"
+              className={cn(
+                "absolute bottom-2 right-2 w-9 h-9 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center transition-all z-30 border",
+                isInCart
+                  ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/20 scale-110"
+                  : "bg-white/90 dark:bg-zinc-900/90 text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 border-white/20"
+              )}
             >
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className={cn("w-4 h-4", isInCart && "fill-current")} />
             </button>
           )}
-        </Link>
+        </div>
 
         <CardContent className="p-3 pb-2">
           <h3 className="font-bold text-sm line-clamp-1 mb-1.5 leading-tight">

@@ -37,7 +37,8 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   // Mostrar en Mercado, Tiendas y Perfil. Ocultar en Gift Cards porque tiene su propio menú inferior.
   const isStorePage = pathname.startsWith("/tienda/");
   const isProfilePage = pathname === "/profile";
-  if (pathname !== "/" && !isStorePage && !isProfilePage) return null;
+  const isCartPage = pathname === "/cart";
+  if (pathname !== "/" && !isStorePage && !isProfilePage && !isCartPage) return null;
 
   const handleCategorySelect = (category: string) => {
     router.push(`/?category=${encodeURIComponent(category)}`);
