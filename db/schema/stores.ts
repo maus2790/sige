@@ -12,6 +12,8 @@ export const stores = sqliteTable("stores", {
     themeConfig: text("theme_config"), // JSON string for colors, etc.
     verified: integer("verified", { mode: "boolean" }).default(false),
     rating: real("rating").default(0),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 

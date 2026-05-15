@@ -20,7 +20,8 @@ import {
   Download,
   Plus,
   Gift,
-  Sparkles
+  Sparkles,
+  Navigation
 } from "lucide-react";
 
 import { usePWAInstall } from "@/hooks/use-pwa-install";
@@ -167,6 +168,12 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   </Link>
                 )}
 
+                {activeUser && pathname !== "/mapa" && (
+                  <Link href="/mapa" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                    Explorar Mapa
+                  </Link>
+                )}
+
                 {activeUser && !pathname.startsWith("/gift-cards") && (
                   <Link href="/gift-cards" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
                     Gift Cards
@@ -250,6 +257,15 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                           <Link href="/gift-cards" className="cursor-pointer flex items-center">
                             <Gift className="mr-2 h-4 w-4" />
                             <span>Mis Gift Cards</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+
+                      {pathname !== "/mapa" && (
+                        <DropdownMenuItem asChild>
+                          <Link href="/mapa" className="cursor-pointer flex items-center">
+                            <Navigation className="mr-2 h-4 w-4" />
+                            <span>Explorar Mapa</span>
                           </Link>
                         </DropdownMenuItem>
                       )}

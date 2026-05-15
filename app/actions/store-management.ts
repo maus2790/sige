@@ -15,6 +15,8 @@ export async function updateStore(storeId: string, data: {
   themeConfig?: string;
   bannerUrl?: string;
   logoUrl?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }) {
   const user = await getCurrentUser();
   if (!user) return { error: "No autenticado" };

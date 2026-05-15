@@ -24,6 +24,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { StoreMap } from "@/components/tienda/store-map";
 
 interface StoreData {
   id: string;
@@ -36,6 +37,8 @@ interface StoreData {
   phone: string | null;
   verified: boolean | null;
   rating: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface StoreFeedProps {
@@ -304,8 +307,24 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
         </div>
       )}
 
+      {/* Store Map */}
+      {store.latitude && store.longitude && (
+        <div className="max-w-7xl mx-auto px-4 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-8 w-1.5 rounded-full bg-emerald-500"></div>
+            <h2 className="text-xl font-black tracking-tight">Ubicación</h2>
+          </div>
+          <StoreMap 
+            latitude={store.latitude} 
+            longitude={store.longitude} 
+            storeName={store.name} 
+            storeAddress={store.address || undefined} 
+          />
+        </div>
+      )}
+
       {/* Grid de Productos Publicados */}
-      <div className="max-w-7xl mx-auto px-4 mt-12">
+      <div className="max-w-7xl mx-auto px-4 mt-6">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <div className={cn("h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>

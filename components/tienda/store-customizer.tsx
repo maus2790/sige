@@ -36,12 +36,16 @@ interface StoreCustomizerProps {
   onOpenChange: (open: boolean) => void;
 }
 
+import { LocationPickerMap } from '@/components/tienda/location-picker-map';
+
 export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerProps) {
   const [isPending, startTransition] = useTransition();
   const [editName, setEditName] = useState(store.name);
   const [editDescription, setEditDescription] = useState(store.description || '');
   const [editAddress, setEditAddress] = useState(store.address || '');
   const [editPhone, setEditPhone] = useState(store.phone || '');
+  const [editLatitude, setEditLatitude] = useState<number | null>(store.latitude || null);
+  const [editLongitude, setEditLongitude] = useState<number | null>(store.longitude || null);
   
   // Image handling
   const [isCropping, setIsCropping] = useState(false);
@@ -60,6 +64,8 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
         description: editDescription,
         address: editAddress,
         phone: editPhone,
+        latitude: editLatitude,
+        longitude: editLongitude,
       });
 
       if (result.error) {
@@ -280,6 +286,22 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Ubicación en Mapa */}
+                <div className="space-y-2 pt-2 border-t mt-4">
+                  <Label className="text-xs font-bold">Ubicación Exacta</Label>
+                  <LocationPickerMap 
+                    initialLatitude={editLatitude}
+                    initialLongitude={editLongitude}
+                    onLocationChange={(lat, lng, address) => {
+                      setEditLatitude(lat);
+                      setEditLongitude(lng);
+                      if (address && !editAddress) {
+                        setEditAddress(address);
+                      }
+                    }}
+                  />
                 </div>
               </div>
             </div>

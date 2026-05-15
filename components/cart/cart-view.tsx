@@ -223,7 +223,7 @@ export function CartView() {
       </div>
 
       {/* Mobile Checkout Bar */}
-      <div className="md:hidden fixed bottom-[64px] left-0 right-0 z-30 bg-background/95 backdrop-blur-lg border-t border-primary/10 p-4 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] pb-[calc(env(safe-area-inset-bottom,0px)+1rem)]">
+      <div className="md:hidden fixed bottom-[64px] left-0 right-0 z-30 bg-background/95 backdrop-blur-lg border-t border-primary/10 p-4 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] pb-[calc(env(safe-area-inset-bottom,0)+1rem)]">
         <div className="flex items-center justify-between gap-4 max-w-md mx-auto">
           <div className="flex flex-col">
             <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total a pagar</span>
