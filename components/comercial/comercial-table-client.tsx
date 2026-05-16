@@ -149,7 +149,13 @@ export function ComercialTableClient({
     return (
       <div className="flex flex-col gap-4 w-full">
         <div className="flex gap-4">
-          <ProductImageGallery images={images} productName={product.name} className="h-16 w-16 shrink-0 rounded-lg shadow-sm" />
+          <ProductImageGallery 
+            images={images} 
+            imagesThumb={product.imageUrlsThumb || []}
+            imagesOg={product.imageUrlsOg || []}
+            productName={product.name} 
+            className="h-16 w-16 shrink-0 rounded-lg shadow-sm" 
+          />
           <div className="flex flex-col flex-1 min-w-0 py-0.5">
             <h3 className="font-bold text-base line-clamp-2 leading-tight mb-1 text-foreground">{product.name}</h3>
             <div className="flex flex-wrap items-center gap-2">

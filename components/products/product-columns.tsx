@@ -26,11 +26,13 @@ export const columns: ColumnDef<any>[] = [
     accessorKey: "imageUrls",
     header: "Imagen",
     cell: ({ row }) => {
-      const images = row.getValue("imageUrls") as string[];
+      const product = row.original;
       return (
         <ProductImageGallery
-          images={images || []}
-          productName={row.getValue("name")}
+          images={product.imageUrls || []}
+          imagesThumb={product.imageUrlsThumb || []}
+          imagesOg={product.imageUrlsOg || []}
+          productName={product.name}
         />
       );
     },

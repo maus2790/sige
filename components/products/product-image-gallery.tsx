@@ -21,9 +21,17 @@ interface ProductImageGalleryProps {
   images: string[];
   productName: string;
   className?: string;
+  imagesThumb?: string[];
+  imagesOg?: string[];
 }
 
-export function ProductImageGallery({ images, productName, className }: ProductImageGalleryProps) {
+export function ProductImageGallery({ 
+  images, 
+  productName, 
+  className,
+  imagesThumb,
+  imagesOg
+}: ProductImageGalleryProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isImageLoading, setIsImageLoading] = useState(true);
 
@@ -45,6 +53,9 @@ export function ProductImageGallery({ images, productName, className }: ProductI
     setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
   };
 
+  // Prefer thumbnail for the table trigger
+  const triggerImage = (imagesThumb && imagesThumb.length > 0) ? imagesThumb[0] : images[0];
+
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -56,7 +67,7 @@ export function ProductImageGallery({ images, productName, className }: ProductI
             </div>
           )}
           <Image
-            src={images[0]}
+            src={triggerImage}
             alt={productName}
             fill
             sizes="50px"
@@ -103,15 +114,15 @@ export function ProductImageGallery({ images, productName, className }: ProductI
             </>
           )}
 
-          {/* Imagen Principal */}
+          {/* Imagen Principal - Usamos la de mayor calidad (feed o OG si preferido) */}
           <div className="relative w-full h-full">
             <Image
               src={images[currentIndex]}
               alt={`${productName} - ${currentIndex + 1}`}
               fill
               className="object-contain"
-              sizes="(max-width: 1024px) 100vw, 800px"
-              quality={85}
+              sizes="(max-width: 1024px) 100vw, 1000px"
+              quality={90}
               priority
             />
           </div>

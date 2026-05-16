@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { publishProductToMarket, unpublishProduct, deleteProduct } from "@/app/actions/products";
 import { useCart } from "@/hooks/use-cart";
+import { useSession } from "next-auth/react";
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (
   <svg 
@@ -32,6 +33,8 @@ interface ProductCardProps {
     status?: string | null;
     createdAt: Date | string | null;
     imageUrls: string[] | null;
+    imageUrlsThumb?: string[] | null;
+    imageUrlsOg?: string[] | null;
     views: number | null;
     storeId?: string | null;
     store?: {
@@ -63,7 +66,13 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
   const cart = useCart();
-  const mainImage = product.imageUrls?.[0] || null;
+  // Prefer Feed (1200×900, 4:3) for marketplace cards to show full height; fall back to OG or thumb
+  const mainImage = product.imageUrls?.[0] || product.imageUrlsOg?.[0] || product.imageUrlsThumb?.[0] || null;
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role;
+  const isSuperAdmin = userRole === "superadmin";
+  const canManage = isStoreOwner || isSuperAdmin;
+
   const router = useRouter();
   const isInCart = cart.items.some(item => item.id === product.id);
 
@@ -188,10 +197,16 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                 )}
                 <Image
                   src={mainImage}
+                  alt=""
+                  fill
+                  className="object-cover blur-xl opacity-20 scale-110 z-0"
+                  aria-hidden="true"
+                />
+                <Image
+                  src={mainImage}
                   alt={product.name}
-                  width={400}
-                  height={300}
-                  className={`w-full h-full object-cover transition-transform duration-500 ${isHovered || isClicked ? "scale-110" : "scale-100"
+                  fill
+                  className={`w-full h-full object-contain p-0 transition-transform duration-500 z-10 ${isHovered || isClicked ? "scale-110" : "scale-105"
                     } ${isLoading ? "opacity-0" : "opacity-100"}`}
                   onLoad={() => setIsLoading(false)}
                 />
@@ -283,12 +298,12 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
         </CardContent>
 
         <div
-          className={`absolute ${isStoreOwner ? 'bottom-[40px]' : 'bottom-0'} left-0 right-0 px-3 py-2 bg-linear-to-t from-black/95 via-black/70 to-transparent dark:from-primary/40 dark:via-background/95 dark:to-transparent dark:backdrop-blur-[1px] transition-all duration-300 flex flex-col gap-1 z-40 ${isHovered || isClicked ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
+          className={`absolute ${canManage ? 'bottom-[48px]' : 'bottom-0'} left-0 right-0 px-3 py-2 bg-linear-to-t from-black/95 via-black/70 to-transparent dark:from-primary/40 dark:via-background/95 dark:to-transparent dark:backdrop-blur-[1px] transition-all duration-300 flex flex-col gap-1 z-40 ${isHovered || isClicked ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
             }`}
         >
           <div className="flex flex-col gap-1 w-full animate-in slide-in-from-bottom-4 duration-500">
-            {isStoreOwner ? (
-              /* Modo dueño de tienda */
+            {canManage ? (
+              /* Modo dueño de tienda o SuperAdmin */
               <>
                   <Button
                     className="w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-blue-50/80 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50 dark:hover:bg-blue-900/50 shadow-sm backdrop-blur-sm cursor-pointer"
@@ -341,11 +356,14 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                 </Button>
 
                 <a
-                  href={`https://wa.me/${(product.store?.phone || "").replace(/\D/g, '')}?text=${encodeURIComponent(
-                    `Hola, estoy interesado en el producto: ${product.name}\n` +
-                    `Precio: Bs. ${productPrice.toFixed(2)}\n` +
-                    `Link: https://sige.click/productos/${product.id}\n\n` +
-                    `Vi esto en el Market Shop.`
+                  href={`https://wa.me/${(product.store?.phone || "59173214036").replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `*PEDIDO DE PRODUCTO SIGE*\n\n` +
+                    `*Producto:* ${product.name}\n` +
+                    `*Precio:* Bs. ${productPrice.toFixed(2)}\n` +
+                    `*Tienda:* ${product.store?.name || "SIGE Market"}\n` +
+                    `*Link:* https://sige.click/productos/${product.id}\n\n` +
+                    `*Imagen:* ${product.imageUrls?.[0]?.startsWith('http') ? product.imageUrls[0] : `https://sige.click${product.imageUrls?.[0]}`}\n\n` +
+                    `Hola, estoy interesado en este producto.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -364,8 +382,8 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
           </div>
         </div>
 
-        {/* Footer solo para el dueño */}
-        {isStoreOwner && (
+        {/* Footer solo para el dueño o SuperAdmin */}
+        {canManage && (
           <div className="border-t mt-auto relative z-50 h-[48px] flex-none overflow-hidden bg-muted/30 backdrop-blur-md">
             <div className="flex w-full h-full divide-x divide-border/50">
               <button

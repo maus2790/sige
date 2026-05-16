@@ -17,6 +17,8 @@ export const comercialColumns: ColumnDef<any>[] = [
         <div className="flex items-center gap-3">
           <ProductImageGallery
             images={product.imageUrls || []}
+            imagesThumb={product.imageUrlsThumb || []}
+            imagesOg={product.imageUrlsOg || []}
             productName={product.name}
             className="w-10 h-10 shrink-0 shadow-sm"
           />

@@ -31,9 +31,18 @@ export async function generateMetadata(
   }
 
   const description = product.description || "Comprar este producto en SIGE Market";
-  const imageUrl = product.imageUrls?.[0]?.startsWith('http') 
-    ? product.imageUrls[0] 
-    : `https://sige.click${product.imageUrls?.[0] || '/placeholder-product.png'}`;
+
+  // Prefer OG-optimized image (1200×630), fall back to standard feed image
+  const ogImages = (product.imageUrlsOg && product.imageUrlsOg.length > 0)
+    ? product.imageUrlsOg
+    : product.imageUrls || [];
+
+  const toAbsolute = (url: string) =>
+    url.startsWith("http") ? url : `https://sige.click${url}`;
+
+  const primaryOgUrl = ogImages[0]
+    ? toAbsolute(ogImages[0])
+    : `https://sige.click/placeholder-product.png`;
 
   const price = product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0;
 
@@ -45,19 +54,17 @@ export async function generateMetadata(
       description: description,
       url: `https://sige.click/productos/${id}`,
       siteName: 'SIGE Market',
-      images: product.imageUrls?.map((url) => ({
-        url: url.startsWith('http') ? url : `https://sige.click${url}`,
+      images: ogImages.map((url: string) => ({
+        url: toAbsolute(url),
         width: 1200,
         height: 630,
         alt: product.name,
-      })) || [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: product.name,
-        },
-      ],
+      })).length > 0 ? ogImages.map((url: string) => ({
+        url: toAbsolute(url),
+        width: 1200,
+        height: 630,
+        alt: product.name,
+      })) : [{ url: primaryOgUrl, width: 1200, height: 630, alt: product.name }],
       locale: 'es_BO',
       type: 'website',
     },
@@ -65,7 +72,7 @@ export async function generateMetadata(
       card: 'summary_large_image',
       title: product.name,
       description: description,
-      images: [imageUrl],
+      images: [primaryOgUrl],
     },
   };
 
@@ -151,11 +158,13 @@ export default async function ProductoDetailPage({ params, searchParams }: Produ
       </div>
 
       <main className="container mx-auto px-4 py-2 md:py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
           {/* Columna Izquierda: Galería de Imágenes - Sticky en Desktop y Móvil */}
-          <div className="lg:col-span-7 sticky top-16 md:top-24 z-30 md:bg-transparent -mx-4 md:mx-0 px-0 md:px-0 pb-2 md:pb-0 border-b md:border-0 self-start">
+          <div className="lg:col-span-7 sticky top-16 md:top-24 z-30 md:bg-transparent -mx-4 md:mx-0 px-0 md:px-0 pb-0 md:pb-0 border-b md:border-0 self-start">
              <ProductGallery 
                imageUrls={product.imageUrls || []} 
+               imageUrlsThumb={product.imageUrlsThumb || []}
+               imageUrlsOg={product.imageUrlsOg || []}
                productName={product.name} 
              />
              
@@ -177,7 +186,7 @@ export default async function ProductoDetailPage({ params, searchParams }: Produ
 
           {/* Columna Derecha: Información y Compra */}
           <div className="lg:col-span-5 flex flex-col gap-6 lg:pl-0 lg:pr-4">
-            <div className="glass-card p-6 md:p-8 rounded-4xl border border-white/20 dark:border-white/10 shadow-md dark:shadow-[0_0_25px_rgba(37,99,235,0.1)] transition-all duration-300 space-y-5">
+            <div className="glass-card p-4 md:p-8 rounded-4xl border border-white/20 dark:border-white/10 shadow-md dark:shadow-[0_0_25px_rgba(37,99,235,0.1)] transition-all duration-300 space-y-4 md:space-y-5">
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <Badge variant="secondary" className="px-3 py-1 text-sm font-medium rounded-full bg-primary/10 text-primary border-primary/20">
@@ -246,7 +255,7 @@ export default async function ProductoDetailPage({ params, searchParams }: Produ
               
               <div className="pt-4 hidden md:flex flex-col gap-3">
                 <a 
-                  href={`https://wa.me/59173214036?text=${encodeURIComponent(
+                  href={`https://wa.me/${(product.store?.phone || "59173214036").replace(/\D/g, '')}?text=${encodeURIComponent(
                     `*PEDIDO DE PRODUCTO SIGE*\n\n` +
                     `*Producto:* ${product.name}\n` +
                     `*Precio:* Bs. ${(product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0).toFixed(2)}\n` +
@@ -382,7 +391,7 @@ export default async function ProductoDetailPage({ params, searchParams }: Produ
           </div>
           
           <a 
-            href={`https://wa.me/59173214036?text=${encodeURIComponent(
+            href={`https://wa.me/${(product.store?.phone || "59173214036").replace(/\D/g, '')}?text=${encodeURIComponent(
               `*PEDIDO DE PRODUCTO SIGE*\n\n` +
               `*Producto:* ${product.name}\n` +
               `*Precio:* Bs. ${(product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0).toFixed(2)}\n` +

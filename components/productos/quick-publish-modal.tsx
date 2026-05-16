@@ -60,6 +60,8 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
     price: "",
     stock: "1",
     imageUrls: [] as string[],
+    imageUrlsThumb: [] as string[],
+    imageUrlsOg: [] as string[],
     isPublished: true,
     precioOferta: "",
     oferta: "",
@@ -69,15 +71,21 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
 
   const isEdit = !!productToEdit;
 
+  const initialImagesRef = React.useRef<string[]>([]);
+
   React.useEffect(() => {
     if (productToEdit && open) {
+      const urls = productToEdit.imageUrls || [];
+      initialImagesRef.current = [...urls];
       setFormData({
         name: productToEdit.name || "",
         description: productToEdit.description || "",
         category: productToEdit.category || "",
         price: (productToEdit.comercialConfig?.precioVenta || productToEdit.price || "").toString(),
         stock: (productToEdit.inventory?.stockActual || productToEdit.stock || "1").toString(),
-        imageUrls: productToEdit.imageUrls || [],
+        imageUrls: urls,
+        imageUrlsThumb: productToEdit.imageUrlsThumb || [],
+        imageUrlsOg: productToEdit.imageUrlsOg || [],
         isPublished: productToEdit.comercialConfig?.isPublished !== undefined ? productToEdit.comercialConfig.isPublished : true,
         precioOferta: (productToEdit.comercialConfig?.precioOferta || "").toString(),
         oferta: (productToEdit.comercialConfig?.ofertaPorcentaje || "").toString(),
@@ -86,6 +94,18 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
       setShowPromo(!!productToEdit.comercialConfig?.precioOferta);
       setStep(1);
     } else if (!open) {
+      // Limpieza de imágenes subidas pero no guardadas
+      const currentUrls = formData.imageUrls;
+      const initialUrls = initialImagesRef.current;
+      const abandonedImages = currentUrls.filter(url => !initialUrls.includes(url));
+      
+      if (abandonedImages.length > 0) {
+        fetch("/api/upload/product-images", {
+          method: "DELETE",
+          body: JSON.stringify({ urls: abandonedImages }),
+        }).catch(err => console.error("Error limpiando imágenes abandonadas:", err));
+      }
+
       // Reset when closed
       setStep(1);
       setFormData({
@@ -95,12 +115,15 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
         price: "",
         stock: "1",
         imageUrls: [],
+        imageUrlsThumb: [],
+        imageUrlsOg: [],
         isPublished: true,
         precioOferta: "",
         oferta: "",
         diasPromocion: "7",
       });
       setShowPromo(false);
+      initialImagesRef.current = [];
     }
   }, [productToEdit, open]);
 
@@ -117,7 +140,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
       // Prepare form data
       const dataToSubmit = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        if (key === 'imageUrls') {
+        if (key === 'imageUrls' || key === 'imageUrlsThumb' || key === 'imageUrlsOg') {
           dataToSubmit.append(key, JSON.stringify(value));
         } else if (key === 'precioOferta' || key === 'oferta' || key === 'diasPromocion') {
           if (showPromo && value !== "") {
@@ -136,6 +159,18 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
         toast.error(result.error);
         setIsLoading(false);
       } else {
+        // Limpiar imágenes que fueron eliminadas definitivamente en esta edición
+        const finalUrls = formData.imageUrls;
+        const initialUrls = initialImagesRef.current;
+        const removedImages = initialUrls.filter(url => !finalUrls.includes(url));
+
+        if (removedImages.length > 0) {
+          fetch("/api/upload/product-images", {
+            method: "DELETE",
+            body: JSON.stringify({ urls: removedImages }),
+          }).catch(err => console.error("Error eliminando imágenes descartadas:", err));
+        }
+
         toast.success(isEdit ? "¡Producto actualizado con éxito!" : "¡Producto publicado con éxito!");
         queryClient.invalidateQueries({ queryKey: ["products"] });
         queryClient.invalidateQueries({ queryKey: ["store-products"] });
@@ -151,12 +186,15 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
           price: "",
           stock: "1",
           imageUrls: [],
+          imageUrlsThumb: [],
+          imageUrlsOg: [],
           isPublished: true,
           precioOferta: "",
           oferta: "",
           diasPromocion: "7",
         });
         setShowPromo(false);
+        initialImagesRef.current = [];
         router.refresh();
       }
     } catch (error) {
@@ -168,6 +206,13 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
 
   const handleImagesChange = React.useCallback((urls: string[]) => {
     setFormData(prev => ({ ...prev, imageUrls: urls }));
+  }, []);
+
+  const handleMultiResChange = React.useCallback((allUrls: import('@/components/productos/product-image-cropper').MultiResUrls[]) => {
+    // Mantener los arreglos sincronizados por índice usando feedUrl como fallback
+    const thumbUrls = allUrls.map(u => u.thumbUrl || u.feedUrl);
+    const ogUrls = allUrls.map(u => u.ogUrl || u.feedUrl);
+    setFormData(prev => ({ ...prev, imageUrlsThumb: thumbUrls, imageUrlsOg: ogUrls }));
   }, []);
 
   const formContentNode = (
@@ -252,9 +297,11 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
               <ImageUpload 
                 key={productToEdit?.id || 'new'}
                 onImagesChange={handleImagesChange}
+                onMultiResChange={handleMultiResChange}
                 initialImages={formData.imageUrls}
                 maxImages={3}
                 label="Fotos del producto"
+                useMultiRes
               />
             </div>
           </div>

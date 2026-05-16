@@ -9,15 +9,19 @@ import { Button } from "@/components/ui/button";
 interface ProductGalleryProps {
   imageUrls: string[];
   productName: string;
+  imageUrlsThumb?: string[];
+  imageUrlsOg?: string[];
 }
 
-export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) {
+export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUrlsOg }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [showZoom, setShowZoom] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
 
   const images = imageUrls.length > 0 ? imageUrls : [];
+  const thumbs = images.map((img, idx) => (imageUrlsThumb && imageUrlsThumb[idx]) ? imageUrlsThumb[idx] : img);
+  const highResImages = images.map((img, idx) => (imageUrlsOg && imageUrlsOg[idx]) ? imageUrlsOg[idx] : img);
 
   const handlePrevious = () => {
     setActiveIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
@@ -64,7 +68,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
 
   if (images.length === 0) {
     return (
-      <div className="aspect-square bg-muted rounded-2xl flex items-center justify-center text-muted-foreground border">
+      <div className="aspect-4/3 bg-muted rounded-2xl flex items-center justify-center text-muted-foreground border">
         <Package className="w-20 h-20 opacity-20" />
       </div>
     );
@@ -74,7 +78,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
     <div className="flex flex-col md:flex-row gap-0 md:gap-4">
       {/* Thumbnails - Izquierda en Desktop, Abajo en Móvil */}
       {images.length > 1 && (
-        <div className="flex md:flex-col gap-2 md:gap-3 overflow-x-auto md:overflow-y-auto pb-1 md:pb-0 h-[10dvh] md:h-[calc(100vh-200px)] w-full md:w-24 scrollbar-hide no-scrollbar items-center md:items-start shrink-0 order-2 md:order-1 justify-center md:justify-start glass md:bg-transparent md:backdrop-blur-none border-t md:border-0 border-white/20 p-1 md:p-2">
+        <div className="flex md:flex-col gap-2 md:gap-3 overflow-x-auto md:overflow-y-auto pb-1 md:pb-0 h-[10dvh] md:h-full max-h-[500px] w-full md:w-24 scrollbar-hide no-scrollbar items-center md:items-start shrink-0 order-2 md:order-1 justify-center md:justify-start glass md:bg-transparent md:backdrop-blur-none border-t md:border-0 border-white/20 p-1 md:p-2">
           {images.map((url, idx) => (
             <button
               key={idx}
@@ -87,7 +91,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
               )}
             >
               <Image
-                src={url}
+                src={thumbs[idx]}
                 alt={`${productName} miniatura ${idx + 1}`}
                 fill
                 className="object-cover"
@@ -101,7 +105,7 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
         className={cn(
           "relative bg-card overflow-hidden group cursor-crosshair touch-none transition-all order-1 md:order-2 md:flex-1",
           "rounded-none md:rounded-2xl border-0 md:border shadow-none md:shadow-sm",
-          "h-[35dvh] md:h-[calc(100vh-200px)] aspect-auto w-full"
+          "w-full aspect-4/3"
         )}
         ref={containerRef}
         onMouseEnter={() => setShowZoom(true)}
@@ -111,24 +115,33 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
         onTouchMove={handleTouchMove}
         onTouchEnd={() => setShowZoom(false)}
       >
+        {/* Background Blur for filling spaces */}
+        <Image
+          src={images[activeIndex]}
+          alt=""
+          fill
+          className="object-cover blur-2xl opacity-20 scale-110 z-0"
+          aria-hidden="true"
+        />
+        
         {/* Main Image */}
         <Image
           src={images[activeIndex]}
           alt={`${productName} - Imagen ${activeIndex + 1}`}
           fill
           className={cn(
-            "object-cover p-0 transition-opacity duration-300",
+            "object-contain p-0 transition-all duration-300 z-10 scale-105",
             showZoom ? "opacity-0" : "opacity-100"
           )}
           priority
         />
 
-        {/* Zoomed Image / Magnifier */}
+        {/* Zoomed Image / Magnifier - Use highest resolution possible */}
         {showZoom && (
           <div 
             className="absolute inset-0 pointer-events-none z-10"
             style={{
-              backgroundImage: `url(${images[activeIndex]})`,
+              backgroundImage: `url(${highResImages[activeIndex]})`,
               backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
               backgroundSize: "250%",
               backgroundRepeat: "no-repeat"

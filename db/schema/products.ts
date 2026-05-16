@@ -10,6 +10,8 @@ export const products = sqliteTable("products", {
     description: text("description"),
     category: text("category"),
     imageUrls: text("image_urls", { mode: "json" }).$type<string[]>(),
+    imageUrlsThumb: text("image_urls_thumb", { mode: "json" }).$type<string[]>(),
+    imageUrlsOg: text("image_urls_og", { mode: "json" }).$type<string[]>(),
     videoUrl: text("video_url"),
     videoType: text("video_type"),
     hasVideo: integer("has_video", { mode: "boolean" }).default(false),

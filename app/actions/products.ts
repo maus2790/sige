@@ -68,6 +68,34 @@ function generateId(): string {
   return randomUUID();
 }
 
+// Helper para sanear arreglos de imágenes desincronizados
+function sanitizeProductImages(product: any) {
+  const mainUrls = product.imageUrls || [];
+  const getFileId = (url: string) => {
+    if (!url || typeof url !== 'string') return null;
+    const parts = url.split("/");
+    return parts[parts.length - 1]; // uuid.jpg
+  };
+
+  const sanitizedThumb = mainUrls.map((feedUrl: string) => {
+    const feedId = getFileId(feedUrl);
+    const match = (product.imageUrlsThumb || []).find((t: string) => getFileId(t) === feedId);
+    return match || feedUrl;
+  });
+
+  const sanitizedOg = mainUrls.map((feedUrl: string) => {
+    const feedId = getFileId(feedUrl);
+    const match = (product.imageUrlsOg || []).find((og: string) => getFileId(og) === feedId);
+    return match || feedUrl;
+  });
+
+  return {
+    ...product,
+    imageUrlsThumb: sanitizedThumb,
+    imageUrlsOg: sanitizedOg,
+  };
+}
+
 // ============================================
 // 7.9 OBTENER PRODUCTOS DEL VENDEDOR ACTUAL
 // ============================================
@@ -98,14 +126,17 @@ export async function getSellerProducts() {
     .orderBy(desc(products.createdAt))
     .all();
 
-  const sellerProducts = results.map(r => ({
-    ...r.product,
-    inventory: r.inventory,
-    comercialConfig: r.comercialConfig,
-    stock: r.inventory?.stockActual ?? 0,
-    price: r.comercialConfig?.precioVenta ?? 0,
-    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
-  }));
+  const sellerProducts = results.map(r => {
+    const sanitized = sanitizeProductImages(r.product);
+    return {
+      ...sanitized,
+      inventory: r.inventory,
+      comercialConfig: r.comercialConfig,
+      stock: r.inventory?.stockActual ?? 0,
+      price: r.comercialConfig?.precioVenta ?? 0,
+      oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
+    };
+  });
 
   return {
     products: sellerProducts,
@@ -171,14 +202,17 @@ export async function getSellerProductsPaginated({
     .offset(offset)
     .all();
 
-  const sellerProducts = results.map(r => ({
-    ...r.product,
-    inventory: r.inventory,
-    comercialConfig: r.comercialConfig,
-    stock: r.inventory?.stockActual ?? 0,
-    price: r.comercialConfig?.precioVenta ?? 0,
-    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
-  }));
+  const sellerProducts = results.map(r => {
+    const sanitized = sanitizeProductImages(r.product);
+    return {
+      ...sanitized,
+      inventory: r.inventory,
+      comercialConfig: r.comercialConfig,
+      stock: r.inventory?.stockActual ?? 0,
+      price: r.comercialConfig?.precioVenta ?? 0,
+      oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
+    };
+  });
 
   const totalResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -234,8 +268,10 @@ export async function getProductById(id: string) {
     seller 
   } = result;
 
+  const sanitizedProduct = sanitizeProductImages(product);
+
   return {
-    ...product,
+    ...sanitizedProduct,
     inventory: productInventory,
     comercialConfig: productComercial,
     stock: productInventory?.stockActual ?? 0,
@@ -266,14 +302,17 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
     .offset(offset)
     .all();
 
-  const storeProducts = results.map(r => ({
-    ...r.product,
-    inventory: r.inventory,
-    comercialConfig: r.comercialConfig,
-    stock: r.inventory?.stockActual ?? 0,
-    price: r.comercialConfig?.precioVenta ?? 0,
-    oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
-  }));
+  const storeProducts = results.map(r => {
+    const sanitized = sanitizeProductImages(r.product);
+    return {
+      ...sanitized,
+      inventory: r.inventory,
+      comercialConfig: r.comercialConfig,
+      stock: r.inventory?.stockActual ?? 0,
+      price: r.comercialConfig?.precioVenta ?? 0,
+      oferta: r.comercialConfig?.ofertaPorcentaje ?? 0,
+    };
+  });
 
   const totalResult = await db
     .select({ count: sql<number>`count(*)` })
@@ -295,8 +334,10 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
 // ============================================
 
 export async function createProduct(data: any) {
-  console.log("createProduct action called with:", JSON.stringify(data));
-  const user = await requireRole("seller");
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+    return { error: "No autorizado. Debes iniciar sesión como vendedor." };
+  }
 
   const store = await db
     .select()
@@ -324,6 +365,8 @@ export async function createProduct(data: any) {
       precioOferta: data.get("precioOferta"),
       diasPromocion: data.get("diasPromocion"),
       imageUrls: data.get("imageUrls"),
+      imageUrlsThumb: data.get("imageUrlsThumb"),
+      imageUrlsOg: data.get("imageUrlsOg"),
       isPublished: data.get("isPublished") === "true",
     };
   }
@@ -358,14 +401,36 @@ export async function createProduct(data: any) {
   const { sku, name, description, price, category, status, oferta, precioOferta, diasPromocion, stock, isPublished } = validatedFields.data;
 
   // Procesar imágenes
-  let imageUrls: ProductImageUrls = [];
+  let imageUrls: string[] = [];
   if (rawData.imageUrls) {
     try {
-      imageUrls = typeof rawData.imageUrls === 'string' 
-        ? JSON.parse(rawData.imageUrls) 
+      imageUrls = typeof rawData.imageUrls === 'string'
+        ? JSON.parse(rawData.imageUrls)
         : rawData.imageUrls;
     } catch (e) {
       console.error("Error parsing imageUrls:", e);
+    }
+  }
+
+  let imageUrlsThumb: string[] = [];
+  if (rawData.imageUrlsThumb) {
+    try {
+      imageUrlsThumb = typeof rawData.imageUrlsThumb === 'string'
+        ? JSON.parse(rawData.imageUrlsThumb)
+        : rawData.imageUrlsThumb;
+    } catch (e) {
+      console.error("Error parsing imageUrlsThumb:", e);
+    }
+  }
+
+  let imageUrlsOg: string[] = [];
+  if (rawData.imageUrlsOg) {
+    try {
+      imageUrlsOg = typeof rawData.imageUrlsOg === 'string'
+        ? JSON.parse(rawData.imageUrlsOg)
+        : rawData.imageUrlsOg;
+    } catch (e) {
+      console.error("Error parsing imageUrlsOg:", e);
     }
   }
 
@@ -382,6 +447,8 @@ export async function createProduct(data: any) {
         category,
         status,
         imageUrls,
+        imageUrlsThumb: imageUrlsThumb.length > 0 ? imageUrlsThumb : null,
+        imageUrlsOg: imageUrlsOg.length > 0 ? imageUrlsOg : null,
         views: 0,
         sales: 0,
         createdAt: new Date(),
@@ -420,6 +487,7 @@ export async function createProduct(data: any) {
     revalidatePath("/");
     revalidatePath("/dashboard/productos");
     revalidatePath("/productos");
+    revalidatePath(`/tienda/${store.id}`);
     return { success: true, productId };
   } catch (error) {
     console.error("Error in transaction:", error);
@@ -447,14 +515,17 @@ export async function publishProductToMarket(productId: string) {
     throw new Error("Producto no encontrado");
   }
 
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, user.id))
-    .get();
+  // Si no es superadmin, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin") {
+    const store = await db
+      .select()
+      .from(stores)
+      .where(and(eq(stores.id, existingProduct.storeId), eq(stores.userId, user.id)))
+      .get();
 
-  if (!store || existingProduct.storeId !== store.id) {
-    throw new Error("No tienes permiso para publicar este producto");
+    if (!store) {
+      throw new Error("No tienes permiso para publicar este producto");
+    }
   }
 
   await db
@@ -464,7 +535,8 @@ export async function publishProductToMarket(productId: string) {
 
   revalidatePath("/");
   revalidatePath("/dashboard/productos");
-  revalidatePath(`/tienda/${store.id}`);
+  revalidatePath(`/tienda/${existingProduct.storeId}`);
+  revalidatePath(`/productos/${productId}`);
   
   return { success: true };
 }
@@ -487,14 +559,17 @@ export async function unpublishProduct(productId: string) {
 
   if (!existingProduct) throw new Error("Producto no encontrado");
 
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, user.id))
-    .get();
+  // Si no es superadmin, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin") {
+    const store = await db
+      .select()
+      .from(stores)
+      .where(and(eq(stores.id, existingProduct.storeId), eq(stores.userId, user.id)))
+      .get();
 
-  if (!store || existingProduct.storeId !== store.id) {
-    throw new Error("No tienes permiso para modificar este producto");
+    if (!store) {
+      throw new Error("No tienes permiso para modificar este producto");
+    }
   }
 
   await db
@@ -504,7 +579,8 @@ export async function unpublishProduct(productId: string) {
 
   revalidatePath("/");
   revalidatePath("/dashboard/productos");
-  revalidatePath(`/tienda/${store.id}`);
+  revalidatePath(`/tienda/${existingProduct.storeId}`);
+  revalidatePath(`/productos/${productId}`);
 
   return { success: true };
 }
@@ -514,7 +590,10 @@ export async function unpublishProduct(productId: string) {
 // ============================================
 
 export async function deleteProduct(productId: string) {
-  const user = await requireRole("seller");
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+    throw new Error("No autorizado");
+  }
 
   const existingProduct = await db
     .select()
@@ -524,14 +603,17 @@ export async function deleteProduct(productId: string) {
 
   if (!existingProduct) throw new Error("Producto no encontrado");
 
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, user.id))
-    .get();
+  // Si no es superadmin, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin") {
+    const store = await db
+      .select()
+      .from(stores)
+      .where(and(eq(stores.id, existingProduct.storeId), eq(stores.userId, user.id)))
+      .get();
 
-  if (!store || existingProduct.storeId !== store.id) {
-    throw new Error("No tienes permiso para eliminar este producto");
+    if (!store) {
+      throw new Error("No tienes permiso para eliminar este producto");
+    }
   }
 
   await db.transaction(async (tx) => {
@@ -540,9 +622,15 @@ export async function deleteProduct(productId: string) {
     await tx.delete(products).where(eq(products.id, productId));
   });
 
+  // Limpiar imágenes de R2 después de borrar de la DB
+  if (existingProduct.imageUrls && existingProduct.imageUrls.length > 0) {
+    await deleteProductImagesFromR2(existingProduct.imageUrls);
+  }
+
   revalidatePath("/");
   revalidatePath("/dashboard/productos");
-  revalidatePath(`/tienda/${store.id}`);
+  revalidatePath(`/tienda/${existingProduct.storeId}`);
+  revalidatePath(`/productos/${productId}`);
 
   return { success: true };
 }
@@ -554,7 +642,7 @@ export async function deleteProduct(productId: string) {
 export async function updateProduct(productId: string, data: any) {
   const user = await getCurrentUser();
   if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
-    throw new Error("No autorizado");
+    return { error: "No autorizado. Debes iniciar sesión como vendedor." };
   }
 
   const existingProduct = await db
@@ -567,14 +655,17 @@ export async function updateProduct(productId: string, data: any) {
     throw new Error("Producto no encontrado");
   }
 
-  const store = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.userId, user.id))
-    .get();
+  // Si no es superadmin, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin") {
+    const store = await db
+      .select()
+      .from(stores)
+      .where(and(eq(stores.id, existingProduct.storeId), eq(stores.userId, user.id)))
+      .get();
 
-  if (!store || existingProduct.storeId !== store.id) {
-    throw new Error("No tienes permiso para editar este producto");
+    if (!store) {
+      return { error: "No tienes permiso para editar este producto" };
+    }
   }
 
   // Si recibimos FormData, convertirlo a objeto
@@ -592,6 +683,8 @@ export async function updateProduct(productId: string, data: any) {
       diasPromocion: data.get("diasPromocion"),
       isPublished: data.get("isPublished") === "true",
       imageUrls: data.get("imageUrls"),
+      imageUrlsThumb: data.get("imageUrlsThumb"),
+      imageUrlsOg: data.get("imageUrlsOg"),
       stock: data.get("stock"),
     };
   }
@@ -632,11 +725,47 @@ export async function updateProduct(productId: string, data: any) {
   // Procesar imágenes
   if (rawData.imageUrls) {
     try {
-      productUpdate.imageUrls = typeof rawData.imageUrls === 'string' 
-        ? JSON.parse(rawData.imageUrls) 
+      productUpdate.imageUrls = typeof rawData.imageUrls === 'string'
+        ? JSON.parse(rawData.imageUrls)
         : rawData.imageUrls;
     } catch (e) {
       console.error("Error parsing imageUrls:", e);
+    }
+  }
+  if (rawData.imageUrlsThumb) {
+    try {
+      const parsed = typeof rawData.imageUrlsThumb === 'string'
+        ? JSON.parse(rawData.imageUrlsThumb)
+        : rawData.imageUrlsThumb;
+      if (Array.isArray(parsed)) {
+        productUpdate.imageUrlsThumb = parsed.length > 0 ? parsed : null;
+      }
+    } catch (e) {
+      console.error("Error parsing imageUrlsThumb:", e);
+    }
+  }
+  if (rawData.imageUrlsOg) {
+    try {
+      const parsed = typeof rawData.imageUrlsOg === 'string'
+        ? JSON.parse(rawData.imageUrlsOg)
+        : rawData.imageUrlsOg;
+      if (Array.isArray(parsed)) {
+        productUpdate.imageUrlsOg = parsed.length > 0 ? parsed : null;
+      }
+    } catch (e) {
+      console.error("Error parsing imageUrlsOg:", e);
+    }
+  }
+
+  // Sincronizar arreglos para evitar "imágenes fantasma" en el zoom
+  if (productUpdate.imageUrls) {
+    const mainCount = productUpdate.imageUrls.length;
+    
+    if (productUpdate.imageUrlsThumb && Array.isArray(productUpdate.imageUrlsThumb)) {
+      productUpdate.imageUrlsThumb = productUpdate.imageUrlsThumb.slice(0, mainCount);
+    }
+    if (productUpdate.imageUrlsOg && Array.isArray(productUpdate.imageUrlsOg)) {
+      productUpdate.imageUrlsOg = productUpdate.imageUrlsOg.slice(0, mainCount);
     }
   }
 
@@ -759,4 +888,39 @@ export async function getProductsCursor(
     nextCursor,
     hasMore,
   };
+}
+
+// ─── HELPERS DE LIMPIEZA R2 ──────────────────────────────────────────────────
+
+/**
+ * Elimina todas las variantes (feed, thumb, og) de una lista de URLs de R2.
+ */
+async function deleteProductImagesFromR2(urls: string[]) {
+  if (!urls || urls.length === 0) return;
+
+  try {
+    const { r2Client, R2_BUCKET_NAME, extractKeyFromUrl } = await import("@/lib/cloudflare");
+    const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+
+    const deletePromises = urls.flatMap((url) => {
+      const key = extractKeyFromUrl(url);
+      if (!key) return [];
+
+      const parts = key.split("/");
+      const filename = parts[parts.length - 1];
+      
+      return ["400x300", "1200x900", "1200x630"].map((folder) => {
+        return r2Client.send(
+          new DeleteObjectCommand({
+            Bucket: R2_BUCKET_NAME,
+            Key: `products/${folder}/${filename}`,
+          })
+        ).catch(err => console.error(`Error eliminando variante ${folder}/${filename}:`, err));
+      });
+    });
+
+    await Promise.all(deletePromises);
+  } catch (error) {
+    console.error("Error en deleteProductImagesFromR2:", error);
+  }
 }

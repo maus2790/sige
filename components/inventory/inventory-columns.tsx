@@ -22,7 +22,9 @@ export const inventoryColumns: ColumnDef<any>[] = [
       return (
         <div className="flex items-center gap-3">
           <ProductImageGallery
-            images={images || []}
+            images={product.imageUrls || []}
+            imagesThumb={product.imageUrlsThumb || []}
+            imagesOg={product.imageUrlsOg || []}
             productName={product.name}
             className="h-10 w-10 shrink-0"
           />

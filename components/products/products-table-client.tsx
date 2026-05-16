@@ -129,6 +129,8 @@ export function ProductsTableClient({
         <div className="flex gap-4">
           <ProductImageGallery
             images={images}
+            imagesThumb={product.imageUrlsThumb || []}
+            imagesOg={product.imageUrlsOg || []}
             productName={product.name}
             className="h-20 w-20 shrink-0 rounded-lg shadow-sm"
           />
