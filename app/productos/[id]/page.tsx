@@ -10,9 +10,84 @@ import { ProductGallery } from "@/components/productos/product-gallery";
 import { ShareWhatsAppButton } from "@/components/productos/share-whatsapp-button";
 import { cn } from "@/lib/utils";
 
+import { Metadata, ResolvingMetadata } from "next";
+
 interface ProductoDetailPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;
+}
+
+export async function generateMetadata(
+  { params }: ProductoDetailPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { id } = await params;
+  const product = await getProductById(id);
+
+  if (!product) {
+    return {
+      title: "Producto no encontrado | SIGE Market",
+    };
+  }
+
+  const description = product.description || "Comprar este producto en SIGE Market";
+  const imageUrl = product.imageUrls?.[0]?.startsWith('http') 
+    ? product.imageUrls[0] 
+    : `https://sige.click${product.imageUrls?.[0] || '/placeholder-product.png'}`;
+
+  const price = product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0;
+
+  const metadata: Metadata = {
+    title: `${product.name} | Bs. ${price.toFixed(2)} | SIGE Market`,
+    description: description.substring(0, 160),
+    openGraph: {
+      title: product.name,
+      description: description,
+      url: `https://sige.click/productos/${id}`,
+      siteName: 'SIGE Market',
+      images: product.imageUrls?.map((url) => ({
+        url: url.startsWith('http') ? url : `https://sige.click${url}`,
+        width: 1200,
+        height: 630,
+        alt: product.name,
+      })) || [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: product.name,
+        },
+      ],
+      locale: 'es_BO',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: product.name,
+      description: description,
+      images: [imageUrl],
+    },
+  };
+
+  // Add video if available
+  if (product.hasVideo && product.videoUrl) {
+    const videoUrl = product.videoUrl.startsWith('http') 
+      ? product.videoUrl 
+      : `https://sige.click${product.videoUrl}`;
+    
+    // @ts-ignore - Some OG video properties might not be in the strict Metadata type but are valid
+    metadata.openGraph!.videos = [
+      {
+        url: videoUrl,
+        width: 1280,
+        height: 720,
+        // @ts-ignore
+        type: product.videoType || 'video/mp4',
+      },
+    ];
+  }
+
+  return metadata;
 }
 
 const WhatsAppIcon = ({ className }: { className?: string }) => (

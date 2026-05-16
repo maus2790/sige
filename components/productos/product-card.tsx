@@ -342,7 +342,10 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
 
                 <a
                   href={`https://wa.me/${(product.store?.phone || "").replace(/\D/g, '')}?text=${encodeURIComponent(
-                    `Hola, estoy interesado en el producto: ${product.name}\nPrecio: Bs. ${productPrice.toFixed(2)}\n\nVi esto en el Market Shop.`
+                    `Hola, estoy interesado en el producto: ${product.name}\n` +
+                    `Precio: Bs. ${productPrice.toFixed(2)}\n` +
+                    `Link: https://sige.click/productos/${product.id}\n\n` +
+                    `Vi esto en el Market Shop.`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
