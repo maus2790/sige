@@ -71,10 +71,38 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Main Viewer */}
+    <div className="flex flex-col md:flex-row gap-0 md:gap-4">
+      {/* Thumbnails - Izquierda en Desktop, Abajo en Móvil */}
+      {images.length > 1 && (
+        <div className="flex md:flex-col gap-2 md:gap-3 overflow-x-auto md:overflow-y-auto pb-1 md:pb-0 h-[10dvh] md:h-[calc(100vh-200px)] w-full md:w-24 scrollbar-hide no-scrollbar items-center md:items-start shrink-0 order-2 md:order-1 justify-center md:justify-start glass md:bg-transparent md:backdrop-blur-none border-t md:border-0 border-white/20 p-1 md:p-2">
+          {images.map((url, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveIndex(idx)}
+              className={cn(
+                "relative w-[18dvw] md:w-16 h-[85%] md:h-16 rounded-xl border-2 bg-card shrink-0 overflow-hidden transition-all duration-200 outline-none",
+                activeIndex === idx 
+                  ? "border-primary shadow-md ring-2 ring-primary/20 scale-105 z-10" 
+                  : "border-transparent hover:border-border"
+              )}
+            >
+              <Image
+                src={url}
+                alt={`${productName} miniatura ${idx + 1}`}
+                fill
+                className="object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
       <div 
-        className="relative aspect-square bg-card rounded-2xl overflow-hidden border shadow-sm group cursor-crosshair touch-none"
+        className={cn(
+          "relative bg-card overflow-hidden group cursor-crosshair touch-none transition-all order-1 md:order-2 md:flex-1",
+          "rounded-none md:rounded-2xl border-0 md:border shadow-none md:shadow-sm",
+          "h-[35dvh] md:h-[calc(100vh-200px)] aspect-auto w-full"
+        )}
         ref={containerRef}
         onMouseEnter={() => setShowZoom(true)}
         onMouseLeave={() => setShowZoom(false)}
@@ -143,8 +171,8 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
           <ZoomIn className="w-4 h-4" />
         </div>
 
-        {/* Pagination Indicator (Mobile/Dots) */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 lg:hidden">
+        {/* Pagination Indicator (Mobile/Dots) - Oculto en móvil por las miniaturas */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 hidden gap-1.5 lg:hidden">
           {images.map((_, idx) => (
             <div 
               key={idx}
@@ -156,31 +184,6 @@ export function ProductGallery({ imageUrls, productName }: ProductGalleryProps) 
           ))}
         </div>
       </div>
-
-      {/* Thumbnails */}
-      {images.length > 1 && (
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide no-scrollbar">
-          {images.map((url, idx) => (
-            <button
-              key={idx}
-              onClick={() => setActiveIndex(idx)}
-              className={cn(
-                "relative w-20 h-20 rounded-xl border-2 bg-card shrink-0 overflow-hidden transition-all duration-200 outline-none focus:ring-2 focus:ring-primary/20",
-                activeIndex === idx 
-                  ? "border-primary shadow-md scale-105" 
-                  : "border-transparent hover:border-border"
-              )}
-            >
-              <Image
-                src={url}
-                alt={`${productName} miniatura ${idx + 1}`}
-                fill
-                className="object-cover"
-              />
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

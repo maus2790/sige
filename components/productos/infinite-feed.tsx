@@ -122,14 +122,27 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </button>
         )}
 
+        {/* Botón Gift Card (Arriba Derecha) */}
+        <Link
+          href="/gift-cards"
+          className="absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500"
+        >
+          <Gift className="w-3.5 h-3.5 group-hover:animate-bounce" />
+          <span>Gift Cards</span>
+        </Link>
+
         <div className="relative z-10 max-w-4xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex justify-center mb-6">
             <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-white/30 animate-bounce-slow">
               <ShoppingCart className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter mb-4 drop-shadow-2xl text-white uppercase">
-            SIGE Market - Shop
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter mb-4 drop-shadow-2xl text-white uppercase leading-tight md:leading-normal">
+            <span className="hidden md:inline">SIGE - MARKET SHOP</span>
+            <span className="md:hidden flex flex-col items-center">
+              <span>SIGE</span>
+              <span className="text-3xl">MARKET - SHOP</span>
+            </span>
           </h1>
           <p className="text-xl md:text-2xl text-blue-50 font-black mb-2 drop-shadow-sm opacity-95 tracking-tight">
             Sigue a SIGE y consigue
@@ -139,19 +152,6 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </p>
         </div>
       </div>
-
-      {/* Mobile Gift Card FAB — Más elegante y compacto */}
-      <Link
-        href="/gift-cards"
-        className="fixed bottom-24 right-6 z-40 md:hidden"
-      >
-        <div className="relative group">
-          <span className="absolute inset-0 rounded-full bg-linear-to-tr from-pink-500 to-purple-500 animate-pulse opacity-20"></span>
-          <div className="relative w-14 h-14 rounded-full bg-linear-to-tr from-pink-500 via-purple-600 to-indigo-600 text-white shadow-xl flex items-center justify-center transition-all active:scale-90 border border-white/30">
-            <Gift className="w-6 h-6" />
-          </div>
-        </div>
-      </Link>
 
       {/* Sticky Action Bar - Desktop & Mobile (Ajustado al borde del hero) */}
       <div className={`sticky top-16 z-40 transition-all duration-300 px-4 w-full max-w-6xl mx-auto -mt-6 mb-8 ${isScrolled ? 'drop-shadow-2xl' : ''}`}>
@@ -233,7 +233,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       )}
 
       {/* Grilla de Productos */}
-      <div className="container mx-auto px-4">
+      <div className="container mx-auto px-2">
         {isLoading ? (
           <ProductGridSkeleton count={8} />
         ) : products.length === 0 ? (
@@ -258,7 +258,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 md:gap-4">
               {products.map((product, index) => (
                 <div 
                   key={product.id} 

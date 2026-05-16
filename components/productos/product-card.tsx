@@ -260,7 +260,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
           )}
         </div>
 
-        <CardContent className="p-3 pb-2">
+        <CardContent className="p-2 pb-1.5">
           <h3 className="font-bold text-sm line-clamp-1 mb-1.5 leading-tight">
             {product.name}
           </h3>

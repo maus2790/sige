@@ -106,7 +106,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full glass transition-all duration-300">
+      <header className="sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
