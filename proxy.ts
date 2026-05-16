@@ -20,12 +20,14 @@ const publicRoutes = [
   '/search',
   '/categories',
   '/categories/',
+  '/mapa',
 ];
 
 const publicPatterns = [
   '/productos/',
   '/tienda/',
   '/categories/',
+  '/mapa/',
 ];
 
 // ============================================

@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { getProfileData } from '@/app/actions/profile';
 import { ProfileView } from '@/components/profile/profile-view';
 import { GiftCardFormSkeleton } from '@/components/gift-cards/gift-card-skeleton';
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Mi Perfil · SIGE Mercado',

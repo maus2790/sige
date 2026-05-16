@@ -6,7 +6,8 @@ import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import Link from "next/link";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter, Home, Search, Tags, ShoppingCart, X, Gift, Plus } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags, ShoppingCart, X, Gift, Plus, Download } from "lucide-react";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,6 +50,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
   const [search, setSearch] = useState(initialSearch);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
 
   const categoriesList = [
     { value: "todos", label: "Todos", icon: "✨" },
@@ -108,6 +110,17 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       {/* Hero Section - Altura Original Restaurada */}
       <div className="relative overflow-hidden bg-brand-gradient text-white pb-16 pt-12 px-4 sm:px-6 lg:px-8 shadow-premium rounded-b-[2.5rem] md:rounded-b-[4rem] mb-0">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+
+        {/* Botón Instalar App (Arriba Izquierda) */}
+        {isInstallable && !isInstalled && (
+          <button
+            onClick={installApp}
+            className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500 cursor-pointer"
+          >
+            <Download className="w-3.5 h-3.5 group-hover:animate-bounce" />
+            <span>Instalar App</span>
+          </button>
+        )}
 
         <div className="relative z-10 max-w-4xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex justify-center mb-6">

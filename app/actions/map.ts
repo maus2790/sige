@@ -25,7 +25,7 @@ export async function getNearbyStores(lat: number, lng: number, maxRadiusKm: num
 
     // Filter by radius and sort by distance
     return storesWithDistance
-      .filter(s => s.distance <= maxRadiusKm)
+      .filter(s => maxRadiusKm === 0 || s.distance <= maxRadiusKm)
       .sort((a, b) => a.distance - b.distance);
 
   } catch (error) {
@@ -94,7 +94,7 @@ export async function searchProductsGeo(query: string, lat: number, lng: number,
     });
 
     return productsWithDistance
-      .filter(p => p.distance <= maxRadiusKm)
+      .filter(p => maxRadiusKm === 0 || p.distance <= maxRadiusKm)
       .sort((a, b) => a.distance - b.distance);
 
   } catch (error) {

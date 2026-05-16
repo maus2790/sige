@@ -43,6 +43,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { handleLogout } from "@/app/actions/auth";
+import { cn } from "@/lib/utils";
 
 interface Category {
   id: string;
@@ -162,33 +163,68 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
             ) : (
               <>
                 {/* Mercado Link Desktop */}
-                {activeUser && pathname !== "/" && (
-                  <Link href="/" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
-                    Market - Shop
-                  </Link>
-                )}
+                <Link 
+                  href="/" 
+                  className={cn(
+                    "hidden lg:block text-sm font-bold transition-colors px-4 py-2 rounded-full",
+                    pathname === "/" 
+                      ? "text-primary bg-primary/10" 
+                      : "text-muted-foreground hover:text-primary hover:bg-muted"
+                  )}
+                >
+                  Mercado
+                </Link>
 
-                {activeUser && pathname !== "/mapa" && (
-                  <Link href="/mapa" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
-                    Explorar Mapa
-                  </Link>
-                )}
-
-                {activeUser && !pathname.startsWith("/gift-cards") && (
-                  <Link href="/gift-cards" className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
-                    Gift Cards
-                  </Link>
-                )}
-
-                {activeUser && myStoreId && pathname !== `/tienda/${myStoreId}` && (
-                  <Link href={`/tienda/${myStoreId}`} className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                {activeUser && myStoreId && (
+                  <Link 
+                    href={`/tienda/${myStoreId}`} 
+                    className={cn(
+                      "hidden lg:block text-sm font-bold transition-colors px-4 py-2 rounded-full",
+                      pathname === `/tienda/${myStoreId}`
+                        ? "text-primary bg-primary/10" 
+                        : "text-muted-foreground hover:text-primary hover:bg-muted"
+                    )}
+                  >
                     Mi Tienda
                   </Link>
                 )}
 
-                {/* Dashboard Link Desktop (Solo si no está ya en un dashboard) */}
-                {!pathname.startsWith("/dashboard") && !pathname.startsWith("/admin") && !pathname.startsWith("/assistant") && activeUser && (
-                  <Link href={dashboardPath} className="hidden lg:block text-sm font-bold text-muted-foreground hover:text-primary transition-colors px-3">
+                <Link 
+                  href="/mapa" 
+                  className={cn(
+                    "hidden lg:block text-sm font-bold transition-colors px-4 py-2 rounded-full",
+                    pathname === "/mapa" 
+                      ? "text-primary bg-primary/10" 
+                      : "text-muted-foreground hover:text-primary hover:bg-muted"
+                  )}
+                >
+                  Mapa
+                </Link>
+
+                {activeUser && (
+                  <Link 
+                    href="/gift-cards" 
+                    className={cn(
+                      "hidden lg:block text-sm font-bold transition-colors px-4 py-2 rounded-full",
+                      pathname.startsWith("/gift-cards") 
+                        ? "text-primary bg-primary/10" 
+                        : "text-muted-foreground hover:text-primary hover:bg-muted"
+                    )}
+                  >
+                    Gift Cards
+                  </Link>
+                )}
+
+                {activeUser && (
+                  <Link 
+                    href={dashboardPath} 
+                    className={cn(
+                      "hidden lg:block text-sm font-bold transition-colors px-4 py-2 rounded-full",
+                      (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/assistant"))
+                        ? "text-primary bg-primary/10" 
+                        : "text-muted-foreground hover:text-primary hover:bg-muted"
+                    )}
+                  >
                     Dashboard
                   </Link>
                 )}
@@ -202,8 +238,8 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                   <NotificationCenter />
                 )}
 
-                {/* Carrito Link Desktop */}
-                <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer hidden md:flex items-center justify-center">
+                {/* Carrito Link */}
+                <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center">
                   <ShoppingCart className="h-5 w-5" />
                   {mounted && cart.getTotalItems() > 0 && (
                     <Badge className="absolute top-0 right-0 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-red-500 text-white border-none animate-in zoom-in duration-300 pointer-events-none">
@@ -233,8 +269,8 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                           </p>
                         </div>
                       </DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link href="/profile" className="cursor-pointer flex items-center">
+                      <DropdownMenuItem asChild className={cn("cursor-pointer", pathname === "/profile" && "bg-primary/10 text-primary font-bold")}>
+                        <Link href="/profile" className="flex items-center w-full">
                           <User className="mr-2 h-4 w-4" />
                           <span>Perfil</span>
                         </Link>
@@ -242,52 +278,42 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
                       <DropdownMenuSeparator />
                       
-                      {pathname !== "/" && (
-                        <DropdownMenuItem asChild>
-                          <Link href="/" className="cursor-pointer flex items-center">
-                            <ShoppingCart className="mr-2 h-4 w-4" />
-                            <span>Market - Shop</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem asChild className={cn("cursor-pointer", pathname === "/" && "bg-primary/10 text-primary font-bold")}>
+                        <Link href="/" className="flex items-center w-full">
+                          <ShoppingCart className="mr-2 h-4 w-4" />
+                          <span>Mercado</span>
+                        </Link>
+                      </DropdownMenuItem>
 
+                      <DropdownMenuItem asChild className={cn("cursor-pointer", pathname.startsWith("/gift-cards") && "bg-primary/10 text-primary font-bold")}>
+                        <Link href="/gift-cards" className="flex items-center w-full">
+                          <Gift className="mr-2 h-4 w-4" />
+                          <span>Gift Cards</span>
+                        </Link>
+                      </DropdownMenuItem>
 
-                      {!pathname.startsWith("/gift-cards") && (
-                        <DropdownMenuItem asChild>
-                          <Link href="/gift-cards" className="cursor-pointer flex items-center">
-                            <Gift className="mr-2 h-4 w-4" />
-                            <span>Mis Gift Cards</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem asChild className={cn("cursor-pointer", pathname === "/mapa" && "bg-primary/10 text-primary font-bold")}>
+                        <Link href="/mapa" className="flex items-center w-full">
+                          <Navigation className="mr-2 h-4 w-4" />
+                          <span>Mapa</span>
+                        </Link>
+                      </DropdownMenuItem>
 
-                      {pathname !== "/mapa" && (
-                        <DropdownMenuItem asChild>
-                          <Link href="/mapa" className="cursor-pointer flex items-center">
-                            <Navigation className="mr-2 h-4 w-4" />
-                            <span>Explorar Mapa</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
-
-                      {myStoreId && pathname !== `/tienda/${myStoreId}` && (
-                        <DropdownMenuItem asChild>
-                          <Link href={`/tienda/${myStoreId}`} className="cursor-pointer flex items-center">
+                      {myStoreId && (
+                        <DropdownMenuItem asChild className={cn("cursor-pointer", pathname === `/tienda/${myStoreId}` && "bg-primary/10 text-primary font-bold")}>
+                          <Link href={`/tienda/${myStoreId}`} className="flex items-center w-full">
                             <Store className="mr-2 h-4 w-4" />
                             <span>Mi Tienda</span>
                           </Link>
                         </DropdownMenuItem>
                       )}
 
-
-                      {!pathname.startsWith("/dashboard") && !pathname.startsWith("/admin") && !pathname.startsWith("/assistant") && (
-                        <DropdownMenuItem asChild>
-                          <Link href={dashboardPath} className="cursor-pointer flex items-center">
-                            <LayoutDashboard className="mr-2 h-4 w-4" />
-                            <span>Dashboard</span>
-                          </Link>
-                        </DropdownMenuItem>
-                      )}
+                      <DropdownMenuItem asChild className={cn("cursor-pointer", (pathname.startsWith("/dashboard") || pathname.startsWith("/admin") || pathname.startsWith("/assistant")) && "bg-primary/10 text-primary font-bold")}>
+                        <Link href={dashboardPath} className="flex items-center w-full">
+                          <LayoutDashboard className="mr-2 h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
 
                       <DropdownMenuSeparator />
 

@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
-import { Navbar } from "@/components/layout/Navbar";
+import { Navbar } from "@/components/layout/nav-bar";
 import { MobileNavBar } from "@/components/layout/mobile-nav-bar";
 import { Providers } from "./providers";
 import { getCategories } from "./actions/categories";
@@ -55,14 +55,14 @@ export default async function RootLayout({
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          enableSystem={false}
+          enableSystem={true}
           disableTransitionOnChange
           enableColorScheme={false}
         >
           <Providers>
             <OneSignalProvider>
               <Navbar categories={categories} myStoreId={myStoreId} />
-              <div className="min-h-screen">
+              <div>
                 {children}
               </div>
               <MobileNavBar categories={categories} myStoreId={myStoreId} />

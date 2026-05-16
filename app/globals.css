@@ -295,3 +295,76 @@
     animation: shine 8s infinite;
   }
 }
+
+/* ──────────────────────────────────────
+   MapLibre GL — Popup theme overrides
+   ────────────────────────────────────── */
+
+/* Light mode (default) */
+.maplibregl-popup-content {
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  padding: 0 !important;
+}
+
+.maplibregl-popup-tip {
+  border-top-color: var(--background) !important;
+  border-bottom-color: var(--background) !important;
+}
+
+.maplibregl-popup-close-button {
+  color: var(--muted-foreground) !important;
+  font-size: 1.1rem !important;
+  line-height: 1 !important;
+  padding: 4px 8px !important;
+  border-radius: 0 0.75rem 0 0 !important;
+}
+
+.maplibregl-popup-close-button:hover {
+  background: var(--muted) !important;
+  color: var(--foreground) !important;
+}
+
+/* Dark mode override via Tailwind .dark class */
+.dark .maplibregl-popup-content {
+  background-color: var(--card) !important;
+  color: var(--card-foreground) !important;
+  border-color: var(--border) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45) !important;
+}
+
+.dark .maplibregl-popup-tip {
+  border-top-color: var(--card) !important;
+  border-bottom-color: var(--card) !important;
+}
+
+/* MapLibre controls — dark mode */
+.dark .maplibregl-ctrl-group {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark .maplibregl-ctrl-group button {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .maplibregl-ctrl-group button:hover {
+  background-color: #334155 !important;
+}
+
+.dark .maplibregl-ctrl-group button + button {
+  border-top-color: #334155 !important;
+}
+
+.dark .maplibregl-ctrl-attrib {
+  background-color: rgba(15, 23, 42, 0.8) !important;
+  color: #94a3b8 !important;
+}
+
+.dark .maplibregl-ctrl-attrib a {
+  color: #60a5fa !important;
+}

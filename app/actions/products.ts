@@ -57,6 +57,7 @@ const updateProductSchema = z.object({
   precioOferta: z.number().min(0).optional().nullable(),
   diasPromocion: z.number().int().min(1).optional().nullable(),
   isPublished: z.boolean().optional(),
+  stock: z.number().int().min(0).optional(),
 });
 
 // ============================================
@@ -591,6 +592,7 @@ export async function updateProduct(productId: string, data: any) {
       diasPromocion: data.get("diasPromocion"),
       isPublished: data.get("isPublished") === "true",
       imageUrls: data.get("imageUrls"),
+      stock: data.get("stock"),
     };
   }
 
@@ -605,6 +607,7 @@ export async function updateProduct(productId: string, data: any) {
     precioOferta: typeof rawData.precioOferta === 'string' && rawData.precioOferta !== "" ? parseFloat(rawData.precioOferta) : (rawData.precioOferta || null),
     diasPromocion: typeof rawData.diasPromocion === 'string' && rawData.diasPromocion !== "" ? parseInt(rawData.diasPromocion) : (rawData.diasPromocion || null),
     isPublished: rawData.isPublished !== undefined ? rawData.isPublished : undefined,
+    stock: typeof rawData.stock === 'string' ? parseInt(rawData.stock) : rawData.stock,
   });
 
   if (!validatedFields.success) {
@@ -614,7 +617,7 @@ export async function updateProduct(productId: string, data: any) {
     };
   }
 
-  const { sku, name, description, price, category, status, oferta, precioOferta, diasPromocion, isPublished } = validatedFields.data;
+  const { sku, name, description, price, category, status, oferta, precioOferta, diasPromocion, isPublished, stock } = validatedFields.data;
 
   const productUpdate: any = {
     updatedAt: new Date(),
@@ -663,11 +666,20 @@ export async function updateProduct(productId: string, data: any) {
     }
 
     if (Object.keys(comercialUpdate).length > 1) {
-      // Intentar actualizar, si no existe, la lógica es más compleja, pero asumimos que existe
       await tx
         .update(comercialConfig)
         .set(comercialUpdate)
         .where(eq(comercialConfig.productId, productId));
+    }
+
+    if (stock !== undefined) {
+      await tx
+        .update(inventory)
+        .set({ 
+          stockActual: stock, 
+          updatedAt: new Date() 
+        })
+        .where(eq(inventory.productId, productId));
     }
   });
 

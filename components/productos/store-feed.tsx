@@ -59,6 +59,11 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
     'gradient:emerald': 'bg-linear-to-br from-emerald-500 via-teal-600 to-cyan-700',
     'gradient:dark': 'bg-linear-to-br from-gray-900 via-slate-800 to-gray-900',
     'gradient:premium': 'bg-linear-to-br from-slate-900 via-purple-900 to-slate-900',
+    'gradient:cosmic': 'bg-linear-to-br from-indigo-900 via-purple-900 to-pink-800',
+    'gradient:nature': 'bg-linear-to-br from-green-500 via-emerald-600 to-teal-800',
+    'gradient:gold': 'bg-linear-to-br from-yellow-500 via-orange-600 to-red-800',
+    'gradient:cyber': 'bg-linear-to-br from-cyan-500 via-blue-600 to-indigo-900',
+    'gradient:rose': 'bg-linear-to-br from-rose-500 via-pink-600 to-purple-800',
   };
 
   const isSystemGradient = store.bannerUrl?.startsWith('gradient:');
@@ -130,6 +135,7 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const products: any[] = data?.pages.flatMap((page: any) => page) || [];
+  const showComplexLayout = !!(store.latitude && store.longitude && (products.length > 0 || isOwner));
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -307,9 +313,12 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
         </div>
       )}
 
-      {/* Store Map */}
+      {/* Store Map (Standalone for Mobile or simple layout) */}
       {store.latitude && store.longitude && (
-        <div className="max-w-7xl mx-auto px-4 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className={cn(
+          "max-w-7xl mx-auto px-4 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700",
+          showComplexLayout && "md:hidden"
+        )}>
           <div className="flex items-center gap-3 mb-4">
             <div className="h-8 w-1.5 rounded-full bg-emerald-500"></div>
             <h2 className="text-xl font-black tracking-tight">Ubicación</h2>
@@ -319,27 +328,66 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
             longitude={store.longitude} 
             storeName={store.name} 
             storeAddress={store.address || undefined} 
+            logoUrl={store.logoUrl}
           />
         </div>
       )}
 
       {/* Grid de Productos Publicados */}
       <div className="max-w-7xl mx-auto px-4 mt-6">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className={cn("h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
-            <h2 className="text-2xl font-black tracking-tight">
-              {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
-            </h2>
+        {/* Header: use same grid so titles align perfectly with their content below */}
+        {showComplexLayout ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 mb-6">
+            {/* Products title — spans same cols as the product cards */}
+            <div className={cn(
+              "col-span-2 flex items-center justify-between",
+              products.length === 1 && !isOwner && "md:col-span-1"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className={cn("h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
+                <h2 className="text-2xl font-black tracking-tight">
+                  {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
+                </h2>
+              </div>
+              {/* Badge only on mobile (desktop badge is below) */}
+              <Badge variant="outline" className="md:hidden rounded-full px-3 border-muted-foreground/20 text-muted-foreground font-bold text-xs">
+                {products.length} {products.length === 1 ? 'Item' : 'Items'}
+              </Badge>
+            </div>
+
+            {/* Map title — spans same cols as the map, hidden on mobile */}
+            <div className={cn(
+              "hidden md:flex items-center justify-between",
+              products.length === 1 && !isOwner
+                ? "md:col-span-2 lg:col-span-3 xl:col-span-4"
+                : "md:col-span-1 lg:col-span-2 xl:col-span-3"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-1.5 rounded-full bg-emerald-500"></div>
+                <h2 className="text-2xl font-black tracking-tight">Ubicación de la Tienda</h2>
+              </div>
+              <Badge variant="outline" className="rounded-full px-3 border-muted-foreground/20 text-muted-foreground font-bold text-xs">
+                {products.length} {products.length === 1 ? 'Item' : 'Items'}
+              </Badge>
+            </div>
           </div>
-          <Badge variant="outline" className="rounded-full px-4 border-muted-foreground/20 text-muted-foreground font-bold">
-            {products.length} {products.length === 1 ? 'Item' : 'Items'}
-          </Badge>
-        </div>
+        ) : (
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className={cn("h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
+              <h2 className="text-2xl font-black tracking-tight">
+                {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
+              </h2>
+            </div>
+            <Badge variant="outline" className="rounded-full px-4 border-muted-foreground/20 text-muted-foreground font-bold">
+              {products.length} {products.length === 1 ? 'Item' : 'Items'}
+            </Badge>
+          </div>
+        )}
 
         {isLoading ? (
           <ProductGridSkeleton count={10} />
-        ) : products.length === 0 ? (
+        ) : products.length === 0 && !isOwner ? (
           <div className="text-center py-24 bg-card rounded-4xl border border-dashed border-muted-foreground/20">
             <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-4">
               <Package className="w-10 h-10 text-muted-foreground" />
@@ -356,7 +404,8 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
         ) : (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
-              {products.map((product: any, index: number) => (
+              {/* Primeros 2 productos reales */}
+              {products.slice(0, 2).map((product: any, index: number) => (
                 <div
                   key={product.id}
                   className="animate-in fade-in slide-in-from-bottom-8 duration-700"
@@ -365,6 +414,74 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
                   <ProductCard product={product} isStoreOwner={isOwner} />
                 </div>
               ))}
+
+              {/* CTA placeholder cards para dueños con menos de 2 productos */}
+              {isOwner && products.length < 2 && Array.from({ length: 2 - products.length }).map((_, i) => {
+                const labels = products.length === 0
+                  ? ["tu primer producto", "tu segundo producto"]
+                  : ["tu segundo producto"];
+                return (
+                  <button
+                    key={`cta-slot-${i}`}
+                    onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
+                    className="group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
+                    style={{ animationDelay: `${(products.length + i) * 80}ms` }}
+                  >
+                    <div className="w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
+                      <Plus className="w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
+                    </div>
+                    <div className="text-center space-y-1">
+                      <p className="font-black text-sm text-muted-foreground group-hover:text-blue-600 transition-colors uppercase tracking-wide">Publicar</p>
+                      <p className="font-bold text-xs text-muted-foreground/70 group-hover:text-blue-500 transition-colors">{labels[i]}</p>
+                    </div>
+                    <div className="absolute inset-0 rounded-3xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
+                  </button>
+                );
+              })}
+
+              {/* Mapa integrado en el grid (Solo Desktop y Layout Complejo) */}
+              {showComplexLayout && (
+                <div className={cn(
+                  "hidden md:block animate-in fade-in slide-in-from-bottom-8 duration-1000 delay-200",
+                  products.length === 1 && !isOwner
+                    ? "md:col-span-2 lg:col-span-3 xl:col-span-4"
+                    : "md:col-span-1 lg:col-span-2 xl:col-span-3"
+                )}>
+                  <StoreMap 
+                    latitude={store.latitude!} 
+                    longitude={store.longitude!} 
+                    storeName={store.name} 
+                    storeAddress={store.address || undefined} 
+                    logoUrl={store.logoUrl}
+                    className="h-[300px] md:h-[350px] lg:h-[400px]"
+                  />
+                </div>
+              )}
+
+              {/* Resto de productos */}
+              {products.slice(2).map((product: any, index: number) => (
+                <div
+                  key={product.id}
+                  className="animate-in fade-in slide-in-from-bottom-8 duration-700"
+                  style={{ animationDelay: `${((index + 2) % 10) * 50}ms` }}
+                >
+                  <ProductCard product={product} isStoreOwner={isOwner} />
+                </div>
+              ))}
+
+              {/* Trailing CTA — visible para dueños con 2+ productos */}
+              {isOwner && products.length >= 2 && (
+                <button
+                  onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
+                  className="group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
+                    <Plus className="w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
+                  </div>
+                  <p className="font-black text-sm text-muted-foreground group-hover:text-blue-600 transition-colors uppercase tracking-wide">Publicar producto</p>
+                  <div className="absolute inset-0 rounded-3xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
+                </button>
+              )}
             </div>
 
             {/* Infinite Scroll Loader */}

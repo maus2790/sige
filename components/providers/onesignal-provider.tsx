@@ -37,6 +37,14 @@ export function OneSignalProvider({ children }: { children: React.ReactNode }) {
         // OneSignal para evitar la race condition de "No SW registration for postMessage"
         if ('serviceWorker' in navigator) {
           await navigator.serviceWorker.ready;
+          // Si no hay controlador activo, esperar a que se active para evitar el error de postMessage
+          if (!navigator.serviceWorker.controller) {
+            await new Promise((resolve) => {
+              navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+              // Timeout de seguridad para no bloquear la app
+              setTimeout(resolve, 2000);
+            });
+          }
         }
 
         await OneSignal.init({

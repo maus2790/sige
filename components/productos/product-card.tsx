@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Eye, Package, Loader2, ShoppingCart, Globe, Pencil, Trash2, EyeOff } from "lucide-react";
+import { Eye, Package, Loader2, ShoppingCart, Globe, Pencil, Trash2, EyeOff, MapPin } from "lucide-react";
 import { CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -127,7 +127,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative flex flex-col overflow-hidden transition-all duration-500 shadow-md hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.12)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.25)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-2xl bg-card/50 backdrop-blur-md ${isClicked ? "ring-2 ring-primary ring-offset-2" : ""}`}
+      className={`group relative flex flex-col overflow-hidden transition-all duration-500 shadow-xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_0_20px_rgba(37,99,235,0.15)] dark:hover:shadow-[0_0_40px_rgba(37,99,235,0.3)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-3xl bg-card/50 backdrop-blur-md ${isClicked ? "ring-4 ring-blue-500/50 ring-offset-4 dark:ring-offset-zinc-950" : ""}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -155,23 +155,22 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
           ) : null}
         </div>
 
-        {/* Badge de estado (Izquierda) */}
-        {product.status && product.status !== "Nuevo" && (
-          <div className="absolute top-3 left-3 z-20">
-            <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 bg-black/50 text-white border-none backdrop-blur-md">
-              {product.status}
-            </Badge>
-          </div>
-        )}
-
-        {/* Badge de stock bajo */}
-        {(product.inventory?.stockActual ?? 0) < (product.inventory?.stockMinimo ?? 5) && (product.inventory?.stockActual ?? 0) > 0 && (
-          <div className="absolute top-10 left-3 z-20">
-            <Badge variant="destructive" className="text-[9px] font-bold px-2 py-0.5 border-none shadow-lg">
+        {/* Badges de estado y stock (Izquierda) */}
+        <div className="absolute top-3 left-3 z-20 flex flex-col gap-1.5">
+          {/* Badge de stock bajo - PRIORIDAD */}
+          {(product.inventory?.stockActual ?? 0) < (product.inventory?.stockMinimo ?? 5) && (product.inventory?.stockActual ?? 0) > 0 && (
+            <Badge variant="destructive" className="text-[9px] font-bold px-2 py-0.5 border-none shadow-lg w-fit">
               ¡Solo {product.inventory?.stockActual}!
             </Badge>
-          </div>
-        )}
+          )}
+
+          {/* Badge de estado (Refabricado, etc) */}
+          {product.status && product.status !== "Nuevo" && (
+            <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 bg-black/50 text-white border-none backdrop-blur-md w-fit">
+              {product.status}
+            </Badge>
+          )}
+        </div>
 
         {/* Contenedor de Imagen y Botón de Carrito */}
         <div className="aspect-4/3 relative overflow-hidden bg-muted block">
@@ -241,6 +240,22 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
               )}
             >
               <ShoppingCart className={cn("w-4 h-4", isInCart && "fill-current")} />
+            </button>
+          )}
+
+          {/* Botón Ver en Mapa (Inferior Izquierda) */}
+          {/* Botón Ver en el Mapa - Solo para compradores */}
+          {!isStoreOwner && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                router.push(`/mapa?q=${encodeURIComponent(product.name)}&r=0`);
+              }}
+              className="absolute bottom-2 left-2 w-9 h-9 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center transition-all z-30 border bg-white/90 dark:bg-zinc-900/90 text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 border-white/20"
+              title="Ver en el mapa"
+            >
+              <MapPin className="w-4 h-4" />
             </button>
           )}
         </div>

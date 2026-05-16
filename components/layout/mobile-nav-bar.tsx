@@ -3,7 +3,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Home, Plus, Package, Store, Gift, User, ShoppingCart } from "lucide-react";
+import { Home, Plus, Package, Store, Gift, User, ShoppingCart, Map, Download } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { CategorySheet } from "@/components/productos/category-sheet";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const cart = useCart();
+  const { data: session } = useSession();
   
   const [isCategoryOpen, setIsCategoryOpen] = React.useState(false);
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
@@ -38,7 +40,8 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const isStorePage = pathname.startsWith("/tienda/");
   const isProfilePage = pathname === "/profile";
   const isCartPage = pathname === "/cart";
-  if (pathname !== "/" && !isStorePage && !isProfilePage && !isCartPage) return null;
+  const isMapPage = pathname === "/mapa";
+  if (pathname !== "/" && !isStorePage && !isProfilePage && !isCartPage && !isMapPage) return null;
 
   const handleCategorySelect = (category: string) => {
     router.push(`/?category=${encodeURIComponent(category)}`);
@@ -47,22 +50,27 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const navItems: Array<{ href?: string; label: string; icon: any; isAction?: boolean; onClick?: () => void; badge?: number }> = [
     { href: "/", label: "Mercado", icon: Home },
     { 
-      href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
-      label: "Tienda", 
-      icon: Store 
+      href: "/mapa", 
+      label: "Explorar", 
+      icon: Map,
     },
     ...(pathname === "/" || (myStoreId && pathname === `/tienda/${myStoreId}`) ? [{ 
       label: "Vender", 
       icon: Plus, 
       isAction: true, 
-      onClick: () => setIsPublishOpen(true),
+      onClick: () => {
+        if (!session) {
+          router.push("/auth/login");
+        } else {
+          setIsPublishOpen(true);
+        }
+      },
       badge: 0
     }] : []),
     { 
-      href: "/cart", 
-      label: "Carrito", 
-      icon: ShoppingCart,
-      badge: mounted ? cart.getTotalItems() : 0 
+      href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
+      label: "Tienda", 
+      icon: Store 
     },
     { 
       href: "/profile", 
