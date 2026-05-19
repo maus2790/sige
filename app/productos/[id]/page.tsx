@@ -12,6 +12,11 @@ import { cn } from "@/lib/utils";
 
 import { Metadata, ResolvingMetadata } from "next";
 
+// Force dynamic rendering so the page always runs server-side per request.
+// The actual product data is still served from unstable_cache (TTL-based or tag-invalidated),
+// meaning Turso DB is only queried on a cache MISS — not on every request.
+export const dynamic = "force-dynamic";
+
 interface ProductoDetailPageProps {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ from?: string }>;

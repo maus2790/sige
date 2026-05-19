@@ -10,6 +10,7 @@ import { Loader2, Package, Filter, Home, Search, Tags, ShoppingCart, X, Gift, Pl
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RefreshButton } from "@/components/marketplace/refresh-button";
 import {
   Sheet,
   SheetContent,
@@ -85,8 +86,17 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
     useInfiniteScroll({ category: category !== "todos" ? category : undefined, search });
+
+  useEffect(() => {
+    const handleGlobalRefresh = () => {
+      console.log("[InfiniteFeed] Global refresh event received.");
+      refetch();
+    };
+    window.addEventListener("sige-refresh-feed", handleGlobalRefresh);
+    return () => window.removeEventListener("sige-refresh-feed", handleGlobalRefresh);
+  }, [refetch]);
 
   const { ref, inView } = useInView({
     threshold: 0,
@@ -199,6 +209,10 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          <div className="hidden lg:flex">
+            <RefreshButton onRefresh={() => refetch()} />
           </div>
 
           {/* Botón GIFT CARDS (Pill llamativa con animación de brillo y bordes más coloridos) */}

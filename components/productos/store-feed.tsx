@@ -6,7 +6,8 @@ import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
 import { Loader2, Package, ShoppingCart, Store, Save, X, Palette, CheckCircle2, MapPin, Phone, Search, Plus, Gift, Globe, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getStoreProducts, getStoreDrafts } from "@/app/actions/storefront";
+import { getStoreProducts, getStoreDrafts, refreshStoreFeed } from "@/app/actions/storefront";
+import { RefreshButton } from "@/components/marketplace/refresh-button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
 import { useStoreInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { StoreCustomizer } from "@/components/tienda/store-customizer";
 import { ArrowLeft, Settings, CheckCircle } from "lucide-react";
@@ -44,14 +44,17 @@ interface StoreData {
 interface StoreFeedProps {
   store: StoreData;
   initialProducts: any[];
-  isOwner?: boolean;
+  myUserId?: string | null;
   categories?: any[];
 }
 
-export function StoreFeed({ store, initialProducts, isOwner = false, categories = [] }: StoreFeedProps) {
+export function StoreFeed({ store, initialProducts, myUserId, categories = [] }: StoreFeedProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Determine ownership client-side so the server component doesn't need getCurrentUser()
+  const isOwner = !!myUserId && myUserId === store.userId;
 
   const SYSTEM_GRADIENTS: Record<string, string> = {
     'gradient:blue': 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900',
@@ -115,13 +118,23 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
     fetchNextPage, 
     hasNextPage, 
     isFetchingNextPage, 
-    isLoading 
+    isLoading,
+    refetch
   } = useStoreInfiniteScroll({ 
     storeId: store.id, 
     initialData: initialProducts,
     search: debouncedSearch,
     category: category !== "todos" ? category : undefined
   });
+
+  useEffect(() => {
+    const handleGlobalRefresh = () => {
+      console.log("[StoreFeed] Global refresh event received.");
+      refetch();
+    };
+    window.addEventListener("sige-refresh-feed", handleGlobalRefresh);
+    return () => window.removeEventListener("sige-refresh-feed", handleGlobalRefresh);
+  }, [refetch]);
 
   const { ref, inView } = useInView({
     threshold: 0,
@@ -278,6 +291,14 @@ export function StoreFeed({ store, initialProducts, isOwner = false, categories 
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Botón ACTUALIZAR (Refresh) */}
+          <div className="hidden lg:flex">
+            <RefreshButton 
+              refreshAction={() => refreshStoreFeed(store.id)} 
+              onRefresh={() => refetch()} 
+            />
           </div>
 
           {/* Botón GIFT CARDS */}

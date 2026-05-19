@@ -17,10 +17,12 @@ export function useInfiniteScroll({
 }: UseInfiniteScrollProps) {
     return useInfiniteQuery({
         queryKey: ["products", category, search],
-        queryFn: ({ pageParam }) =>
-            getProductsCursor(pageParam, limit, category, search),
-        initialPageParam: undefined as string | undefined,
-        getNextPageParam: (lastPage) => lastPage.nextCursor || undefined,
+        queryFn: ({ pageParam = 1 }) =>
+            getProductsCursor(pageParam as number, limit, category, search),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            return (lastPage.items as any[]).length > 0 ? allPages.length + 1 : undefined;
+        },
     });
 }
 
@@ -45,8 +47,12 @@ export function useStoreInfiniteScroll({
             getStoreProducts(storeId, pageParam as number, limit, search, category),
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => {
-            return (lastPage as any[]).length === limit ? allPages.length + 1 : undefined;
+            return (lastPage as any[]).length > 0 ? allPages.length + 1 : undefined;
         },
         initialData: (initialData && !search && !category) ? { pages: [initialData], pageParams: [1] } : undefined,
+        // Treat initialData as fresh for 60s — prevents React Query from immediately
+        // background-refetching when the server already served up-to-date cached data.
+        initialDataUpdatedAt: Date.now(),
+        staleTime: 60 * 1000,
     });
 }

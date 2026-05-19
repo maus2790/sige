@@ -23,7 +23,7 @@ export function GoogleSignInButton({ callbackUrl }: { callbackUrl?: string }) {
     <Button
       type="button"
       variant="outline"
-      className="w-full py-6 font-medium border-white/10 bg-background/50 hover:bg-background transition-all duration-300 rounded-xl flex items-center justify-center gap-2"
+      className="w-full h-11 font-medium border-white/10 bg-background/50 hover:bg-background transition-all duration-300 rounded-xl flex items-center justify-center gap-2"
       onClick={handleGoogleClick}
       disabled={isLoading}
     >

@@ -8,3 +8,4 @@ export * from "./inventory";
 export * from "./comercial-config";
 export * from './gift-cards';
 export * from './notifications';
+export * from "./system-config";

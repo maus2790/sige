@@ -24,9 +24,12 @@ export async function generateMetadata({ params }: StorePageProps): Promise<Meta
 export default async function StorePage({ params }: StorePageProps) {
   const { id } = await params;
   
+  // getCurrentUser is fetched in parallel but does NOT block the cached data fetches.
+  // By isolating it here (not inside the cached actions), the store/product caches
+  // remain valid even though this page is dynamically rendered per request.
   const [store, initialProducts, user, categoriesList] = await Promise.all([
     getStoreDetails(id),
-    getStoreProducts(id, 1, 20),
+    getStoreProducts(id, 1),
     getCurrentUser(),
     getCategories(),
   ]);
@@ -35,14 +38,12 @@ export default async function StorePage({ params }: StorePageProps) {
     notFound();
   }
 
-  const isOwner = user?.id === store.userId;
-
   return (
     <main className="min-h-screen">
       <StoreFeed 
         store={store} 
         initialProducts={initialProducts} 
-        isOwner={isOwner}
+        myUserId={user?.id ?? null}
         categories={categoriesList}
       />
     </main>

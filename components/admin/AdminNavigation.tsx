@@ -10,7 +10,8 @@ import {
   LayoutDashboard,
   LogOut,
   Tags,
-  ShieldAlert
+  ShieldAlert,
+  Zap
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { handleLogout } from "@/app/actions/auth";
@@ -21,6 +22,7 @@ const navItems = [
   { href: "/admin/usuarios", label: "Usuarios", icon: Users },
   { href: "/admin/tiendas", label: "Tiendas", icon: Store },
   { href: "/admin/categorias", label: "Categorías", icon: Tags },
+  { href: "/admin/optimizaciones", label: "Optimización", icon: Zap },
   { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
 

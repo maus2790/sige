@@ -1,6 +1,9 @@
 //proxy.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { db } from '@/db';
+import { systemConfig } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 
 // ============================================
 // RUTAS PÚBLICAS (no requieren autenticación)
@@ -21,6 +24,8 @@ const publicRoutes = [
   '/categories',
   '/categories/',
   '/mapa',
+  '/terms',
+  '/privacy',
 ];
 
 const publicPatterns = [
@@ -158,6 +163,21 @@ export default async function proxy(request: NextRequest) {
 
   // 0. NUNCA interceptar rutas de API ni archivos estáticos de Next.js
   if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
+    return NextResponse.next();
+  }
+
+  // 1. Verificación de Middleware Optimizado
+  let isOptimized = false;
+  try {
+    const configRow = await db.select().from(systemConfig).where(eq(systemConfig.key, 'middleware_optimized')).get();
+    isOptimized = configRow?.value === 'true';
+  } catch (e) {
+    console.error('[Proxy] Error fetching middleware config:', e);
+  }
+
+  // Si está optimizado y es ruta pública, retornar inmediatamente sin revisar tokens/cookies
+  if (isOptimized && isPublicRoute(pathname)) {
+    console.log(`[Proxy-Optimized] Fast-tracked public route: ${pathname}`);
     return NextResponse.next();
   }
 

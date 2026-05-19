@@ -1,7 +1,7 @@
 //app/auth/layout.tsx
 import { Suspense } from "react";
 import Link from "next/link";
-import { Zap, ShoppingBag, Gift, Store, Smartphone, ArrowLeft, Bell, FileText } from "lucide-react";
+import { Zap, ShoppingBag, Gift, Store, Smartphone, ArrowLeft, Bell, FileText, MapPin } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -19,28 +19,34 @@ export default function AuthLayout({
       <div className="flex w-full min-h-screen">
 
         {/* Left Side: Branding & Features (Desktop Only) */}
-        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-primary/5 border-r border-white/10 relative overflow-hidden">
+        <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 pt-6 bg-primary/5 border-r border-white/10 relative overflow-hidden">
           {/* Animated Background Element for Left Side */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-brand-gradient opacity-[0.03] blur-[100px] animate-float" />
 
           <div className="z-10 animate-in fade-in slide-in-from-left-8 duration-700">
-            <Link href="/" className="flex items-center gap-4 group cursor-pointer focus:outline-none mb-8">
+            <Link href="/" className="flex items-center gap-4 group cursor-pointer focus:outline-none mb-4">
               <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-gradient shadow-lg shadow-primary/20 transform group-hover:rotate-6 transition-transform duration-500">
                 <ShoppingBag className="w-8 h-8 text-white" />
               </div>
               <h1 className="text-5xl font-black tracking-tighter text-brand-gradient group-hover:opacity-80 transition-opacity leading-none">SIGE</h1>
             </Link>
-            <p className="text-xl font-medium text-muted-foreground/80 max-w-md">
+            <p className="text-xl font-medium text-muted-foreground/80 max-w-2xl pb-4">
               Market Shop & Gift Cards. La plataforma integral para comprar, vender, regalar y gestionar tu negocio.
             </p>
           </div>
 
-          <div className="z-10 space-y-8 animate-in fade-in slide-in-from-left-12 duration-1000 delay-300">
+          <div className="z-10 space-y-6 animate-in fade-in slide-in-from-left-12 duration-1000 delay-300">
             <FeatureItem
               href="/"
               icon={<ShoppingBag className="w-6 h-6 text-blue-500" />}
               title="Market Shop"
               description="El marketplace más completo de Bolivia. Encuentra, vende y compra los mejores productos locales."
+            />
+            <FeatureItem
+              href="/mapa"
+              icon={<MapPin className="w-6 h-6 text-rose-500" />}
+              title="Mapa de Tiendas y Productos"
+              description="Explora de forma interactiva y geográfica las tiendas y productos más cercanos a tu ubicación en tiempo real."
             />
             <FeatureItem
               href="/gift-cards"
@@ -75,15 +81,13 @@ export default function AuthLayout({
         </div>
 
         {/* Right Side: Authentication Form */}
-        <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-6 sm:p-12 z-10 overflow-y-auto">
-          <Link href="/" className="lg:hidden flex flex-col items-center mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 group cursor-pointer focus:outline-none">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-brand-gradient shadow-lg shadow-primary/20 transform group-hover:rotate-6 transition-transform duration-500">
-                <ShoppingBag className="w-8 h-8 text-white" />
-              </div>
-              <h1 className="text-4xl font-black tracking-tight text-brand-gradient group-hover:opacity-80 transition-opacity leading-none">SIGE</h1>
+        <div className="w-full lg:w-1/2 flex flex-col items-center justify-center lg:justify-start p-4 sm:p-12 lg:p-8 lg:pt-4 z-10 overflow-y-auto">
+          <Link href="/" className="lg:hidden flex items-center gap-3 mb-4 animate-in fade-in slide-in-from-bottom-4 duration-700 group cursor-pointer focus:outline-none">
+            <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-brand-gradient shadow-md shadow-primary/20 transform group-hover:rotate-6 transition-transform duration-500">
+              <ShoppingBag className="w-5 h-5 text-white" />
             </div>
-            <p className="text-muted-foreground text-sm font-medium">Market Shop & Gift Cards</p>
+            <span className="text-2xl font-black tracking-tight text-brand-gradient">SIGE</span>
+            <span className="text-muted-foreground text-xs font-medium">| Shop & Gifts</span>
           </Link>
 
           <div className="w-full max-w-[440px] animate-in fade-in zoom-in-95 duration-700 lg:delay-200">
@@ -96,7 +100,7 @@ export default function AuthLayout({
               {children}
             </Suspense>
 
-            <footer className="mt-12 text-center text-xs text-muted-foreground/50 font-medium">
+            <footer className="mt-6 text-center text-xs text-muted-foreground/50 font-medium">
               &copy; {new Date().getFullYear()} SIGE Cloud Services. <br className="sm:hidden" /> Todos los derechos reservados.
             </footer>
           </div>

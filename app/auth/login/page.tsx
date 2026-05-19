@@ -82,27 +82,27 @@ export default function LoginPage() {
   return (
     <div className="animate-in fade-in zoom-in-95 duration-500">
       <Card className="glass-card border-white/20 dark:border-white/5 overflow-hidden shadow-2xl">
-        <CardHeader className="space-y-2 pb-6">
-          <div className="flex justify-center mb-2">
-            <div className="p-2 bg-primary/10 rounded-full">
-              <ShieldCheck className="w-6 h-6 text-primary" />
+        <CardHeader className="space-y-1 pb-3 pt-0">
+          <div className="hidden sm:flex justify-center mb-1">
+            <div className="p-1.5 bg-primary/10 rounded-full">
+              <ShieldCheck className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center tracking-tight">Bienvenido</CardTitle>
-          <CardDescription className="text-center text-muted-foreground/80">
+          <CardTitle className="text-xl sm:text-2xl font-bold text-center tracking-tight">Bienvenido</CardTitle>
+          <CardDescription className="text-center text-xs sm:text-sm text-muted-foreground/80">
             Ingresa tus credenciales para acceder al panel
           </CardDescription>
         </CardHeader>
         <form onSubmit={onSubmit}>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-3.5 pb-2">
             {error && (
-              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20 animate-shake">
+              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive text-xs sm:text-sm font-medium border border-destructive/20 animate-shake">
                 {error}
               </div>
             )}
             
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold ml-1">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs sm:text-sm font-semibold ml-1">Email</Label>
               <div className="relative group">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
                   <Mail className="w-4 h-4" />
@@ -114,17 +114,17 @@ export default function LoginPage() {
                   placeholder="correo@ejemplo.com"
                   required
                   disabled={isPending}
-                  className="pl-10 py-6 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
+                  className="h-11 pl-10 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between ml-1">
-                <Label htmlFor="password" title="Contraseña" className="text-sm font-semibold">Contraseña</Label>
+                <Label htmlFor="password" title="Contraseña" className="text-xs sm:text-sm font-semibold">Contraseña</Label>
                 <Link 
                   href="/auth/forgot-password" 
-                  className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                  className="text-[11px] sm:text-xs font-medium text-primary hover:text-primary/80 transition-colors"
                 >
                   ¿Olvidaste tu contraseña?
                 </Link>
@@ -140,7 +140,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   disabled={isPending}
-                  className="pl-10 pr-10 py-6 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
+                  className="h-11 pl-10 pr-10 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
                 />
                 <button
                   type="button"
@@ -153,14 +153,14 @@ export default function LoginPage() {
             </div>
           </CardContent>
           
-          <CardFooter className="flex flex-col space-y-6 pt-2 pb-8">
+          <CardFooter className="flex flex-col space-y-3.5 pt-1 pb-0">
             <Button
               type="submit"
               disabled={isPending}
-              className="w-full py-6 text-base font-bold bg-brand-gradient hover:bg-brand-gradient-hover text-white border-none shadow-lg shadow-primary/25 transition-all duration-300 active:scale-[0.98] rounded-xl"
+              className="w-full h-11 text-sm font-bold bg-brand-gradient hover:bg-brand-gradient-hover text-white border-none shadow-lg shadow-primary/25 transition-all duration-300 active:scale-[0.98] rounded-xl"
             >
               {isPending ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <span className="flex items-center">
                   Iniciar Sesión <ArrowRight className="ml-2 w-4 h-4" />
@@ -168,12 +168,12 @@ export default function LoginPage() {
               )}
             </Button>
 
-            <div className="relative w-full">
+            <div className="relative w-full py-1">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-muted/50" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-3 text-muted-foreground font-medium">
+                <span className="bg-card px-3 text-muted-foreground/80 font-medium">
                   o accede con
                 </span>
               </div>
@@ -181,8 +181,15 @@ export default function LoginPage() {
 
             <GoogleSignInButton callbackUrl={searchParams.get("callbackUrl") || undefined} />
 
+            <div className="text-center text-[10px] text-muted-foreground/60 px-1 leading-snug">
+              Al continuar, aceptas nuestros{" "}
+              <Link href="/terms" className="text-primary/80 hover:underline font-semibold">Términos y Condiciones</Link>
+              {" "}y la{" "}
+              <Link href="/privacy" className="text-primary/80 hover:underline font-semibold">Política de Privacidad</Link>.
+            </div>
+
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 ¿No tienes cuenta?{" "}
                 <Link 
                   href={`/auth/register${searchParams.get("callbackUrl") ? `?callbackUrl=${encodeURIComponent(searchParams.get("callbackUrl")!)}` : ""}`} 

@@ -42,27 +42,27 @@ export default function RegisterPage() {
   return (
     <div className="animate-in fade-in zoom-in-95 duration-500">
       <Card className="glass-card border-white/20 dark:border-white/5 overflow-hidden shadow-2xl">
-        <CardHeader className="space-y-2 pb-6">
-          <div className="flex justify-center mb-2">
-            <div className="p-2 bg-primary/10 rounded-full">
-              <UserPlus className="w-6 h-6 text-primary" />
+        <CardHeader className="space-y-1 pb-3 pt-0">
+          <div className="hidden sm:flex justify-center mb-1">
+            <div className="p-1.5 bg-primary/10 rounded-full">
+              <UserPlus className="w-5 h-5 text-primary" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold text-center tracking-tight">Crear Cuenta</CardTitle>
-          <CardDescription className="text-center text-muted-foreground/80">
+          <CardTitle className="text-xl sm:text-2xl font-bold text-center tracking-tight">Crear Cuenta</CardTitle>
+          <CardDescription className="text-center text-xs sm:text-sm text-muted-foreground/80">
             Únete a SIGE para comenzar a gestionar tu negocio
           </CardDescription>
         </CardHeader>
         <form onSubmit={onSubmit}>
-          <CardContent className="space-y-5">
+          <CardContent className="space-y-3 pb-2">
             {error && (
-              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-medium border border-destructive/20 animate-shake">
+              <div className="p-2.5 rounded-xl bg-destructive/10 text-destructive text-xs sm:text-sm font-medium border border-destructive/20 animate-shake">
                 {error}
               </div>
             )}
             
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-semibold ml-1">Nombre completo</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs sm:text-sm font-semibold ml-1">Nombre completo</Label>
               <div className="relative group">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
                   <User className="w-4 h-4" />
@@ -75,13 +75,13 @@ export default function RegisterPage() {
                   defaultValue={fields.name}
                   required
                   disabled={isLoading}
-                  className="pl-10 py-6 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
+                  className="h-11 pl-10 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
                 />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-semibold ml-1">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs sm:text-sm font-semibold ml-1">Email</Label>
               <div className="relative group">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
                   <Mail className="w-4 h-4" />
@@ -94,14 +94,14 @@ export default function RegisterPage() {
                   defaultValue={fields.email}
                   required
                   disabled={isLoading}
-                  className="pl-10 py-6 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
+                  className="h-11 pl-10 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="password" title="Contraseña" className="text-sm font-semibold ml-1">Contraseña</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="password" title="Contraseña" className="text-xs sm:text-sm font-semibold ml-1">Contraseña</Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
                     <Lock className="w-4 h-4" />
@@ -113,7 +113,7 @@ export default function RegisterPage() {
                     placeholder="••••••••"
                     required
                     disabled={isLoading}
-                    className="pl-10 pr-10 py-6 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
+                    className="h-11 pl-10 pr-10 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
                   />
                   <button
                     type="button"
@@ -124,8 +124,8 @@ export default function RegisterPage() {
                   </button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" title="Confirmar Contraseña" className="text-sm font-semibold ml-1">Confirmar</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword" title="Confirmar Contraseña" className="text-xs sm:text-sm font-semibold ml-1">Confirmar</Label>
                 <div className="relative group">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors group-focus-within:text-primary">
                     <Lock className="w-4 h-4" />
@@ -137,7 +137,7 @@ export default function RegisterPage() {
                     placeholder="••••••••"
                     required
                     disabled={isLoading}
-                    className="pl-10 pr-10 py-6 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
+                    className="h-11 pl-10 pr-10 bg-background/50 border-white/10 focus:bg-background transition-all duration-300 rounded-xl"
                   />
                   <button
                     type="button"
@@ -152,13 +152,29 @@ export default function RegisterPage() {
             <p className="text-[10px] text-muted-foreground/60 px-1 italic">
               * La contraseña debe tener al menos 6 caracteres.
             </p>
+
+            <div className="flex items-start gap-2 px-1 pt-1">
+              <input
+                id="terms"
+                name="terms"
+                type="checkbox"
+                required
+                className="mt-0.5 h-3.5 w-3.5 rounded border-white/10 bg-background/50 text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+              />
+              <label htmlFor="terms" className="text-[11px] text-muted-foreground leading-snug cursor-pointer select-none">
+                Acepto los{" "}
+                <Link href="/terms" className="text-primary hover:underline font-semibold">Términos y Condiciones</Link>
+                {" "}y la{" "}
+                <Link href="/privacy" className="text-primary hover:underline font-semibold">Política de Privacidad</Link>.
+              </label>
+            </div>
           </CardContent>
           
-          <CardFooter className="flex flex-col space-y-6 pt-2 pb-8">
+          <CardFooter className="flex flex-col space-y-3.5 pt-1 pb-0">
             <Button
               type="submit"
               loading={isLoading}
-              className="w-full py-6 text-base font-bold bg-brand-gradient hover:bg-brand-gradient-hover text-white border-none shadow-lg shadow-primary/25 transition-all duration-300 active:scale-[0.98] rounded-xl"
+              className="w-full h-11 text-sm font-bold bg-brand-gradient hover:bg-brand-gradient-hover text-white border-none shadow-lg shadow-primary/25 transition-all duration-300 active:scale-[0.98] rounded-xl"
             >
               <span className="flex items-center">
                 Registrarse ahora <ArrowRight className="ml-2 w-4 h-4" />
@@ -166,7 +182,7 @@ export default function RegisterPage() {
             </Button>
 
             <div className="text-center">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 ¿Ya tienes cuenta?{" "}
                 <Link 
                   href="/auth/login" 

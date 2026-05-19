@@ -6,10 +6,11 @@ import { db } from "@/db";
 import { products, stores, inventory, comercialConfig, users } from "@/db/schema";
 import { eq, and, desc, sql, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole, getCurrentUser } from "./auth";
+import { getSystemConfig } from "./config";
 
 // ============================================
 // TIPOS
@@ -235,7 +236,7 @@ export async function getSellerProductsPaginated({
 // 7.3 OBTENER PRODUCTO POR ID
 // ============================================
 
-export async function getProductById(id: string) {
+export async function getProductByIdDirect(id: string) {
   const result = await db
     .select({
       product: products,
@@ -280,6 +281,28 @@ export async function getProductById(id: string) {
     store,
     seller,
   };
+}
+
+export async function getProductById(id: string) {
+  const config = await getSystemConfig();
+  
+  // Always use unstable_cache so revalidateTag("all-products") / revalidateTag(`product-${id}`)
+  // can purge this entry on demand regardless of whether Nivel 1 is active.
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 30;
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-30s";
+  
+  console.log(`[Product Cache: ${label}] TTL=${ttl}s | ID: ${id}`);
+
+  const getCached = unstable_cache(
+    async (pId: string) => {
+      console.log(`[Product Cache MISS ❌] Querying Turso DB for product ${pId}`);
+      return getProductByIdDirect(pId);
+    },
+    [`product-details-${id}`],
+    { revalidate: ttl, tags: [`product-${id}`, "all-products"] }
+  );
+
+  return getCached(id);
 }
 
 // ============================================
@@ -537,6 +560,8 @@ export async function publishProductToMarket(productId: string) {
   revalidatePath("/dashboard/productos");
   revalidatePath(`/tienda/${existingProduct.storeId}`);
   revalidatePath(`/productos/${productId}`);
+  // @ts-ignore
+  revalidateTag(`product-${productId}`);
   
   return { success: true };
 }
@@ -581,6 +606,8 @@ export async function unpublishProduct(productId: string) {
   revalidatePath("/dashboard/productos");
   revalidatePath(`/tienda/${existingProduct.storeId}`);
   revalidatePath(`/productos/${productId}`);
+  // @ts-ignore
+  revalidateTag(`product-${productId}`);
 
   return { success: true };
 }
@@ -631,6 +658,8 @@ export async function deleteProduct(productId: string) {
   revalidatePath("/dashboard/productos");
   revalidatePath(`/tienda/${existingProduct.storeId}`);
   revalidatePath(`/productos/${productId}`);
+  // @ts-ignore
+  revalidateTag(`product-${productId}`);
 
   return { success: true };
 }
@@ -817,6 +846,8 @@ export async function updateProduct(productId: string, data: any) {
   revalidatePath(`/productos/${productId}`);
   revalidatePath(`/tienda/${existingProduct.storeId}`);
   revalidatePath("/");
+  // @ts-ignore
+  revalidateTag(`product-${productId}`);
 
   return { success: true };
 }
@@ -827,8 +858,8 @@ export async function updateProduct(productId: string, data: any) {
 // 7.2 GET PRODUCTS CURSOR (SCROLL INFINITO)
 // ============================================
 
-export async function getProductsCursor(
-  cursor?: string,
+export async function getProductsCursorDirect(
+  page: number = 1,
   limit: number = 12,
   category?: string,
   search?: string
@@ -848,9 +879,7 @@ export async function getProductsCursor(
 
   conditions.push(eq(comercialConfig.isPublished, true));
 
-  if (cursor) {
-    conditions.push(sql`${products.id} > ${cursor}`);
-  }
+  const offset = (page - 1) * limit;
 
   const results = await db
     .select({
@@ -868,7 +897,8 @@ export async function getProductsCursor(
     .leftJoin(stores, eq(products.storeId, stores.id))
     .where(and(...conditions))
     .orderBy(desc(products.createdAt))
-    .limit(limit + 1)
+    .limit(limit)
+    .offset(offset)
     .all();
 
   const items = results.map(r => ({
@@ -880,14 +910,48 @@ export async function getProductsCursor(
     store: r.store,
   }));
 
-  const hasMore = items.length > limit;
-  const nextCursor = hasMore && items[limit - 1] ? items[limit - 1].id : null;
+  return { items };
+}
 
-  return {
-    items: items.slice(0, limit),
-    nextCursor,
-    hasMore,
-  };
+export async function getProductsCursor(
+  page: number = 1,
+  limit: number = 12,
+  category?: string,
+  search?: string
+) {
+  const config = await getSystemConfig();
+  
+  // Always use the same cache key so revalidateTag("market-feed") reliably invalidates it.
+  // TTL adjusts based on Nivel 1 toggle.
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 30;
+  const pageLimit = config.cacheScrollEnabled ? config.marketScrollLimit : 15;
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-30s";
+  
+  console.log(`[Market Cache: ${label}] TTL=${ttl}s | Page: ${page}`);
+
+  const getCached = unstable_cache(
+    async (p: number = 1, l: number = 12, cat?: string, s?: string) => {
+      console.log(`[Market Cache MISS ❌] Querying Turso DB for fresh data. Limit: ${l}`);
+      return getProductsCursorDirect(p, l, cat, s);
+    },
+    ["market-products"],
+    { revalidate: ttl, tags: ["market-feed"] }
+  );
+
+  return getCached(page, pageLimit, category, search);
+}
+
+export async function refreshMarketFeed() {
+  console.log(`[Cache PURGE 🧹] Invalidating all global caches (market, stores, details).`);
+  // @ts-ignore
+  revalidateTag("market-feed");
+  // @ts-ignore
+  revalidateTag("all-store-feeds");
+  // @ts-ignore
+  revalidateTag("all-products");
+  
+  revalidatePath("/");
+  return { success: true, message: "Caché global sincronizado" };
 }
 
 // ─── HELPERS DE LIMPIEZA R2 ──────────────────────────────────────────────────

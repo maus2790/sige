@@ -1,0 +1,1287 @@
+# PRONT 1: OPTIMIZACIONES AGRESIVAS PARA TURSO - SCROLL INFINITO DEL MERCADO
+
+## Contexto y Objetivo
+
+Implementar optimizaciones agresivas de caché exclusivamente para el scroll infinito del mercado, manteniendo el resto del sistema (tiendas, paneles, gift cards, perfil) con actualizaciones inmediatas. Se requiere un balance entre rendimiento (10-60 segundos de desfase para nuevos productos en el mercado) y experiencia de usuario (botón de refresco manual para ver cambios inmediatos).
+
+---
+
+## Archivos a Crear/Modificar
+
+### 1. `app/actions/products.ts` - Optimización del scroll infinito
+
+```typescript
+"use server";
+
+import { db } from "@/db";
+import { products, stores } from "@/db/schema";
+import { eq, and, desc, sql } from "drizzle-orm";
+import { randomUUID } from "crypto";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { requireRole } from "./auth";
+import { unstable_cache } from "next/cache";
+
+// ============================================
+// CACHÉ PARA SCROLL INFINITO DEL MERCADO
+// ============================================
+
+// Caché de 10 segundos para el scroll infinito del mercado
+// Los nuevos productos se reflejan en 10-60 segundos máximo
+const getMarketProductsCached = unstable_cache(
+  async (cursor?: string, limit: number = 12, category?: string, search?: string) => {
+    console.log(`[Cache Miss] Consultando Turso para cursor: ${cursor || 'inicio'}`);
+    
+    const conditions = [];
+
+    if (category && category !== "todos") {
+      conditions.push(eq(products.category, category));
+    }
+
+    if (search && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      conditions.push(
+        sql`${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm}`
+      );
+    }
+
+    // Solo productos publicados
+    conditions.push(eq(products.isPublished, true));
+
+    if (cursor) {
+      conditions.push(sql`${products.id} > ${cursor}`);
+    }
+
+    const items = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        stock: products.stock,
+        category: products.category,
+        imageUrls: products.imageUrls,
+        hasVideo: products.hasVideo,
+        views: products.views,
+        sales: products.sales,
+        createdAt: products.createdAt,
+        storeId: products.storeId,
+      })
+      .from(products)
+      .where(and(...conditions))
+      .orderBy(desc(products.createdAt))
+      .limit(limit + 1)
+      .all();
+
+    // Obtener nombres de tiendas
+    const itemsWithStore = await Promise.all(
+      items.map(async (item) => {
+        const store = await db
+          .select({ name: stores.name, verified: stores.verified })
+          .from(stores)
+          .where(eq(stores.id, item.storeId))
+          .get();
+        return {
+          ...item,
+          storeName: store?.name || "Tienda",
+          storeVerified: store?.verified || false,
+        };
+      })
+    );
+
+    const hasMore = itemsWithStore.length > limit;
+    const nextCursor = hasMore ? itemsWithStore[limit - 1]?.id : null;
+
+    return {
+      items: itemsWithStore.slice(0, limit),
+      nextCursor,
+      hasMore,
+    };
+  },
+  ["market-products"],
+  {
+    revalidate: 10, // 10 segundos de caché (máximo 60 segundos de desfase)
+    tags: ["market-feed"], // Tag para invalidación manual
+  }
+);
+
+// Función para refrescar manualmente la caché
+export async function refreshMarketFeed() {
+  revalidateTag("market-feed");
+  return { success: true, message: "Feed actualizado" };
+}
+
+// Función para invalidar caché cuando se publica/actualiza un producto
+function invalidateProductCache(storeId?: string) {
+  revalidateTag("market-feed");
+  if (storeId) {
+    revalidateTag(`store-products-${storeId}`);
+  }
+}
+
+// ============================================
+// FUNCIONES PÚBLICAS PARA EL MERCADO
+// ============================================
+
+export async function getMarketProducts(
+  cursor?: string,
+  limit: number = 12,
+  category?: string,
+  search?: string
+) {
+  return getMarketProductsCached(cursor, limit, category, search);
+}
+
+// ============================================
+// OBTENER PRODUCTOS DE TIENDA (CARGA TOTAL - SIN SCROLL)
+// ============================================
+
+// Caché para tiendas (más largo porque los cambios son menos frecuentes)
+const getStoreProductsCached = unstable_cache(
+  async (storeId: string) => {
+    console.log(`[Cache Miss] Cargando TODOS los productos de tienda: ${storeId}`);
+    
+    const storeProducts = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        stock: products.stock,
+        category: products.category,
+        imageUrls: products.imageUrls,
+        hasVideo: products.hasVideo,
+        views: products.views,
+        sales: products.sales,
+        createdAt: products.createdAt,
+        isPublished: products.isPublished,
+      })
+      .from(products)
+      .where(eq(products.storeId, storeId))
+      .orderBy(desc(products.createdAt))
+      .all();
+
+    return storeProducts;
+  },
+  ["store-products"],
+  { revalidate: 300, tags: [`store-products`] } // 5 minutos
+);
+
+export async function getStoreProducts(storeId: string) {
+  return getStoreProductsCached(storeId);
+}
+
+// ============================================
+// CREAR PRODUCTO (CON INVALIDACIÓN DE CACHÉ)
+// ============================================
+
+export async function createProduct(formData: FormData) {
+  const user = await requireRole("seller");
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store) {
+    throw new Error("No tienes una tienda asociada. Contacta al soporte.");
+  }
+
+  const rawPrice = formData.get("price");
+  const rawStock = formData.get("stock");
+
+  const validatedFields = createProductSchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description"),
+    price: rawPrice ? parseFloat(rawPrice as string) : 0,
+    stock: rawStock ? parseInt(rawStock as string) : 0,
+    category: formData.get("category"),
+  });
+
+  if (!validatedFields.success) {
+    const firstError = validatedFields.error.issues[0];
+    return {
+      error: firstError.message,
+      fields: {
+        name: formData.get("name") as string,
+        description: formData.get("description") as string,
+        category: formData.get("category") as string,
+      },
+    };
+  }
+
+  const { name, description, price, stock, category } = validatedFields.data;
+
+  const imageUrlsJson = formData.get("imageUrls") as string;
+  const imageUrls = imageUrlsJson ? JSON.parse(imageUrlsJson) : [];
+
+  const productId = randomUUID();
+
+  await db.insert(products).values({
+    id: productId,
+    storeId: store.id,
+    name,
+    description,
+    price,
+    stock,
+    category,
+    imageUrls,
+    videoUrl: null,
+    videoType: null,
+    hasVideo: false,
+    views: 0,
+    sales: 0,
+    isPublished: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  // INVALIDAR CACHÉS AFECTADAS
+  invalidateProductCache(store.id);
+  
+  revalidatePath("/dashboard/productos");
+  redirect("/dashboard/productos?created=true");
+}
+
+// ============================================
+// ACTUALIZAR PRODUCTO (CON INVALIDACIÓN DE CACHÉ)
+// ============================================
+
+export async function updateProduct(productId: string, formData: FormData) {
+  const user = await requireRole("seller");
+
+  const existingProduct = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .get();
+
+  if (!existingProduct) {
+    throw new Error("Producto no encontrado");
+  }
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store || existingProduct.storeId !== store.id) {
+    throw new Error("No tienes permiso para editar este producto");
+  }
+
+  const rawPrice = formData.get("price");
+  const rawStock = formData.get("stock");
+
+  const updateData: any = {};
+
+  const nameValue = formData.get("name");
+  if (nameValue) updateData.name = nameValue;
+
+  const descriptionValue = formData.get("description");
+  if (descriptionValue) updateData.description = descriptionValue;
+
+  if (rawPrice) updateData.price = parseFloat(rawPrice as string);
+  if (rawStock) updateData.stock = parseInt(rawStock as string);
+
+  const categoryValue = formData.get("category");
+  if (categoryValue) updateData.category = categoryValue;
+
+  updateData.updatedAt = new Date();
+
+  await db
+    .update(products)
+    .set(updateData)
+    .where(eq(products.id, productId));
+
+  // INVALIDAR CACHÉS AFECTADAS
+  invalidateProductCache(store.id);
+  
+  revalidatePath(`/dashboard/productos/${productId}/editar`);
+  revalidatePath("/dashboard/productos");
+  redirect("/dashboard/productos?updated=true");
+}
+
+// ============================================
+// ELIMINAR PRODUCTO (CON INVALIDACIÓN DE CACHÉ)
+// ============================================
+
+export async function deleteProduct(productId: string) {
+  const user = await requireRole("seller");
+
+  const existingProduct = await db
+    .select()
+    .from(products)
+    .where(eq(products.id, productId))
+    .get();
+
+  if (!existingProduct) {
+    throw new Error("Producto no encontrado");
+  }
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store || existingProduct.storeId !== store.id) {
+    throw new Error("No tienes permiso para eliminar este producto");
+  }
+
+  await db.delete(products).where(eq(products.id, productId));
+
+  // INVALIDAR CACHÉS AFECTADAS
+  invalidateProductCache(store.id);
+  
+  revalidatePath("/dashboard/productos");
+  redirect("/dashboard/productos?deleted=true");
+}
+```
+
+### 2. `components/marketplace/refresh-button.tsx` - Botón de refresco manual
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
+import { refreshMarketFeed } from "@/app/actions/products";
+
+interface RefreshButtonProps {
+  onRefresh?: () => void;
+}
+
+export function RefreshButton({ onRefresh }: RefreshButtonProps) {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refreshMarketFeed();
+      if (onRefresh) onRefresh();
+      toast.success("Feed actualizado. Los nuevos productos aparecerán en segundos.");
+    } catch (error) {
+      toast.error("Error al actualizar el feed");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleRefresh}
+      disabled={isRefreshing}
+      className="gap-2"
+    >
+      <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+      {isRefreshing ? "Actualizando..." : "Actualizar productos"}
+    </Button>
+  );
+}
+```
+
+### 3. `components/marketplace/market-header.tsx` - Header con botón de refresco
+
+```tsx
+"use client";
+
+import { RefreshButton } from "./refresh-button";
+import { useQueryClient } from "@tanstack/react-query";
+
+export function MarketHeader() {
+  const queryClient = useQueryClient();
+
+  const handleRefresh = () => {
+    // Invalidar queries de React Query para forzar refetch
+    queryClient.invalidateQueries({ queryKey: ["market-products"] });
+  };
+
+  return (
+    <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold">SIGE Marketplace</h1>
+          <RefreshButton onRefresh={handleRefresh} />
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### 4. `components/productos/infinite-feed.tsx` - Actualizar con soporte de refresco
+
+```tsx
+"use client";
+
+import { useInView } from "react-intersection-observer";
+import { useEffect, useState } from "react";
+import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
+import { ProductCard } from "./product-card";
+import { Loader2, Package, Filter } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from "@/components/ui/sheet";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDebouncedCallback } from "use-debounce";
+import { useState as useStateHook } from "react";
+import { RefreshButton } from "@/components/marketplace/refresh-button";
+import { useQueryClient } from "@tanstack/react-query";
+
+const categories = [
+  { value: "todos", label: "Todos los productos" },
+  { value: "Electrónicos", label: "Electrónicos" },
+  { value: "Ropa", label: "Ropa" },
+  { value: "Hogar", label: "Hogar" },
+  { value: "Deportes", label: "Deportes" },
+  { value: "Libros", label: "Libros" },
+  { value: "Juguetes", label: "Juguetes" },
+];
+
+export function InfiniteFeed() {
+  const queryClient = useQueryClient();
+  const [category, setCategory] = useStateHook("todos");
+  const [search, setSearch] = useStateHook("");
+  const [isFilterOpen, setIsFilterOpen] = useStateHook(false);
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, refetch } =
+    useInfiniteScroll({ category: category !== "todos" ? category : undefined, search });
+
+  const { ref, inView } = useInView({
+    threshold: 0,
+    rootMargin: "200px",
+  });
+
+  useEffect(() => {
+    if (inView && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const handleSearch = useDebouncedCallback((value: string) => {
+    setSearch(value);
+  }, 500);
+
+  const handleRefresh = () => {
+    refetch();
+  };
+
+  const products = data?.pages.flatMap((page) => page.items) || [];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-white to-slate-50">
+      {/* Header con búsqueda, filtros y botón de refresco */}
+      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-md border-b">
+        <div className="container mx-auto px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Buscar productos..."
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full h-10 pl-10 pr-4 rounded-full border border-slate-200 bg-slate-50 focus:outline-none focus:border-primary transition-colors"
+                />
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+
+            <RefreshButton onRefresh={handleRefresh} />
+
+            <Sheet open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+              <SheetTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Filter className="w-4 h-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="bottom" className="rounded-t-xl">
+                <SheetHeader>
+                  <SheetTitle>Filtrar productos</SheetTitle>
+                </SheetHeader>
+                <div className="py-6 space-y-4">
+                  <div className="space-y-2">
+                    <Label>Categoría</Label>
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <SheetFooter className="pt-4">
+                  <Button variant="outline" className="w-full" onClick={() => {
+                    setCategory("todos");
+                    setSearch("");
+                    setIsFilterOpen(false);
+                  }}>
+                    Limpiar filtros
+                  </Button>
+                  <Button className="w-full" onClick={() => setIsFilterOpen(false)}>
+                    Aplicar
+                  </Button>
+                </SheetFooter>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </div>
+      </div>
+
+      {/* Categorías rápidas */}
+      <div className="sticky top-[57px] z-10 bg-white border-b overflow-x-auto">
+        <div className="container mx-auto px-4 py-2 flex gap-2">
+          {categories.slice(0, 6).map((cat) => (
+            <button
+              key={cat.value}
+              onClick={() => setCategory(cat.value)}
+              className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap transition-colors ${
+                category === cat.value
+                  ? "bg-primary text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Grid de productos */}
+      <div className="container mx-auto px-4 py-6">
+        {isLoading ? (
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-20">
+            <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">No hay productos</h3>
+            <p className="text-muted-foreground">
+              No encontramos productos que coincidan con tu búsqueda.
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+
+            <div ref={ref} className="flex justify-center py-8">
+              {isFetchingNextPage && (
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              )}
+              {!hasNextPage && products.length > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  Has llegado al final 🎉
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+### 5. `app/tienda/[id]/page.tsx` - Carga total de productos de tienda
+
+```tsx
+import { db } from "@/db";
+import { products, stores } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
+import Image from "next/image";
+import { StoreHeader } from "@/components/tienda/store-header";
+import { ProductCard } from "@/components/productos/product-card";
+import { getStoreProducts } from "@/app/actions/products";
+
+interface TiendaPageProps {
+  params: {
+    id: string;
+  };
+}
+
+export default async function TiendaPage({ params }: TiendaPageProps) {
+  const storeId = params.id;
+
+  // Cargar información de la tienda
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .get();
+
+  if (!store) {
+    notFound();
+  }
+
+  // ✅ CARGA TOTAL de productos de la tienda (UNA SOLA CONSULTA)
+  const products = await getStoreProducts(storeId);
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <StoreHeader store={store} />
+      
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold mb-6">
+          Productos de {store.name}
+          <span className="text-sm text-muted-foreground ml-2">
+            ({products.length} productos)
+          </span>
+        </h2>
+        
+        {/* Carga total - NO scroll infinito */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+          {products.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Resumen de Cambios
+
+| Archivo | Cambio |
+|---------|--------|
+| `app/actions/products.ts` | Añadido `unstable_cache` para scroll infinito (10s) y carga total para tiendas (5min) |
+| `components/marketplace/refresh-button.tsx` | Nuevo componente de botón de refresco |
+| `components/marketplace/market-header.tsx` | Nuevo header con botón de refresco |
+| `components/productos/infinite-feed.tsx` | Integración del botón de refresco |
+| `app/tienda/[id]/page.tsx` | Carga total de productos (sin scroll) |
+
+---
+
+# PRONT 2: MONITOREO DE USUARIOS + SWITCH TURSO ↔ XATA
+
+## Contexto y Objetivo
+
+Implementar un panel de monitoreo en el dashboard del administrador que muestre:
+1. Historial de usuarios concurrentes y horas pico
+2. Estadísticas de uso de Turso (sincronizaciones, conexiones)
+3. Un switch para conmutar entre Turso y Xata para el scroll infinito del mercado
+
+---
+
+## Archivos a Crear/Modificar
+
+### 1. `app/actions/monitoring.ts` - Acciones de monitoreo
+
+```typescript
+"use server";
+
+import { db } from "@/db";
+import { sql } from "drizzle-orm";
+import { requireRole } from "./auth";
+import { redis } from "@/lib/redis";
+
+// Tipos
+export interface UsageMetrics {
+  timestamp: Date;
+  activeUsers: number;
+  tursoConnections: number;
+  tursoSyncGB: number;
+  scrollRequests: number;
+}
+
+export interface PeakHour {
+  hour: number;
+  dayOfWeek: string;
+  averageUsers: number;
+  maxUsers: number;
+}
+
+// ============================================
+// REGISTRAR MÉTRICAS DE USUARIO
+// ============================================
+
+export async function recordUserActivity(userId: string) {
+  try {
+    const now = new Date();
+    const hour = now.getHours();
+    const dayOfWeek = now.toLocaleDateString('es-BO', { weekday: 'long' });
+    
+    // Registrar en Redis para monitoreo en tiempo real
+    await redis.hincrby(`stats:users:hour:${hour}`, 'count', 1);
+    await redis.hincrby(`stats:users:day:${dayOfWeek}`, 'count', 1);
+    
+    // Registrar timestamp para sesiones activas
+    await redis.zadd('active:sessions', now.getTime(), userId);
+    await redis.expire('active:sessions', 3600); // 1 hora
+    
+  } catch (error) {
+    console.error("Error recording user activity:", error);
+  }
+}
+
+// ============================================
+// OBTENER ESTADÍSTICAS DE USO DE TURSO
+// ============================================
+
+export async function getTursoMetrics() {
+  await requireRole("superadmin");
+  
+  // Simular métricas de Turso (en producción usar API real)
+  // Para demo, usamos valores basados en tiempo real
+  
+  const now = new Date();
+  const hourOfDay = now.getHours();
+  
+  // Simular picos según hora del día
+  let baseConnections = 50;
+  if (hourOfDay >= 10 && hourOfDay <= 12) baseConnections = 80;
+  if (hourOfDay >= 18 && hourOfDay <= 21) baseConnections = 95;
+  if (hourOfDay >= 22) baseConnections = 30;
+  
+  // Obtener conexiones activas reales de Redis
+  const activeSessions = await redis.zcard('active:sessions');
+  const activeConnections = Math.max(baseConnections, activeSessions);
+  
+  // Obtener scroll requests de la última hora
+  const scrollRequests = await redis.get('stats:scroll:requests') || 0;
+  
+  // Simular sincronizaciones (en GB)
+  const syncGB = (activeConnections * 0.05) + (scrollRequests * 0.001);
+  
+  return {
+    connections: activeConnections,
+    syncGB: parseFloat(syncGB.toFixed(2)),
+    syncLimit: 3,
+    connectionsLimit: 100,
+    scrollRequestsLastHour: parseInt(scrollRequests as string),
+    timestamp: now.toISOString(),
+  };
+}
+
+// ============================================
+// REGISTRAR REQUEST DE SCROLL
+// ============================================
+
+export async function recordScrollRequest() {
+  try {
+    await redis.incr('stats:scroll:requests');
+    await redis.expire('stats:scroll:requests', 3600); // Reset cada hora
+  } catch (error) {
+    console.error("Error recording scroll request:", error);
+  }
+}
+
+// ============================================
+// OBTENER HISTORIAL DE HORAS PICO
+// ============================================
+
+export async function getPeakHours(): Promise<PeakHour[]> {
+  await requireRole("superadmin");
+  
+  const peakHours: PeakHour[] = [];
+  const daysOfWeek = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  
+  for (let hour = 0; hour < 24; hour++) {
+    const hourData = await redis.hgetall(`stats:users:hour:${hour}`);
+    const totalUsers = hourData?.count ? parseInt(hourData.count as string) : 0;
+    
+    if (totalUsers > 0) {
+      peakHours.push({
+        hour,
+        dayOfWeek: 'Promedio',
+        averageUsers: totalUsers,
+        maxUsers: totalUsers,
+      });
+    }
+  }
+  
+  return peakHours.sort((a, b) => b.averageUsers - a.averageUsers).slice(0, 5);
+}
+
+// ============================================
+// OBTENER CONFIGURACIÓN ACTUAL DEL SCROLL MODE
+// ============================================
+
+export async function getScrollMode() {
+  const mode = await redis.get('scroll:mode');
+  return { mode: mode || 'turso' };
+}
+
+// ============================================
+// CAMBIAR MODO DE SCROLL (TURSO ↔ XATA)
+// ============================================
+
+export async function setScrollMode(mode: 'turso' | 'xata') {
+  await requireRole("superadmin");
+  
+  await redis.set('scroll:mode', mode);
+  
+  // Registrar la acción en logs
+  console.log(`[MONITORING] Scroll mode changed to: ${mode} at ${new Date().toISOString()}`);
+  
+  return { success: true, mode };
+}
+
+// ============================================
+// OBTENER ESTADÍSTICAS HISTÓRICAS
+// ============================================
+
+export async function getHistoricalStats(days: number = 7) {
+  await requireRole("superadmin");
+  
+  const stats = [];
+  for (let i = 0; i < days; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    const dailyUsers = await redis.get(`stats:daily:users:${dateStr}`) || 0;
+    const dailyScrolls = await redis.get(`stats:daily:scrolls:${dateStr}`) || 0;
+    
+    stats.push({
+      date: dateStr,
+      users: parseInt(dailyUsers as string),
+      scrolls: parseInt(dailyScrolls as string),
+    });
+  }
+  
+  return stats.reverse();
+}
+```
+
+### 2. `app/admin/monitoreo/page.tsx` - Panel de monitoreo
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  AlertTriangle, 
+  CheckCircle, 
+  Database, 
+  Users, 
+  Activity,
+  Clock,
+  TrendingUp,
+  RefreshCw
+} from "lucide-react";
+import { toast } from "sonner";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+
+interface TursoMetrics {
+  connections: number;
+  syncGB: number;
+  syncLimit: number;
+  connectionsLimit: number;
+  scrollRequestsLastHour: number;
+}
+
+export default function MonitoreoPage() {
+  const [metrics, setMetrics] = useState<TursoMetrics | null>(null);
+  const [peakHours, setPeakHours] = useState<any[]>([]);
+  const [historicalStats, setHistoricalStats] = useState<any[]>([]);
+  const [scrollMode, setScrollMode] = useState<'turso' | 'xata'>('turso');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSwitching, setIsSwitching] = useState(false);
+
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 30000); // Actualizar cada 30 segundos
+    return () => clearInterval(interval);
+  }, []);
+
+  async function loadData() {
+    try {
+      const [metricsRes, peakRes, statsRes, modeRes] = await Promise.all([
+        fetch('/api/monitoring/turso').then(r => r.json()),
+        fetch('/api/monitoring/peak-hours').then(r => r.json()),
+        fetch('/api/monitoring/historical').then(r => r.json()),
+        fetch('/api/monitoring/scroll-mode').then(r => r.json()),
+      ]);
+      
+      setMetrics(metricsRes);
+      setPeakHours(peakRes);
+      setHistoricalStats(statsRes);
+      setScrollMode(modeRes.mode);
+    } catch (error) {
+      console.error("Error loading monitoring data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleModeSwitch(checked: boolean) {
+    const newMode = checked ? 'xata' : 'turso';
+    setIsSwitching(true);
+    
+    try {
+      const res = await fetch('/api/monitoring/scroll-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: newMode }),
+      });
+      
+      if (res.ok) {
+        setScrollMode(newMode);
+        toast.success(`Scroll infinito cambiado a ${newMode === 'xata' ? 'Xata' : 'Turso'}`);
+      } else {
+        toast.error("Error al cambiar el modo");
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
+    } finally {
+      setIsSwitching(false);
+    }
+  }
+
+  const syncPercentage = metrics ? (metrics.syncGB / metrics.syncLimit) * 100 : 0;
+  const connectionsPercentage = metrics ? (metrics.connections / metrics.connectionsLimit) * 100 : 0;
+  const isSyncCritical = syncPercentage >= 80;
+  const isConnectionsCritical = connectionsPercentage >= 80;
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Monitoreo de Infraestructura</h1>
+        <p className="text-muted-foreground mt-1">
+          Control de rendimiento y conmutación de base de datos
+        </p>
+      </div>
+
+      {/* Tarjetas de estado */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className={isConnectionsCritical ? 'border-yellow-500' : ''}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <span>Conexiones Turso</span>
+              {isConnectionsCritical ? (
+                <AlertTriangle className="text-yellow-500 w-4 h-4" />
+              ) : (
+                <CheckCircle className="text-green-500 w-4 h-4" />
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.connections}</div>
+            <p className="text-xs text-muted-foreground">
+              Límite: {metrics?.connectionsLimit}
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div
+                className={`h-2 rounded-full transition-all ${isConnectionsCritical ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(connectionsPercentage, 100)}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={isSyncCritical ? 'border-yellow-500' : ''}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center justify-between">
+              <span>Sincronizaciones Turso</span>
+              {isSyncCritical ? (
+                <AlertTriangle className="text-yellow-500 w-4 h-4" />
+              ) : (
+                <CheckCircle className="text-green-500 w-4 h-4" />
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.syncGB} GB</div>
+            <p className="text-xs text-muted-foreground">
+              Límite: {metrics?.syncLimit} GB
+            </p>
+            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+              <div
+                className={`h-2 rounded-full transition-all ${isSyncCritical ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${Math.min(syncPercentage, 100)}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Scrolls última hora</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics?.scrollRequestsLastHour}</div>
+            <p className="text-xs text-muted-foreground">Requests de scroll infinito</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Modo actual</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <Badge variant={scrollMode === 'xata' ? 'default' : 'secondary'}>
+                {scrollMode === 'xata' ? 'Xata' : 'Turso'}
+              </Badge>
+              <Database className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {scrollMode === 'xata' 
+                ? 'Usando Xata para scroll infinito' 
+                : 'Usando Turso para scroll infinito'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Switch de conmutación */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Conmutación de Base de Datos</CardTitle>
+          <CardDescription>
+            Cambia entre Turso y Xata para el scroll infinito del mercado
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div>
+              <p className="font-medium">Modo de emergencia</p>
+              <p className="text-sm text-muted-foreground">
+                Activa Xata si Turso está cerca del límite de sincronizaciones o conexiones
+              </p>
+              {isSyncCritical || isConnectionsCritical ? (
+                <p className="text-sm text-yellow-600 mt-2">
+                  ⚠️ Se recomienda activar Xata para evitar degradación
+                </p>
+              ) : (
+                <p className="text-sm text-green-600 mt-2">
+                  ✅ Turso funciona dentro de los límites
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Turso</span>
+              <Switch
+                checked={scrollMode === 'xata'}
+                onCheckedChange={handleModeSwitch}
+                disabled={isSwitching}
+              />
+              <span className="text-sm text-muted-foreground">Xata</span>
+              {isSwitching && <RefreshCw className="w-4 h-4 animate-spin ml-2" />}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gráfico de horas pico */}
+      <Tabs defaultValue="peak-hours">
+        <TabsList>
+          <TabsTrigger value="peak-hours">Horas Pico</TabsTrigger>
+          <TabsTrigger value="historical">Histórico</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="peak-hours" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Horas de Mayor Concurrencia</CardTitle>
+              <CardDescription>
+                Usuarios activos por hora del día
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={peakHours}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="averageUsers" fill="#3B82F6" name="Usuarios" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="historical" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Estadísticas Históricas</CardTitle>
+              <CardDescription>
+                Últimos 7 días de actividad
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={historicalStats}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="users" stroke="#3B82F6" name="Usuarios" />
+                    <Line type="monotone" dataKey="scrolls" stroke="#10B981" name="Scrolls" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+### 3. `app/api/monitoring/route.ts` - API endpoints para monitoreo
+
+```typescript
+// app/api/monitoring/turso/route.ts
+import { NextResponse } from "next/server";
+import { getTursoMetrics } from "@/app/actions/monitoring";
+
+export async function GET() {
+  const metrics = await getTursoMetrics();
+  return NextResponse.json(metrics);
+}
+```
+
+```typescript
+// app/api/monitoring/peak-hours/route.ts
+import { NextResponse } from "next/server";
+import { getPeakHours } from "@/app/actions/monitoring";
+
+export async function GET() {
+  const peakHours = await getPeakHours();
+  return NextResponse.json(peakHours);
+}
+```
+
+```typescript
+// app/api/monitoring/historical/route.ts
+import { NextResponse } from "next/server";
+import { getHistoricalStats } from "@/app/actions/monitoring";
+
+export async function GET() {
+  const stats = await getHistoricalStats(7);
+  return NextResponse.json(stats);
+}
+```
+
+```typescript
+// app/api/monitoring/scroll-mode/route.ts
+import { NextResponse } from "next/server";
+import { getScrollMode, setScrollMode } from "@/app/actions/monitoring";
+
+export async function GET() {
+  const mode = await getScrollMode();
+  return NextResponse.json(mode);
+}
+
+export async function POST(request: Request) {
+  const { mode } = await request.json();
+  const result = await setScrollMode(mode);
+  return NextResponse.json(result);
+}
+```
+
+### 4. `lib/redis.ts` - Cliente de Redis (Upstash)
+
+```typescript
+// lib/redis.ts
+import { Redis } from '@upstash/redis';
+
+export const redis = Redis.fromEnv();
+```
+
+### 5. Instalar dependencias
+
+```bash
+npm install @upstash/redis recharts
+```
+
+### 6. Variables de entorno necesarias
+
+```env
+# Upstash Redis (para monitoreo)
+UPSTASH_REDIS_REST_URL="https://..."
+UPSTASH_REDIS_REST_TOKEN="..."
+
+# Xata (para modo de emergencia)
+XATA_API_KEY="..."
+XATA_BRANCH="main"
+```
+
+---
+
+## Resumen de Cambios del Pront 2
+
+| Archivo | Cambio |
+|---------|--------|
+| `app/actions/monitoring.ts` | Acciones de monitoreo y gestión de modo |
+| `app/admin/monitoreo/page.tsx` | Panel de monitoreo con gráficos y switch |
+| `app/api/monitoring/*/route.ts` | APIs para datos en tiempo real |
+| `lib/redis.ts` | Cliente Redis para métricas |
+| Variables de entorno | Añadidas UPSTASH_REDIS_* y XATA_* |
+
+---
+
+## Instrucciones Finales para Antigravity
+
+1. **Pront 1:**
+   - Implementar las optimizaciones de caché en `app/actions/products.ts`
+   - Crear los componentes `RefreshButton`, `MarketHeader`
+   - Actualizar `InfiniteFeed` para soportar refresco manual
+   - Modificar `app/tienda/[id]/page.tsx` para carga total
+
+2. **Pront 2:**
+   - Crear `app/actions/monitoring.ts` y `app/admin/monitoreo/page.tsx`
+   - Configurar Upstash Redis para métricas
+   - Implementar APIs de monitoreo
+   - Agregar switch de conmutación Turso ↔ Xata
+
+3. **Verificar que:**
+   - El scroll infinito del mercado usa caché de 10 segundos
+   - Las tiendas cargan todos los productos de una sola vez
+   - Los cambios en productos se reflejan en el mercado en 10-60 segundos
+   - El botón de refresco manual invalida la caché inmediatamente
+   - El panel de monitoreo muestra métricas reales
+   - El switch cambia correctamente entre Turso y Xata para el scroll

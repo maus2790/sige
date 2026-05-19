@@ -21,9 +21,13 @@ import {
   Plus,
   Gift,
   Sparkles,
-  Navigation
+  Navigation,
+  RefreshCw
 } from "lucide-react";
 
+import { toast } from "sonner";
+import { refreshMarketFeed } from "@/app/actions/products";
+import { refreshStoreFeed } from "@/app/actions/storefront";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { NotificationCenter } from "./notification-center";
@@ -66,6 +70,32 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleHeaderRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (pathname.startsWith("/tienda/")) {
+        const storeId = pathname.split("/")[2];
+        if (storeId) {
+          await refreshStoreFeed(storeId);
+          toast.success("Catálogo de tienda actualizado.");
+        }
+      } else {
+        await refreshMarketFeed();
+        toast.success("Feed de mercado actualizado.");
+      }
+      
+      // Dispatch a custom event to notify child components (InfiniteFeed / StoreFeed)
+      window.dispatchEvent(new CustomEvent("sige-refresh-feed"));
+      
+      router.refresh();
+    } catch (error) {
+      toast.error("Error al actualizar el feed");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -232,6 +262,22 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
 
 
+
+                {/* Botón de Actualizar (Sólo Móvil en Mercado y Tienda) */}
+                {mounted && (pathname === "/" || pathname.startsWith("/tienda/")) && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleHeaderRefresh}
+                    disabled={isRefreshing}
+                    className="relative rounded-full hover:bg-primary/10 group lg:hidden shrink-0"
+                  >
+                    <RefreshCw className={cn(
+                      "w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors",
+                      isRefreshing && "animate-spin text-primary"
+                    )} />
+                  </Button>
+                )}
 
                 {/* Centro de Notificaciones */}
                 {activeUser && (
