@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { StoreMap } from "@/components/tienda/store-map";
+import { getCurrentUser } from "@/app/actions/auth";
 
 interface StoreData {
   id: string;
@@ -52,9 +53,25 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
   const router = useRouter();
   const queryClient = useQueryClient();
   const [showSettings, setShowSettings] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(myUserId ?? null);
+
+  useEffect(() => {
+    // If myUserId is not provided (e.g. static generation / ISR mode), fetch current user on client
+    if (!myUserId) {
+      getCurrentUser()
+        .then((user) => {
+          if (user?.id) {
+            setCurrentUserId(user.id);
+          }
+        })
+        .catch((err) => {
+          console.error("Error fetching current user on client:", err);
+        });
+    }
+  }, [myUserId]);
   
   // Determine ownership client-side so the server component doesn't need getCurrentUser()
-  const isOwner = !!myUserId && myUserId === store.userId;
+  const isOwner = !!currentUserId && currentUserId === store.userId;
 
   const SYSTEM_GRADIENTS: Record<string, string> = {
     'gradient:blue': 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900',

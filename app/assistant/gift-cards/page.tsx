@@ -219,6 +219,7 @@ export default function GiftCardVerificationsPage() {
                             src={card.receiptUrl}
                             alt="Comprobante de pago"
                             fill
+                            sizes="(max-width: 768px) 100vw, 672px"
                             className="object-contain"
                           />
                         </div>

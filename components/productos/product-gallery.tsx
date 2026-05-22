@@ -79,7 +79,7 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
       {/* Thumbnails - Izquierda en Desktop, Abajo en Móvil */}
       {images.length > 1 && (
         <div className="flex md:flex-col gap-2 md:gap-3 overflow-x-auto md:overflow-y-auto pb-1 md:pb-0 h-[10dvh] md:h-full max-h-[500px] w-full md:w-24 scrollbar-hide no-scrollbar items-center md:items-start shrink-0 order-2 md:order-1 justify-center md:justify-start glass md:bg-transparent md:backdrop-blur-none border-t md:border-0 border-white/20 p-1 md:p-2">
-          {images.map((url, idx) => (
+          {thumbs.map((url, idx) => (
             <button
               key={idx}
               onClick={() => setActiveIndex(idx)}
@@ -94,6 +94,7 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
                 src={thumbs[idx]}
                 alt={`${productName} miniatura ${idx + 1}`}
                 fill
+                sizes="(max-width: 768px) 18vw, 64px"
                 className="object-cover"
               />
             </button>
@@ -120,6 +121,7 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
           src={images[activeIndex]}
           alt=""
           fill
+          sizes="(max-width: 768px) 100vw, 50vw"
           className="object-cover blur-2xl opacity-20 scale-110 z-0"
           aria-hidden="true"
         />
@@ -129,6 +131,7 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
           src={images[activeIndex]}
           alt={`${productName} - Imagen ${activeIndex + 1}`}
           fill
+          sizes="(max-width: 768px) 100vw, 50vw"
           className={cn(
             "object-contain p-0 transition-all duration-300 z-10 scale-105",
             showZoom ? "opacity-0" : "opacity-100"

@@ -9,17 +9,39 @@ import { Separator } from "@/components/ui/separator";
 import { ProductGallery } from "@/components/productos/product-gallery";
 import { ShareWhatsAppButton } from "@/components/productos/share-whatsapp-button";
 import { cn } from "@/lib/utils";
+import { ProductBackButton } from "@/components/productos/product-back-button";
+import { getSystemConfig } from "@/app/actions/config";
+import { cookies } from "next/headers";
+import { db } from "@/db";
+import { products, comercialConfig } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 import { Metadata, ResolvingMetadata } from "next";
 
-// Force dynamic rendering so the page always runs server-side per request.
-// The actual product data is still served from unstable_cache (TTL-based or tag-invalidated),
-// meaning Turso DB is only queried on a cache MISS — not on every request.
-export const dynamic = "force-dynamic";
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  try {
+    const activeProducts = await db
+      .select({ id: products.id })
+      .from(products)
+      .leftJoin(comercialConfig, eq(products.id, comercialConfig.productId))
+      .where(eq(comercialConfig.isPublished, true))
+      .orderBy(desc(products.createdAt))
+      .limit(10)
+      .all();
+
+    return activeProducts.map((p) => ({
+      id: p.id,
+    }));
+  } catch (error) {
+    console.error("Error in generateStaticParams for products:", error);
+    return [];
+  }
+}
 
 interface ProductoDetailPageProps {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ from?: string }>;
 }
 
 export async function generateMetadata(
@@ -112,21 +134,30 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-export default async function ProductoDetailPage({ params, searchParams }: ProductoDetailPageProps) {
+export default async function ProductoDetailPage({ params }: ProductoDetailPageProps) {
   const { id } = await params;
-  const { from } = await searchParams;
+
+  const config = await getSystemConfig();
+  const isrMode = config.isrEnabled ? "ISR ⚡ Nivel 2" : "Dinamico 🔄";
+  console.log(`[PAGE 📦] Renderizando Producto ID: ${id} | Modo: ${isrMode}`);
+
+  if (!config.isrEnabled) {
+    // Bypass: force dynamic rendering if ISR Nivel 2 is disabled
+    await cookies();
+  }
+
   const product = await getProductById(id);
 
   if (!product) {
     notFound();
   }
 
+  console.log(`[PAGE 📦] Producto cargado: "${product!.name}" (Tienda: ${product!.storeId})`);
   const isOutOfStock = product.inventory?.stockActual === 0;
   const isPublished = product.comercialConfig?.isPublished ?? true;
 
   // Determinar la URL de regreso de forma robusta
   const effectiveStoreId = product.storeId || product.store?.id;
-  const backUrl = from === "store" && effectiveStoreId ? `/tienda/${effectiveStoreId}` : "/";
 
   return (
     <div className="min-h-screen bg-background pb-32 md:pb-20 relative">
@@ -134,11 +165,7 @@ export default async function ProductoDetailPage({ params, searchParams }: Produ
       <div className="sticky top-0 z-40 glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link href={backUrl}>
-              <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted transition-colors">
-                <ArrowLeft className="w-5 h-5 text-foreground" />
-              </Button>
-            </Link>
+            <ProductBackButton storeId={effectiveStoreId} />
             <h1 className="font-bold text-lg truncate text-foreground max-w-[200px] sm:max-w-md">
               {product.name}
             </h1>

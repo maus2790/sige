@@ -356,6 +356,7 @@ export default function PagosPendientesPage() {
                                     src={payment.paymentProofUrl}
                                     alt="Comprobante de pago"
                                     fill
+                                    sizes="(max-width: 768px) 100vw, 672px"
                                     className="object-contain"
                                   />
                                 </div>
@@ -476,6 +477,7 @@ export default function PagosPendientesPage() {
                                     src={card.receiptUrl}
                                     alt="Comprobante de pago Gift Card"
                                     fill
+                                    sizes="(max-width: 768px) 100vw, 672px"
                                     className="object-contain"
                                   />
                                 </div>

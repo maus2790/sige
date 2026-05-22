@@ -62,7 +62,6 @@ const adminRoutes = [
   '/admin/usuarios',
   '/admin/tiendas',
   '/admin/categorias',
-  '/admin/configuracion',
 ];
 
 // ============================================
@@ -262,7 +261,9 @@ export const config = {
      * - favicon.ico (favicon file)
      * - public directory (public assets)
      * - api routes (API endpoints)
+     * - productos (public product pages)
+     * - tienda (public store pages)
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api|sw.js|OneSignalSDKWorker.js|manifest.json).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api|sw.js|OneSignalSDKWorker.js|manifest.json|productos|tienda).*)',
   ],
 };

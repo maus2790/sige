@@ -186,7 +186,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
           <Link 
             href={`/productos/${product.id}${isFromStore ? '?from=store' : ''}`}
             onClick={(e) => e.stopPropagation()}
-            className="w-full h-full block cursor-pointer"
+            className="relative w-full h-full block cursor-pointer"
           >
             {mainImage ? (
               <>
@@ -199,6 +199,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                   src={mainImage}
                   alt=""
                   fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className="object-cover blur-xl opacity-20 scale-110 z-0"
                   aria-hidden="true"
                 />
@@ -206,6 +207,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                   src={mainImage}
                   alt={product.name}
                   fill
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   className={`w-full h-full object-contain p-0 transition-transform duration-500 z-10 ${isHovered || isClicked ? "scale-110" : "scale-105"
                     } ${isLoading ? "opacity-0" : "opacity-100"}`}
                   onLoad={() => setIsLoading(false)}

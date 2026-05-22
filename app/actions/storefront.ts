@@ -9,9 +9,15 @@ import { getSystemConfig } from "./config";
 
 export async function getStoreDetails(storeId: string) {
   const config = await getSystemConfig();
-  
+
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 15;
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-15s";
+
+  console.log(`[Store Details Cache: ${label}] TTL=${ttl}s | Store: ${storeId}`);
+
   const getCached = unstable_cache(
     async (sId: string) => {
+      console.log(`[Store Details Cache MISS ❌] Querying Turso DB for store details: ${sId}`);
       try {
         const store = await db
           .select()
@@ -25,7 +31,7 @@ export async function getStoreDetails(storeId: string) {
       }
     },
     [`store-details-${storeId}`],
-    { revalidate: config.cacheScrollEnabled ? config.marketCacheTtl : 15, tags: [`store-feed-${storeId}`, "all-store-feeds"] }
+    { revalidate: ttl, tags: [`store-feed-${storeId}`, "all-store-feeds"] }
   );
 
   return getCached(storeId);

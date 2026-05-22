@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Users,
   Store,
-  Settings,
   LayoutDashboard,
   LogOut,
   Tags,
@@ -23,7 +22,6 @@ const navItems = [
   { href: "/admin/tiendas", label: "Tiendas", icon: Store },
   { href: "/admin/categorias", label: "Categorías", icon: Tags },
   { href: "/admin/optimizaciones", label: "Optimización", icon: Zap },
-  { href: "/admin/configuracion", label: "Configuración", icon: Settings },
 ];
 
 export function AdminNavigation() {

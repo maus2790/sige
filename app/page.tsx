@@ -27,7 +27,8 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
+  console.log("[PAGE 🏠] Renderizando Home Marketplace...");
   const categories = await getCategories();
-  
+  console.log(`[PAGE 🏠] Home listo. ${categories.length} categorias cargadas.`);
   return <InfiniteFeed initialCategories={categories} />;
 }
