@@ -36,6 +36,7 @@ import { useRouter } from "next/navigation";
 import { ImageUpload } from "../upload/image-upload";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 interface Category {
   id: string;
@@ -48,9 +49,10 @@ interface QuickPublishModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   productToEdit?: any;
+  themeClassName?: string;
 }
 
-export function QuickPublishModal({ categories, open, onOpenChange, productToEdit }: QuickPublishModalProps) {
+export function QuickPublishModal({ categories, open, onOpenChange, productToEdit, themeClassName }: QuickPublishModalProps) {
   const [step, setStep] = React.useState(1);
   const [isLoading, setIsLoading] = React.useState(false);
   const [formData, setFormData] = React.useState({
@@ -216,8 +218,8 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
   }, []);
 
   const formContentNode = (
-    <div className="flex flex-col max-h-[90vh] md:max-h-[85vh] w-full">
-      <div className="flex-none bg-brand-gradient p-4 md:p-6 text-white">
+    <div className={cn("quick-publish-theme flex flex-col max-h-[90vh] md:max-h-[85vh] w-full", themeClassName)}>
+      <div className="quick-publish-header flex-none bg-brand-gradient p-4 md:p-6 text-white">
         <div className="space-y-1">
           <h2 className="text-xl md:text-2xl font-black tracking-tight text-white leading-none">
             {isEdit ? "Edición de Producto" : "Publicación Rápida"}
@@ -228,7 +230,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
         </div>
       </div>
 
-      <div className="flex-1 p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar">
+      <div className="quick-publish-body flex-1 p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar">
         {step === 1 ? (
           <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -250,7 +252,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
                   <SelectTrigger className="h-12! rounded-xl w-full">
                     <SelectValue placeholder="Selecciona una categoría" />
                   </SelectTrigger>
-                  <SelectContent className="z-100">
+                  <SelectContent className={cn("quick-publish-select-content z-100", themeClassName)}>
                     {categories.map((cat) => (
                       <SelectItem key={cat.id} value={cat.name}>{cat.name}</SelectItem>
                     ))}
@@ -307,7 +309,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
+            <div className="quick-publish-panel rounded-xl border border-border/50 bg-muted/20 overflow-hidden">
               <div 
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/40 transition-colors"
                 onClick={() => setShowPromo(!showPromo)}
@@ -378,7 +380,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
               )}
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-xl border border-primary/10 bg-primary/5">
+            <div className="quick-publish-panel flex items-center justify-between p-4 rounded-xl border border-primary/10 bg-primary/5">
               <div className="flex flex-col gap-1">
                 <Label className="font-bold flex items-center gap-2">
                   {formData.isPublished ? <Globe className="w-4 h-4 text-primary" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
@@ -399,7 +401,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
         )}
       </div>
 
-      <div className="flex-none py-2 px-4 md:py-3 md:px-6 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm border-t border-border/50">
+      <div className="quick-publish-footer flex-none py-2 px-4 md:py-3 md:px-6 flex gap-3 justify-between items-center bg-background/50 backdrop-blur-sm border-t border-border/50">
         {step > 1 && (
           <Button variant="ghost" onClick={handlePrev} disabled={isLoading} className="rounded-xl h-10 text-xs">
             Atrás
@@ -435,7 +437,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
   if (isDesktop) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-premium bg-background">
+        <DialogContent className={cn("quick-publish-dialog sm:max-w-[500px] rounded-[2.5rem] p-0 overflow-hidden border-none shadow-premium bg-background", themeClassName)}>
           <DialogTitle className="sr-only">Publicación Rápida</DialogTitle>
           <DialogDescription className="sr-only">Completa los datos para vender tu producto.</DialogDescription>
           {formContentNode}
@@ -446,7 +448,7 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="p-0 overflow-hidden border-none rounded-t-[2.5rem] h-auto max-h-[90vh]">
+      <SheetContent side="bottom" className={cn("quick-publish-dialog p-0 overflow-hidden border-none rounded-t-[2.5rem] h-auto max-h-[90vh]", themeClassName)}>
         <SheetTitle className="sr-only">Publicación Rápida</SheetTitle>
         <SheetDescription className="sr-only">Completa los datos para vender tu producto.</SheetDescription>
         {formContentNode}

@@ -9,6 +9,8 @@ import { CategorySheet } from "@/components/productos/category-sheet";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/use-cart";
+import { isPremiumTheme, PremiumTheme } from "@/hooks/use-premium-theme";
+import { cn } from "@/lib/utils";
 
 interface Category {
   id: string;
@@ -31,13 +33,27 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const [isCategoryOpen, setIsCategoryOpen] = React.useState(false);
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
+  const [storeTheme, setStoreTheme] = React.useState<PremiumTheme>("blue");
+  const isStorePage = pathname.startsWith("/tienda/");
+  const storeThemeClass = isStorePage && storeTheme !== "blue" ? `theme-premium theme-${storeTheme}` : "";
 
   React.useEffect(() => {
     setMounted(true);
+    const storeThemeHandler = (e: Event) => {
+      const detail = (e as CustomEvent<{ theme?: PremiumTheme; active?: boolean }>).detail;
+      setStoreTheme(detail?.active && isPremiumTheme(detail.theme) ? detail.theme : "blue");
+    };
+    window.addEventListener("sige-store-theme-change", storeThemeHandler);
+    return () => window.removeEventListener("sige-store-theme-change", storeThemeHandler);
   }, []);
 
+  React.useEffect(() => {
+    if (!isStorePage) {
+      setStoreTheme("blue");
+    }
+  }, [isStorePage]);
+
   // Mostrar en Mercado, Tiendas y Perfil. Ocultar en Gift Cards porque tiene su propio menú inferior.
-  const isStorePage = pathname.startsWith("/tienda/");
   const isProfilePage = pathname === "/profile";
   const isCartPage = pathname === "/cart";
   const isMapPage = pathname === "/mapa";
@@ -83,7 +99,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]">
+      <nav className={cn("mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]", storeThemeClass)}>
         <div className="flex justify-around items-center h-16 px-2 pb-[env(safe-area-inset-bottom,0px)]">
           {navItems.map((item, index) => {
             const Icon = item.icon;
@@ -142,7 +158,8 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
         categories={categories}
         open={isPublishOpen}
         onOpenChange={setIsPublishOpen}
+        themeClassName={storeThemeClass}
       />
     </>
   );
-}
+}

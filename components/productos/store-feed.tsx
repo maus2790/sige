@@ -1,7 +1,7 @@
 "use client";
 
 import { useInView } from "react-intersection-observer";
-import { useEffect, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
 import { Loader2, Package, ShoppingCart, Store, Save, X, Palette, CheckCircle2, MapPin, Phone, Search, Plus, Gift, Globe, Lock } from "lucide-react";
@@ -26,6 +26,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { StoreMap } from "@/components/tienda/store-map";
 import { getCurrentUser } from "@/app/actions/auth";
+import { isPremiumTheme, PremiumTheme, usePremiumTheme } from "@/hooks/use-premium-theme";
 
 interface StoreData {
   id: string;
@@ -40,6 +41,7 @@ interface StoreData {
   rating: number | null;
   latitude?: number | null;
   longitude?: number | null;
+  themeConfig?: string | null;
 }
 
 interface StoreFeedProps {
@@ -52,8 +54,10 @@ interface StoreFeedProps {
 export function StoreFeed({ store, initialProducts, myUserId, categories = [] }: StoreFeedProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { premiumTheme } = usePremiumTheme();
   const [showSettings, setShowSettings] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(myUserId ?? null);
+  const [storeThemeOverride, setStoreThemeOverride] = useState<PremiumTheme | null>(null);
 
   useEffect(() => {
     // If myUserId is not provided (e.g. static generation / ISR mode), fetch current user on client
@@ -73,21 +77,37 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
   // Determine ownership client-side so the server component doesn't need getCurrentUser()
   const isOwner = !!currentUserId && currentUserId === store.userId;
 
-  const SYSTEM_GRADIENTS: Record<string, string> = {
-    'gradient:blue': 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900',
-    'gradient:sunset': 'bg-linear-to-br from-orange-500 via-pink-500 to-purple-600',
-    'gradient:emerald': 'bg-linear-to-br from-emerald-500 via-teal-600 to-cyan-700',
-    'gradient:dark': 'bg-linear-to-br from-gray-900 via-slate-800 to-gray-900',
-    'gradient:premium': 'bg-linear-to-br from-slate-900 via-purple-900 to-slate-900',
-    'gradient:cosmic': 'bg-linear-to-br from-indigo-900 via-purple-900 to-pink-800',
-    'gradient:nature': 'bg-linear-to-br from-green-500 via-emerald-600 to-teal-800',
-    'gradient:gold': 'bg-linear-to-br from-yellow-500 via-orange-600 to-red-800',
-    'gradient:cyber': 'bg-linear-to-br from-cyan-500 via-blue-600 to-indigo-900',
-    'gradient:rose': 'bg-linear-to-br from-rose-500 via-pink-600 to-purple-800',
-  };
-
   const isSystemGradient = store.bannerUrl?.startsWith('gradient:');
-  const gradientClass = isSystemGradient ? SYSTEM_GRADIENTS[store.bannerUrl!] : 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900';
+  const customBannerUrl = store.bannerUrl && !isSystemGradient ? store.bannerUrl : null;
+  const savedStoreTheme = useMemo(() => {
+    if (!store.themeConfig) return null;
+
+    try {
+      const parsed = JSON.parse(store.themeConfig);
+      const theme = typeof parsed === "string" ? parsed : parsed?.premiumTheme;
+      return isPremiumTheme(theme) ? theme : null;
+    } catch {
+      return isPremiumTheme(store.themeConfig) ? store.themeConfig : null;
+    }
+  }, [store.themeConfig]);
+  const effectiveStoreTheme: PremiumTheme = storeThemeOverride ?? savedStoreTheme ?? (isOwner ? premiumTheme : "blue");
+  const storeThemeClass = effectiveStoreTheme === "blue" ? "" : `theme-premium theme-${effectiveStoreTheme}`;
+
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("sige-store-theme-change", {
+        detail: { theme: effectiveStoreTheme, active: true },
+      })
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("sige-store-theme-change", {
+          detail: { theme: "blue", active: false },
+        })
+      );
+    };
+  }, [effectiveStoreTheme]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -168,21 +188,26 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
   const showComplexLayout = !!(store.latitude && store.longitude && (products.length > 0 || isOwner));
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className={cn("store-theme-scope min-h-screen bg-background pb-24", storeThemeClass)}>
       {/* ─── PREMIUM STORE HEADER ─── */}
       <div className="relative">
-        <div className={`relative overflow-hidden ${store.bannerUrl && !isSystemGradient ? 'h-[280px] md:h-[350px]' : (isSystemGradient ? 'h-[280px] md:h-[350px] ' + gradientClass : 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900 pb-20 pt-16 md:pb-24 md:pt-20')} rounded-b-[3rem] shadow-xl text-white`}>
+        <div className={cn(
+          "store-hero relative overflow-hidden rounded-b-[3rem] shadow-xl text-white",
+          customBannerUrl
+            ? "h-[280px] md:h-[350px]"
+            : "bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900 pb-20 pt-16 md:pb-24 md:pt-20"
+        )}>
           
           {/* Banner Background */}
-          {store.bannerUrl && !isSystemGradient ? (
+          {customBannerUrl ? (
             <>
-              <img src={store.bannerUrl} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
+              <img src={customBannerUrl} alt="Banner" className="absolute inset-0 w-full h-full object-cover" />
               {/* Minimal glass for custom images */}
               <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px]" />
             </>
           ) : (
             <>
-              {!isSystemGradient && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>}
+              <div className="store-hero-texture absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
               {/* Standard glass for gradients */}
               <div className="absolute inset-0 bg-black/20 backdrop-blur-md" />
             </>
@@ -194,7 +219,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             <div className="absolute top-6 left-4 right-4 flex items-center justify-between">
               <button
                 onClick={() => router.push('/')}
-                className="flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full"
+                className="store-hero-control flex items-center gap-2 text-white/70 hover:text-white text-sm transition-colors bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Volver
@@ -204,7 +229,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowSettings(true)}
-                    className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all text-white shadow-lg cursor-pointer"
+                    className="store-hero-control w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-white/30 transition-all text-white shadow-lg cursor-pointer"
                     title="Personalizar tienda"
                   >
                     <Settings className="w-5 h-5" />
@@ -217,12 +242,12 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             <div className="relative group">
               <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border-4 border-white/30 shadow-2xl mb-6 bg-white/10 backdrop-blur-md transition-transform group-hover:scale-105">
                 <AvatarImage src={store.logoUrl || ""} alt={store.name} className="object-cover" />
-                <AvatarFallback className="text-3xl font-black text-blue-600 bg-white">
+                <AvatarFallback className="store-default-logo text-3xl font-black text-blue-600 bg-white">
                   {store.name.substring(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               {store.verified && (
-                <div className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center border-4 border-white shadow-lg">
+                <div className="store-verified-badge absolute -top-2 -right-2 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center border-4 border-white shadow-lg">
                   <CheckCircle className="w-4 h-4" />
                 </div>
               )}
@@ -233,24 +258,24 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                 {store.name}
               </h1>
               
-              <p className="text-blue-50/90 text-sm md:text-base font-medium mb-6 line-clamp-2 drop-shadow-md">
+              <p className="store-hero-copy text-blue-50/90 text-sm md:text-base font-medium mb-6 line-clamp-2 drop-shadow-md">
                 {store.description || "Bienvenidos a nuestra tienda oficial en SIGE Mercado."}
               </p>
 
               <div className="flex flex-wrap justify-center gap-3 text-xs md:text-sm font-bold">
                 {store.address && (
-                  <div className="flex items-center gap-1.5 px-4 py-2 bg-white/15 rounded-full backdrop-blur-md border border-white/10">
+                  <div className="store-hero-chip flex items-center gap-1.5 px-4 py-2 bg-white/15 rounded-full backdrop-blur-md border border-white/10">
                     <MapPin className="w-3.5 h-3.5" />
                     {store.address}
                   </div>
                 )}
                 {store.phone && (
-                  <div className="flex items-center gap-1.5 px-4 py-2 bg-white/15 rounded-full backdrop-blur-md border border-white/10">
+                  <div className="store-hero-chip flex items-center gap-1.5 px-4 py-2 bg-white/15 rounded-full backdrop-blur-md border border-white/10">
                     <Phone className="w-3.5 h-3.5" />
                     {store.phone}
                   </div>
                 )}
-                <div className="flex items-center gap-1.5 px-4 py-2 bg-white/15 rounded-full backdrop-blur-md border border-white/10">
+                <div className="store-hero-chip flex items-center gap-1.5 px-4 py-2 bg-white/15 rounded-full backdrop-blur-md border border-white/10">
                   <Package className="w-3.5 h-3.5" />
                   {products.length}+ Productos
                 </div>
@@ -268,7 +293,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           {isOwner && (
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
-              className="hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+              className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
             >
               <Plus className="h-5 w-5" />
               Añadir Producto
@@ -276,7 +301,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           )}
 
           {/* Buscador Central (Market Style) */}
-          <div className="glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
+          <div className="market-search-shell store-search-shell glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
             <div className="relative flex-1">
               <input
                 type="text"
@@ -321,7 +346,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           {/* Botón GIFT CARDS */}
           <Link
             href="/gift-cards"
-            className="hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+            className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
           >
             <Gift className="h-5 w-5" />
             Gift Cards
@@ -358,7 +383,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           showComplexLayout && "md:hidden"
         )}>
           <div className="flex items-center gap-3 mb-4">
-            <div className="h-8 w-1.5 rounded-full bg-emerald-500"></div>
+            <div className="store-section-accent h-8 w-1.5 rounded-full bg-emerald-500"></div>
             <h2 className="text-xl font-black tracking-tight">Ubicación</h2>
           </div>
           <StoreMap 
@@ -382,7 +407,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
               products.length === 1 && !isOwner && "md:col-span-1"
             )}>
               <div className="flex items-center gap-3">
-                <div className={cn("h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
+                <div className={cn("store-section-accent h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
                 <h2 className="text-2xl font-black tracking-tight">
                   {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
                 </h2>
@@ -401,7 +426,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                 : "md:col-span-1 lg:col-span-2 xl:col-span-3"
             )}>
               <div className="flex items-center gap-3">
-                <div className="h-10 w-1.5 rounded-full bg-emerald-500"></div>
+                <div className="store-section-accent h-10 w-1.5 rounded-full bg-emerald-500"></div>
                 <h2 className="text-2xl font-black tracking-tight">Ubicación de la Tienda</h2>
               </div>
               <Badge variant="outline" className="rounded-full px-3 border-muted-foreground/20 text-muted-foreground font-bold text-xs">
@@ -412,7 +437,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
         ) : (
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <div className={cn("h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
+              <div className={cn("store-section-accent h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
               <h2 className="text-2xl font-black tracking-tight">
                 {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
               </h2>
@@ -441,7 +466,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
+            <div className="store-products-grid grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6">
               {/* Primeros 2 productos reales */}
               {products.slice(0, 2).map((product: any, index: number) => (
                 <div
@@ -462,11 +487,11 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                   <button
                     key={`cta-slot-${i}`}
                     onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
-                    className="group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
+                    className="store-add-placeholder group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
                     style={{ animationDelay: `${(products.length + i) * 80}ms` }}
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
-                      <Plus className="w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
+                    <div className="store-add-placeholder-icon w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
+                      <Plus className="store-add-placeholder-symbol w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
                     </div>
                     <div className="text-center space-y-1">
                       <p className="font-black text-sm text-muted-foreground group-hover:text-blue-600 transition-colors uppercase tracking-wide">Publicar</p>
@@ -511,10 +536,10 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
               {isOwner && products.length >= 2 && (
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
-                  className="group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
+                  className="store-add-placeholder group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
-                    <Plus className="w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
+                  <div className="store-add-placeholder-icon w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
+                    <Plus className="store-add-placeholder-symbol w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
                   </div>
                   <p className="font-black text-sm text-muted-foreground group-hover:text-blue-600 transition-colors uppercase tracking-wide">Publicar producto</p>
                   <div className="absolute inset-0 rounded-3xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
@@ -526,8 +551,8 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             <div ref={ref} className="flex justify-center py-6">
               {isFetchingNextPage && (
                 <div className="flex items-center gap-2 px-8 py-4 bg-white dark:bg-card border rounded-full shadow-premium animate-bounce">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                  <span className="text-sm font-black text-blue-600 uppercase tracking-widest">Cargando catálogo...</span>
+                  <Loader2 className="store-loader w-5 h-5 animate-spin text-blue-600" />
+                  <span className="store-loader-text text-sm font-black text-blue-600 uppercase tracking-widest">Cargando catálogo...</span>
                 </div>
               )}
             </div>
@@ -565,6 +590,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           store={store} 
           open={showSettings} 
           onOpenChange={setShowSettings} 
+          onThemeChange={setStoreThemeOverride}
         />
       )}
     </div>

@@ -26,8 +26,9 @@ import { useOneSignal } from '@/components/providers/onesignal-provider';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
-export function NotificationCenter() {
+export function NotificationCenter({ themeClassName }: { themeClassName?: string }) {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { isSubscribed, subscribe } = useOneSignal();
@@ -74,7 +75,7 @@ export function NotificationCenter() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-primary/10 group">
+        <Button variant="ghost" size="icon" className="notification-trigger relative rounded-full hover:bg-primary/10 group">
           <Bell className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
           {unreadCount > 0 && (
             <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-red-500 border-2 border-background animate-in zoom-in duration-300">
@@ -83,7 +84,7 @@ export function NotificationCenter() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80 md:w-96 p-0" align="end" forceMount>
+      <DropdownMenuContent className={cn("notification-menu-content w-80 md:w-96 p-0", themeClassName)} align="end" forceMount>
         <DropdownMenuLabel className="p-4 flex items-center justify-between">
           <span className="text-lg font-bold">Notificaciones</span>
           {unreadCount > 0 && (
@@ -109,7 +110,7 @@ export function NotificationCenter() {
               {notifications.map((n) => (
                 <div 
                   key={n.id} 
-                  className={`p-4 transition-colors hover:bg-muted/30 relative ${!n.read ? 'bg-primary/5' : ''}`}
+                  className={`notification-item p-4 transition-colors hover:bg-muted/30 relative ${!n.read ? 'bg-primary/5' : ''}`}
                   onClick={() => !n.read && handleMarkAsRead(n.id)}
                 >
                   <div className="flex gap-3">
@@ -149,7 +150,7 @@ export function NotificationCenter() {
         
         {/* Prompt de Suscripción OneSignal */}
         {!isSubscribed ? (
-          <div className="p-4 bg-primary/5 dark:bg-primary/10">
+          <div className="notification-subscribe-panel p-4 bg-primary/5 dark:bg-primary/10">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                 <Bell className="h-4 w-4 text-primary" />

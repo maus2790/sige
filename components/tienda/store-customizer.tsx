@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition, useRef } from 'react';
+import React, { useEffect, useState, useTransition, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { toast } from 'sonner';
 import { updateStore, updateStoreLogo, updateStoreBanner } from '@/app/actions/store-management';
 import { ImageCropper } from '@/components/profile/image-cropper';
+import { isPremiumTheme, PREMIUM_THEMES, PremiumTheme, usePremiumTheme } from '@/hooks/use-premium-theme';
 
 const SYSTEM_GRADIENTS = [
   { id: 'gradient:blue', name: 'Océano Profundo', class: 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900' },
@@ -37,18 +38,33 @@ const SYSTEM_GRADIENTS = [
   { id: 'gradient:rose', name: 'Rosa Pasión', class: 'bg-linear-to-br from-rose-500 via-pink-600 to-purple-800' },
 ];
 
+function parseStoreTheme(themeConfig?: string | null): PremiumTheme | null {
+  if (!themeConfig) return null;
+
+  try {
+    const parsed = JSON.parse(themeConfig);
+    const theme = typeof parsed === "string" ? parsed : parsed?.premiumTheme;
+    return isPremiumTheme(theme) ? theme : null;
+  } catch {
+    return isPremiumTheme(themeConfig) ? themeConfig : null;
+  }
+}
+
 interface StoreCustomizerProps {
   store: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onThemeChange?: (theme: PremiumTheme) => void;
 }
 
 import { LocationPickerMap } from '@/components/tienda/location-picker-map';
 
-export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerProps) {
+export function StoreCustomizer({ store, open, onOpenChange, onThemeChange }: StoreCustomizerProps) {
   const [isPending, startTransition] = useTransition();
+  const { premiumTheme } = usePremiumTheme();
   const [editLogo, setEditLogo] = useState(store.logoUrl || null);
   const [editBanner, setEditBanner] = useState(store.bannerUrl || null);
+  const [editTheme, setEditTheme] = useState<PremiumTheme>(() => parseStoreTheme(store.themeConfig) ?? premiumTheme);
   const [editName, setEditName] = useState(store.name);
   const [editDescription, setEditDescription] = useState(store.description || '');
   const [editAddress, setEditAddress] = useState(store.address || '');
@@ -61,11 +77,18 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
   const [cropType, setCropType] = useState<'logo' | 'banner'>('logo');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   
-  const [showSystemDesigns, setShowSystemDesigns] = useState(store.bannerUrl?.startsWith('gradient:'));
+  const [showSystemDesigns, setShowSystemDesigns] = useState(!store.bannerUrl || store.bannerUrl?.startsWith('gradient:'));
   const [isFullscreen, setIsFullscreen] = useState(false);
   
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  const modalThemeClass = editTheme === "blue" ? "" : `theme-premium theme-${editTheme}`;
+
+  useEffect(() => {
+    if (!parseStoreTheme(store.themeConfig)) {
+      setEditTheme(premiumTheme);
+    }
+  }, [premiumTheme, store.themeConfig]);
 
 
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
@@ -95,8 +118,11 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
     setSelectedImage(null);
   };
 
-  const handleSelectGradient = (gradientId: string) => {
-    setEditBanner(gradientId);
+  const handleSelectTheme = (theme: PremiumTheme) => {
+    setEditTheme(theme);
+    if (editBanner?.startsWith('gradient:')) {
+      setEditBanner(null);
+    }
   };
 
   const handleUpdateStore = () => {
@@ -133,11 +159,13 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
           longitude: editLongitude,
           logoUrl: finalLogo,
           bannerUrl: finalBanner,
+          themeConfig: JSON.stringify({ premiumTheme: editTheme }),
         });
 
         if (result.error) {
           toast.error(result.error);
         } else {
+          onThemeChange?.(editTheme);
           toast.success("Tienda actualizada correctamente");
           onOpenChange(false);
         }
@@ -153,13 +181,14 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
         <DialogContent 
           showCloseButton={false}
           className={cn(
-            "p-0 overflow-hidden border-none shadow-2xl flex flex-col transition-all duration-300 z-50 gap-0",
+            "store-customizer-modal p-0 overflow-hidden border-none shadow-2xl flex flex-col transition-all duration-300 z-50 gap-0",
+            modalThemeClass,
             isFullscreen 
               ? "fixed inset-0 w-screen h-screen max-w-none sm:max-w-none max-h-none rounded-none translate-x-0 translate-y-0 top-0 left-0" 
               : "sm:max-w-[600px] max-h-[90vh] rounded-3xl"
           )}
         >
-          <DialogHeader className="py-3 px-6 bg-linear-to-r from-blue-600 to-indigo-700 text-white shrink-0 relative">
+          <DialogHeader className="store-modal-header py-3 px-6 bg-linear-to-r from-blue-600 to-indigo-700 text-white shrink-0 relative">
             <div className="flex items-center justify-between gap-2">
               <div className="flex flex-col text-left">
                 <DialogTitle className="text-xl font-bold flex items-center gap-2 text-white">
@@ -247,15 +276,22 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
                     </div>
 
                     {showSystemDesigns ? (
-                      <div className="grid grid-cols-5 gap-2 h-32 overflow-y-auto scrollbar-hide pr-1 py-1">
-                        {SYSTEM_GRADIENTS.map((g) => (
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto scrollbar-hide pr-1 py-1">
+                        {PREMIUM_THEMES.map((theme) => (
                           <button
-                            key={g.id}
-                            onClick={() => handleSelectGradient(g.id)}
-                            className={`group relative rounded-xl h-14 ${g.class} border-2 ${editBanner === g.id ? 'border-blue-500 shadow-lg' : 'border-transparent'} overflow-hidden transition-all hover:scale-105 shrink-0`}
-                            title={g.name}
+                            key={theme.value}
+                            onClick={() => handleSelectTheme(theme.value)}
+                            className={cn(
+                              "group relative rounded-xl h-16 border-2 overflow-hidden transition-all hover:scale-[1.02] shrink-0 text-left",
+                              editTheme === theme.value ? "border-primary shadow-lg" : "border-transparent"
+                            )}
+                            style={{ background: theme.swatchGradient }}
+                            title={theme.label}
                           >
-                            {editBanner === g.id && (
+                            <span className="absolute inset-x-0 bottom-0 bg-black/35 px-2 py-1 text-[9px] font-black text-white uppercase tracking-tight">
+                              {theme.shortLabel}
+                            </span>
+                            {editTheme === theme.value && (
                               <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
                                 <CheckCircle2 className="w-5 h-5 text-white" />
                               </div>
@@ -266,7 +302,7 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
                     ) : (
                       <div 
                         onClick={() => bannerInputRef.current?.click()}
-                        className="group relative h-24 sm:h-32 rounded-2xl border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
+                        className="store-banner-upload group relative h-24 sm:h-32 rounded-2xl border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
                       >
                         {editBanner && !editBanner.startsWith('gradient:') ? (
                           <img src={editBanner} className="absolute inset-0 w-full h-full object-cover group-hover:opacity-40 transition-opacity" />
@@ -405,7 +441,7 @@ export function StoreCustomizer({ store, open, onOpenChange }: StoreCustomizerPr
             <Button 
               onClick={handleUpdateStore}
               disabled={isPending}
-              className="flex-1 sm:flex-none rounded-xl h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 sm:px-8 shadow-lg shadow-blue-500/20 text-xs sm:text-sm"
+              className="store-modal-save-button flex-1 sm:flex-none rounded-xl h-11 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 sm:px-8 shadow-lg shadow-blue-500/20 text-xs sm:text-sm"
             >
               {isPending ? 'Guardando...' : 'Guardar Cambios'}
             </Button>

@@ -229,27 +229,27 @@ export function MapExplorer() {
         >
           <div className="relative flex flex-col items-center group cursor-pointer">
             {/* Glow / Aura */}
-            <div className="absolute -inset-3 bg-purple-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="map-marker-aura map-marker-aura-products absolute -inset-3 bg-purple-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
             
             {/* The Pin/Beacon */}
             <div className="relative mb-1 transition-transform duration-300 group-hover:-translate-y-1">
-              <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border-2 border-purple-600 dark:border-purple-500 shadow-xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
+              <div className="map-marker-pin map-marker-pin-products w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border-2 border-purple-600 dark:border-purple-500 shadow-xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
                 <div className="-rotate-45 w-full h-full flex items-center justify-center">
                   {group.store.logoUrl ? (
                     <img src={group.store.logoUrl} className="w-full h-full object-cover" alt="" />
                   ) : (
-                    <Store className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <Store className="map-marker-icon map-marker-icon-products w-5 h-5 text-purple-600 dark:text-purple-400" />
                   )}
                 </div>
               </div>
               
               {/* Product Count Badge */}
-              <div className="absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-20">
+              <div className="map-marker-count absolute -top-2 -right-2 bg-purple-600 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow-lg z-20">
                 {group.products.length}
               </div>
               
               {/* Pin Point */}
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-600 dark:bg-purple-500 rotate-45 z-0" />
+              <div className="map-marker-point map-marker-point-products absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-purple-600 dark:bg-purple-500 rotate-45 z-0" />
             </div>
           </div>
         </Marker>
@@ -268,22 +268,22 @@ export function MapExplorer() {
         >
           <div className="relative flex flex-col items-center group cursor-pointer">
             {/* Glow / Aura */}
-            <div className="absolute -inset-3 bg-blue-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="map-marker-aura map-marker-aura-stores absolute -inset-3 bg-blue-500/20 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
             
             {/* The Pin/Beacon */}
             <div className="relative mb-1 transition-transform duration-300 group-hover:-translate-y-1">
-              <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border-2 border-blue-600 dark:border-blue-500 shadow-xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
+              <div className="map-marker-pin map-marker-pin-stores w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border-2 border-blue-600 dark:border-blue-500 shadow-xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
                 <div className="-rotate-45 w-full h-full flex items-center justify-center">
                   {store.logoUrl ? (
                     <img src={store.logoUrl} className="w-full h-full object-cover" alt="" />
                   ) : (
-                    <Store className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <Store className="map-marker-icon map-marker-icon-stores w-5 h-5 text-blue-600 dark:text-blue-400" />
                   )}
                 </div>
               </div>
               
               {/* Pin Point */}
-              <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-600 dark:bg-blue-500 rotate-45 z-0" />
+              <div className="map-marker-point map-marker-point-stores absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-600 dark:bg-blue-500 rotate-45 z-0" />
             </div>
           </div>
         </Marker>
@@ -292,7 +292,7 @@ export function MapExplorer() {
   };
 
   return (
-    <div className="relative w-full h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] flex flex-col md:flex-row bg-background overflow-hidden border-t">
+    <div className="map-explorer relative w-full h-[calc(100dvh-64px)] max-h-[calc(100dvh-64px)] flex flex-col md:flex-row bg-background overflow-hidden border-t">
       
       {/* ─── SIDEBAR / LIST ─── */}
       <div className="w-full md:w-[380px] lg:w-[420px] h-[60dvh] md:h-full bg-card border-r border-border shadow-xl z-10 flex flex-col order-2 md:order-1">
@@ -306,7 +306,7 @@ export function MapExplorer() {
           </button>
           
           <h1 className="hidden md:flex text-2xl font-black tracking-tight items-center gap-2">
-            <Navigation className="w-6 h-6 text-blue-600" />
+            <Navigation className="map-title-icon w-6 h-6 text-blue-600" />
             Explorar
           </h1>
           
@@ -319,7 +319,7 @@ export function MapExplorer() {
               className="pl-9 h-9 md:h-11 rounded-xl bg-background border-border/60 text-xs md:text-sm"
             />
             {isLoading && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600 animate-spin" />
+              <Loader2 className="map-search-spinner absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600 animate-spin" />
             )}
           </div>
           
@@ -330,7 +330,10 @@ export function MapExplorer() {
                 key={r}
                 variant={radius === r ? "default" : "outline"}
                 size="sm"
-                className={`h-6 md:h-7 text-[9px] md:text-[10px] uppercase font-black rounded-full px-2 md:px-3 shrink-0 ${radius === r ? 'bg-blue-600' : ''}`}
+                className={cn(
+                  "map-radius-button h-6 md:h-7 text-[9px] md:text-[10px] uppercase font-black rounded-full px-2 md:px-3 shrink-0",
+                  radius === r && "map-radius-button-active bg-blue-600"
+                )}
                 onClick={() => setRadius(r)}
               >
                 {r === 0 ? "Todo" : `${r}km`}
@@ -351,7 +354,7 @@ export function MapExplorer() {
               products.map((product) => (
                 <div 
                   key={product.id} 
-                  className="bg-background border rounded-2xl p-3 flex gap-3 hover:border-purple-400 transition-colors shadow-sm cursor-pointer"
+                  className="map-result-card map-product-result-card bg-background border rounded-2xl p-3 flex gap-3 hover:border-purple-400 transition-colors shadow-sm cursor-pointer"
                   onClick={() => {
                     setViewState((prev) => ({ 
                       ...prev, 
@@ -384,7 +387,7 @@ export function MapExplorer() {
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="font-black text-sm">Bs. {product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta}</span>
-                      <Badge variant="secondary" className="text-[10px] rounded-md h-5 px-1.5 font-bold">
+                      <Badge variant="secondary" className="map-distance-badge text-[10px] rounded-md h-5 px-1.5 font-bold">
                         {formatDistance(product.distance)}
                       </Badge>
                     </div>
@@ -402,7 +405,7 @@ export function MapExplorer() {
               stores.map((store) => (
                 <div 
                   key={store.id} 
-                  className="bg-background border rounded-2xl p-3 flex gap-3 hover:border-blue-400 transition-colors cursor-pointer shadow-sm"
+                  className="map-result-card map-store-result-card bg-background border rounded-2xl p-3 flex gap-3 hover:border-blue-400 transition-colors cursor-pointer shadow-sm"
                   onClick={() => {
                     setViewState((prev) => ({ 
                       ...prev, 
@@ -417,7 +420,7 @@ export function MapExplorer() {
                     {store.logoUrl ? (
                       <img src={store.logoUrl} alt={store.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-xl">
+                      <div className="map-default-logo w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-xl">
                         {store.name.substring(0, 2).toUpperCase()}
                       </div>
                     )}
@@ -428,10 +431,10 @@ export function MapExplorer() {
                       <p className="text-xs text-muted-foreground truncate">{store.address}</p>
                     </div>
                     <div className="flex items-center justify-between mt-1">
-                      <Link href={`/tienda/${store.id}`} className="text-[10px] font-bold text-blue-600 hover:underline">
+                      <Link href={`/tienda/${store.id}`} className="map-result-link text-[10px] font-bold text-blue-600 hover:underline">
                         Ver tienda
                       </Link>
-                      <Badge variant="secondary" className="text-[10px] rounded-md h-5 px-1.5 font-bold text-blue-600 bg-blue-50">
+                      <Badge variant="secondary" className="map-distance-badge text-[10px] rounded-md h-5 px-1.5 font-bold text-blue-600 bg-blue-50">
                         {formatDistance(store.distance)}
                       </Badge>
                     </div>
@@ -487,11 +490,11 @@ export function MapExplorer() {
               onClick={() => {
                 mapRef.current?.easeTo({ bearing: 0, pitch: 0, duration: 1000 });
               }}
-              className="w-9 h-9 mt-1 bg-white dark:bg-zinc-900 rounded-b-xl border border-border/50 shadow-premium flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors group"
+              className="map-reset-control w-9 h-9 mt-1 bg-white dark:bg-zinc-900 rounded-b-xl border border-border/50 shadow-premium flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors group"
               title="Restablecer orientación"
             >
               <Compass 
-                className="w-5 h-5 text-blue-600 dark:text-blue-400 transition-transform duration-300" 
+                className="map-reset-icon w-5 h-5 text-blue-600 dark:text-blue-400 transition-transform duration-300" 
                 style={{ transform: `rotate(${-(viewState.bearing || 0)}deg)` }}
               />
             </button>
@@ -508,7 +511,7 @@ export function MapExplorer() {
               title="Mi ubicación"
             >
               {isLocating
-                ? <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                ? <Loader2 className="map-search-spinner w-4 h-4 text-blue-600 animate-spin" />
                 : <LocateFixed className="w-4 h-4 text-gray-700 dark:text-gray-300" />
               }
             </button>
@@ -585,8 +588,8 @@ export function MapExplorer() {
           {userLocation && (
             <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
               <div className="relative">
-                <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg relative z-10"></div>
-                <div className="w-4 h-4 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-75"></div>
+                <div className="map-user-marker w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg relative z-10"></div>
+                <div className="map-user-marker-ping w-4 h-4 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-75"></div>
               </div>
             </Marker>
           )}
@@ -603,18 +606,18 @@ export function MapExplorer() {
               closeButton={true}
               closeOnClick={false}
               offset={25}
-              className="rounded-2xl overflow-hidden z-50"
+              className="map-store-popup rounded-2xl overflow-hidden z-50"
               maxWidth="320px"
             >
               <div className="p-2 pt-2">
                 {selectedItem.type === 'store' ? (
-                  <div className="space-y-2 bg-background text-foreground">
+                  <div className="map-popup-content space-y-2 bg-background text-foreground">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-12 h-12 rounded-xl bg-muted overflow-hidden shrink-0 border border-border shadow-sm">
                         {selectedItem.data.logoUrl ? (
                           <img src={selectedItem.data.logoUrl} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-xs">
+                          <div className="map-popup-default-logo w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-xs">
                             {selectedItem.data.name.substring(0, 2).toUpperCase()}
                           </div>
                         )}
@@ -628,32 +631,32 @@ export function MapExplorer() {
                     <div className="flex gap-2 pt-1">
                       <Button 
                         onClick={() => handleDirections(selectedItem.data.latitude, selectedItem.data.longitude)}
-                        className="flex-1 h-8 text-[10px] uppercase tracking-wider rounded-lg bg-blue-600 font-bold"
+                        className="map-popup-primary-button flex-1 h-8 text-[10px] uppercase tracking-wider rounded-lg bg-blue-600 font-bold"
                         size="sm"
                       >
                         Cómo llegar
                       </Button>
                       <Link href={`/tienda/${selectedItem.data.id}`} className="flex-1">
-                        <Button variant="outline" className="w-full h-8 text-[10px] uppercase tracking-wider rounded-lg font-bold" size="sm">
+                        <Button variant="outline" className="map-popup-secondary-button w-full h-8 text-[10px] uppercase tracking-wider rounded-lg font-bold" size="sm">
                           Ver tienda
                         </Button>
                       </Link>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-2 bg-background text-foreground">
+                  <div className="map-popup-content map-popup-products-content space-y-2 bg-background text-foreground">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="w-10 h-10 rounded-xl bg-muted overflow-hidden shrink-0 border border-border shadow-sm">
                         {selectedItem.data.store.logoUrl ? (
                           <img src={selectedItem.data.store.logoUrl} className="w-full h-full object-cover" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-purple-100 text-purple-600 font-black text-[10px]">
+                          <div className="map-popup-default-logo map-popup-products-logo w-full h-full flex items-center justify-center bg-purple-100 text-purple-600 font-black text-[10px]">
                             {selectedItem.data.store.name.substring(0, 2).toUpperCase()}
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-black text-sm text-purple-700 leading-tight truncate">
+                        <h3 className="map-popup-products-title font-black text-sm text-purple-700 leading-tight truncate">
                           {selectedItem.data.store.name}
                         </h3>
                         <p className="text-[10px] text-muted-foreground truncate">Encontrados en esta tienda</p>
@@ -675,7 +678,7 @@ export function MapExplorer() {
                     </div>
                     <Button 
                       onClick={() => handleDirections(selectedItem.data.store.latitude, selectedItem.data.store.longitude)}
-                      className="w-full h-8 text-[10px] uppercase tracking-wider rounded-lg bg-purple-600 hover:bg-purple-700 text-white mt-1 font-bold shadow-lg shadow-purple-500/20"
+                      className="map-popup-primary-button map-popup-products-button w-full h-8 text-[10px] uppercase tracking-wider rounded-lg bg-purple-600 hover:bg-purple-700 text-white mt-1 font-bold shadow-lg shadow-purple-500/20"
                       size="sm"
                     >
                       Ir a comprar

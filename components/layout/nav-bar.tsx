@@ -20,6 +20,8 @@ import {
   Download,
   Plus,
   Gift,
+  Check,
+  Palette,
   Sparkles,
   Navigation,
   RefreshCw
@@ -28,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { refreshMarketFeed } from "@/app/actions/products";
 import { refreshStoreFeed } from "@/app/actions/storefront";
+import { isPremiumTheme, PremiumTheme, usePremiumTheme } from "@/hooks/use-premium-theme";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { NotificationCenter } from "./notification-center";
@@ -63,6 +66,7 @@ interface NavbarProps {
 export function Navbar({ categories, myStoreId }: NavbarProps) {
   const { data: session, status } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { premiumTheme, setTheme: setPremiumTheme, themes: premiumThemes } = usePremiumTheme();
   const pathname = usePathname();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -71,6 +75,9 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
   const [isPublishOpen, setIsPublishOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [storeTheme, setStoreTheme] = useState<PremiumTheme>("blue");
+  const isStoreRoute = pathname.startsWith("/tienda/");
+  const storeThemeClass = isStoreRoute && storeTheme !== "blue" ? `theme-premium theme-${storeTheme}` : "";
 
   const handleHeaderRefresh = async () => {
     setIsRefreshing(true);
@@ -103,9 +110,23 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
       setEditingProduct(e.detail || null);
       setIsPublishOpen(true);
     };
+    const storeThemeHandler = (e: Event) => {
+      const detail = (e as CustomEvent<{ theme?: PremiumTheme; active?: boolean }>).detail;
+      setStoreTheme(detail?.active && isPremiumTheme(detail.theme) ? detail.theme : "blue");
+    };
     window.addEventListener('open-publish-modal', handler as any);
-    return () => window.removeEventListener('open-publish-modal', handler as any);
+    window.addEventListener("sige-store-theme-change", storeThemeHandler);
+    return () => {
+      window.removeEventListener('open-publish-modal', handler as any);
+      window.removeEventListener("sige-store-theme-change", storeThemeHandler);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!isStoreRoute) {
+      setStoreTheme("blue");
+    }
+  }, [isStoreRoute]);
 
   const activeUser = session?.user;
   const isLoading = status === "loading";
@@ -136,7 +157,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300">
+      <header className={cn("app-navbar sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300", storeThemeClass)}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -281,7 +302,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
                 {/* Centro de Notificaciones */}
                 {activeUser && (
-                  <NotificationCenter />
+                  <NotificationCenter themeClassName={storeThemeClass} />
                 )}
 
                 {/* Carrito Link */}
@@ -306,7 +327,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuContent className={cn("user-menu-content w-72", storeThemeClass)} align="end" forceMount>
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-medium leading-none">{activeUser.name}</p>
@@ -388,6 +409,53 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         <span>{mounted && resolvedTheme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
                       </DropdownMenuItem>
 
+                      <div className="px-2 py-2">
+                        <div className="mb-2 flex items-center gap-2">
+                          <Palette className="h-4 w-4 text-primary" />
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest leading-none text-muted-foreground">
+                              Tema de Marca
+                            </p>
+                            <p className="text-sm font-bold leading-tight">
+                              Desliza para explorar
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                          {premiumThemes.map((themeOption) => {
+                            const isSelected = premiumTheme === themeOption.value;
+
+                            return (
+                              <button
+                                key={themeOption.value}
+                                type="button"
+                                onClick={() => setPremiumTheme(themeOption.value)}
+                                className={cn(
+                                  "relative flex h-20 w-28 shrink-0 flex-col justify-between overflow-hidden rounded-lg border p-2 text-left transition-all duration-300",
+                                  isSelected
+                                    ? "border-primary shadow-lg shadow-primary/20 ring-2 ring-primary/25"
+                                    : "border-border hover:border-primary/50"
+                                )}
+                              >
+                                <div
+                                  className="absolute inset-0 opacity-95"
+                                  style={{ background: themeOption.swatchGradient }}
+                                />
+                                <div className="absolute inset-0 bg-black/10" />
+                                {isSelected && (
+                                  <span className="relative ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm">
+                                    <Check className="h-3.5 w-3.5" />
+                                  </span>
+                                )}
+                                <span className="relative mt-auto text-[10px] font-black uppercase tracking-wider text-white drop-shadow">
+                                  {themeOption.shortLabel}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <DropdownMenuSeparator />
 
                       <DropdownMenuItem
@@ -419,6 +487,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
         open={isPublishOpen}
         onOpenChange={setIsPublishOpen}
         productToEdit={editingProduct}
+        themeClassName={storeThemeClass}
       />
     </>
   );

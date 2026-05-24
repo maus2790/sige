@@ -116,16 +116,16 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
   const products = data?.pages.flatMap((page) => page.items) || [];
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="market-home min-h-screen bg-background pb-24">
       {/* Hero Section - Altura Original Restaurada */}
-      <div className="relative overflow-hidden bg-brand-gradient text-white pb-16 pt-12 px-4 sm:px-6 lg:px-8 shadow-premium rounded-b-[2.5rem] md:rounded-b-[4rem] mb-0">
+      <div className="market-hero relative overflow-hidden bg-brand-gradient text-white pb-16 pt-12 px-4 sm:px-6 lg:px-8 shadow-premium rounded-b-[2.5rem] md:rounded-b-[4rem] mb-0">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
 
         {/* Botón Instalar App (Arriba Izquierda) */}
         {isInstallable && !isInstalled && (
           <button
             onClick={installApp}
-            className="absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500 cursor-pointer"
+            className="market-hero-pill absolute top-4 left-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500 cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 group-hover:animate-bounce" />
             <span>Instalar App</span>
@@ -135,7 +135,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
         {/* Botón Gift Card (Arriba Derecha) */}
         <Link
           href="/gift-cards"
-          className="absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500"
+          className="market-hero-pill absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500"
         >
           <Gift className="w-3.5 h-3.5 group-hover:animate-bounce" />
           <span>Gift Cards</span>
@@ -143,7 +143,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
 
         <div className="relative z-10 max-w-4xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex justify-center mb-6">
-            <div className="w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-white/30 animate-bounce-slow">
+            <div className="market-hero-icon w-20 h-20 rounded-3xl bg-white/20 backdrop-blur-xl flex items-center justify-center shadow-2xl border border-white/30 animate-bounce-slow">
               <ShoppingCart className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -154,10 +154,10 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
               <span className="text-3xl">MARKET - SHOP</span>
             </span>
           </h1>
-          <p className="text-xl md:text-2xl text-blue-50 font-black mb-2 drop-shadow-sm opacity-95 tracking-tight">
+          <p className="market-hero-kicker text-xl md:text-2xl text-blue-50 font-black mb-2 drop-shadow-sm opacity-95 tracking-tight">
             Sigue a SIGE y consigue
           </p>
-          <p className="text-sm md:text-lg text-blue-100/80 mb-6 max-w-2xl mx-auto font-medium">
+          <p className="market-hero-copy text-sm md:text-lg text-blue-100/80 mb-6 max-w-2xl mx-auto font-medium">
             Donde seguir es conseguir los mejores productos de Bolivia en un solo lugar
           </p>
         </div>
@@ -170,14 +170,14 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           {/* Botón VENDER (Pill llamativa con animación de brillo y bordes más coloridos) */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
-            className="hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+            className="market-action market-action-sell hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
           >
             <Plus className="h-5 w-5" />
             Vender
           </button>
 
           {/* Buscador Central (Bordes más definidos) */}
-          <div className="glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
+          <div className="market-search-shell glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
             <div className="relative flex-1">
               <input
                 id="mobile-search"
@@ -218,7 +218,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           {/* Botón GIFT CARDS (Pill llamativa con animación de brillo y bordes más coloridos) */}
           <Link
             href="/gift-cards"
-            className="hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+            className="market-action market-action-gift hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
           >
             <Gift className="h-5 w-5" />
             Gift Cards

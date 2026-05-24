@@ -1,0 +1,170 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+export type PremiumTheme =
+  | "blue"
+  | "black"
+  | "gold"
+  | "rose"
+  | "emerald"
+  | "purple"
+  | "ocean"
+  | "sunset"
+  | "cyan"
+  | "ruby";
+
+export const PREMIUM_THEMES: Array<{
+  value: PremiumTheme;
+  label: string;
+  shortLabel: string;
+  swatchGradient: string;
+}> = [
+  {
+    value: "blue",
+    label: "Blue Premium",
+    shortLabel: "BLUE CARD",
+    swatchGradient: "linear-gradient(135deg, #7dd3fc 0%, #3b82f6 48%, #312e81 100%)",
+  },
+  {
+    value: "gold",
+    label: "Gold Premium",
+    shortLabel: "GOLD CARD",
+    swatchGradient: "linear-gradient(135deg, #fde68a 0%, #f59e0b 48%, #92400e 100%)",
+  },
+  {
+    value: "rose",
+    label: "Rose Premium",
+    shortLabel: "ROSE CARD",
+    swatchGradient: "linear-gradient(135deg, #fecdd3 0%, #f43f5e 48%, #86198f 100%)",
+  },
+  {
+    value: "emerald",
+    label: "Emerald Premium",
+    shortLabel: "EMERALD CARD",
+    swatchGradient: "linear-gradient(135deg, #a7f3d0 0%, #10b981 48%, #115e59 100%)",
+  },
+  {
+    value: "purple",
+    label: "Purple Premium",
+    shortLabel: "PURPLE CARD",
+    swatchGradient: "linear-gradient(135deg, #ddd6fe 0%, #8b5cf6 48%, #312e81 100%)",
+  },
+  {
+    value: "ocean",
+    label: "Ocean Premium",
+    shortLabel: "OCEAN CARD",
+    swatchGradient: "linear-gradient(135deg, #bfdbfe 0%, #06b6d4 48%, #1e3a8a 100%)",
+  },
+  {
+    value: "sunset",
+    label: "Sunset Premium",
+    shortLabel: "SUNSET CARD",
+    swatchGradient: "linear-gradient(135deg, #fed7aa 0%, #ec4899 48%, #991b1b 100%)",
+  },
+  {
+    value: "cyan",
+    label: "Cyan Premium",
+    shortLabel: "CYAN CARD",
+    swatchGradient: "linear-gradient(135deg, #cffafe 0%, #22d3ee 48%, #115e59 100%)",
+  },
+  {
+    value: "ruby",
+    label: "Ruby Premium",
+    shortLabel: "RUBY CARD",
+    swatchGradient: "linear-gradient(135deg, #fecaca 0%, #dc2626 48%, #1c1917 100%)",
+  },
+  {
+    value: "black",
+    label: "Black Premium",
+    shortLabel: "BLACK CARD",
+    swatchGradient: "linear-gradient(135deg, #e4e4e7 0%, #52525b 48%, #000000 100%)",
+  },
+];
+
+const THEME_CLASSES = PREMIUM_THEMES.map((theme) => `theme-${theme.value}`);
+
+const STORAGE_KEY = "sige-premium-theme";
+const PREMIUM_THEME_CHANGE_EVENT = "sige-premium-theme-change";
+
+function applyPremiumTheme(theme: PremiumTheme) {
+  document.documentElement.classList.remove("theme-premium", ...THEME_CLASSES);
+
+  if (theme !== "blue") {
+    document.documentElement.classList.add("theme-premium", `theme-${theme}`);
+  }
+}
+
+function readPremiumTheme(): PremiumTheme {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return PREMIUM_THEMES.some((theme) => theme.value === saved)
+      ? (saved as PremiumTheme)
+      : "blue";
+  } catch {
+    return "blue";
+  }
+}
+
+export function isPremiumTheme(value: unknown): value is PremiumTheme {
+  return PREMIUM_THEMES.some((theme) => theme.value === value);
+}
+
+export function usePremiumTheme() {
+  const [premiumTheme, setPremiumTheme] = useState<PremiumTheme>(() => {
+    if (typeof window === "undefined") return "blue";
+    return readPremiumTheme();
+  });
+
+  useEffect(() => {
+    const savedTheme = readPremiumTheme();
+    applyPremiumTheme(savedTheme);
+
+    const handleThemeChange = (event: Event) => {
+      const nextTheme = (event as CustomEvent<PremiumTheme>).detail;
+      if (isPremiumTheme(nextTheme)) {
+        setPremiumTheme(nextTheme);
+        applyPremiumTheme(nextTheme);
+      }
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) {
+        const nextTheme = isPremiumTheme(event.newValue) ? event.newValue : "blue";
+        setPremiumTheme(nextTheme);
+        applyPremiumTheme(nextTheme);
+      }
+    };
+
+    window.addEventListener(PREMIUM_THEME_CHANGE_EVENT, handleThemeChange);
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      window.removeEventListener(PREMIUM_THEME_CHANGE_EVENT, handleThemeChange);
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  const setTheme = useCallback((nextTheme: PremiumTheme) => {
+    setPremiumTheme(nextTheme);
+    applyPremiumTheme(nextTheme);
+
+    try {
+      localStorage.setItem(STORAGE_KEY, nextTheme);
+    } catch {
+      // Keep the current document in sync even when storage is unavailable.
+    }
+
+    window.dispatchEvent(
+      new CustomEvent(PREMIUM_THEME_CHANGE_EVENT, { detail: nextTheme })
+    );
+  }, []);
+
+  const toggleTheme = useCallback(() => {
+    const currentIndex = PREMIUM_THEMES.findIndex((theme) => theme.value === premiumTheme);
+    const nextTheme = PREMIUM_THEMES[(currentIndex + 1) % PREMIUM_THEMES.length]?.value || "blue";
+    setTheme(nextTheme);
+  }, [premiumTheme, setTheme]);
+
+  return { premiumTheme, setTheme, toggleTheme, themes: PREMIUM_THEMES };
+}

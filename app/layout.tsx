@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { RegisterSW } from "@/components/pwa/register-sw";
@@ -50,8 +51,34 @@ export default async function RootLayout({
 
   return (
     <html lang="es" suppressHydrationWarning>
-
       <body className={inter.className}>
+        <Script id="sige-premium-theme-init" strategy="beforeInteractive">
+          {`
+            try {
+              var premiumTheme = localStorage.getItem('sige-premium-theme') || 'blue';
+              var allowedThemes = ['blue', 'black', 'gold', 'rose', 'emerald', 'purple', 'ocean', 'sunset', 'cyan', 'ruby'];
+              document.documentElement.classList.remove(
+                'theme-premium',
+                'theme-blue',
+                'theme-black',
+                'theme-gold',
+                'theme-rose',
+                'theme-emerald',
+                'theme-purple',
+                'theme-ocean',
+                'theme-sunset',
+                'theme-cyan',
+                'theme-ruby'
+              );
+              if (allowedThemes.indexOf(premiumTheme) === -1) {
+                premiumTheme = 'blue';
+              }
+              if (premiumTheme !== 'blue') {
+                document.documentElement.classList.add('theme-premium', 'theme-' + premiumTheme);
+              }
+            } catch (e) {}
+          `}
+        </Script>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

@@ -37,9 +37,9 @@ export function RefreshButton({ onRefresh, refreshAction }: RefreshButtonProps) 
       size="sm"
       onClick={handleRefresh}
       disabled={isRefreshing}
-      className="gap-2 rounded-full h-10 px-4 shrink-0"
+      className="refresh-button gap-2 rounded-full h-10 px-4 shrink-0"
     >
-      <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
+      <RefreshCw className={`refresh-button-icon w-4 h-4 ${isRefreshing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
       <span className="hidden sm:inline font-medium">Actualizar</span>
     </Button>
   );

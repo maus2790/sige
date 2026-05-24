@@ -129,7 +129,7 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
     <div 
       ref={containerRef} 
       className={cn(
-        "relative w-full h-[300px] rounded-[32px] overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl dark:shadow-[0_0_30px_rgba(37,99,235,0.15)] transition-all duration-500", 
+        "store-map relative w-full h-[300px] rounded-[32px] overflow-hidden border border-white/20 dark:border-white/10 shadow-2xl dark:shadow-[0_0_30px_rgba(37,99,235,0.15)] transition-all duration-500", 
         className
       )}
     >
@@ -147,31 +147,31 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
             onClick={() => {
               mapRef.current?.zoomIn();
             }}
-            className="w-8 h-8 bg-white dark:bg-zinc-800 rounded-t-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            className="store-map-control w-8 h-8 bg-white dark:bg-zinc-800 rounded-t-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             title="Aumentar zoom"
           >
-            <ZoomIn className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+            <ZoomIn className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>
           <button
             type="button"
             onClick={() => {
               mapRef.current?.zoomOut();
             }}
-            className="w-8 h-8 bg-white dark:bg-zinc-800 border-x border-b border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            className="store-map-control w-8 h-8 bg-white dark:bg-zinc-800 border-x border-b border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             title="Disminuir zoom"
           >
-            <ZoomOut className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+            <ZoomOut className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
           </button>
           <button
             type="button"
             onClick={() => {
               mapRef.current?.easeTo({ bearing: 0, pitch: 0, duration: 1000 });
             }}
-            className="w-8 h-8 mt-1 bg-white dark:bg-zinc-800 rounded-b-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors group"
+            className="store-map-control w-8 h-8 mt-1 bg-white dark:bg-zinc-800 rounded-b-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors group"
             title="Restablecer orientación"
           >
             <Compass 
-              className="w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform duration-300" 
+              className="store-map-control-icon w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform duration-300" 
               style={{ transform: `rotate(${-(viewState.bearing || 0)}deg)` }}
             />
           </button>
@@ -184,12 +184,12 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
             type="button"
             onClick={handleLocate}
             disabled={isLocating}
-            className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-60"
+            className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-60"
             title="Mi ubicación"
           >
             {isLocating
-              ? <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-              : <LocateFixed className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              ? <Loader2 className="store-map-spinner w-4 h-4 text-blue-600 animate-spin" />
+              : <LocateFixed className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
             }
           </button>
 
@@ -197,22 +197,22 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
           <button
             type="button"
             onClick={handleFocusStore}
-            className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             title="Ver tienda"
           >
-            <Store className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <Store className="store-map-control-icon w-4 h-4 text-blue-600 dark:text-blue-400" />
           </button>
 
           {/* Theme toggle button */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             title={theme === "light" ? "Modo oscuro del mapa" : "Modo claro del mapa"}
           >
             {theme === "light" 
-              ? <Moon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-              : <Sun className="w-4 h-4 text-yellow-500" />
+              ? <Moon className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
+              : <Sun className="store-map-control-icon w-4 h-4 text-yellow-500" />
             }
           </button>
 
@@ -221,10 +221,10 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors outline-none"
+                className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors outline-none"
                 title="Cambiar capa del mapa"
               >
-                <Layers className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                <Layers className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" side="left" className="rounded-2xl shadow-premium border-white/20 dark:border-white/10 p-1.5 min-w-[140px] z-100 backdrop-blur-xl bg-white/90 dark:bg-zinc-900/90">
@@ -232,25 +232,25 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
               <DropdownMenuSeparator />
               <DropdownMenuItem 
                 onClick={() => setManualStyle('positron')}
-                className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'positron' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'positron' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
               >
                 <div className="w-2 h-2 rounded-full bg-slate-200" /> Positron (Claro)
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setManualStyle('dark')}
-                className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'dark' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'dark' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
               >
                 <div className="w-2 h-2 rounded-full bg-slate-900" /> Oscuro
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setManualStyle('liberty')}
-                className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'liberty' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'liberty' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
               >
                 <div className="w-2 h-2 rounded-full bg-emerald-400" /> Liberty (Color)
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setManualStyle('bright')}
-                className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'bright' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'bright' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
               >
                 <div className="w-2 h-2 rounded-full bg-yellow-400" /> Brillante
               </DropdownMenuItem>
@@ -261,12 +261,12 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
           <button
             type="button"
             onClick={handleFullscreen}
-            className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+            className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
           >
             {isFullscreen
-              ? <Minimize className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-              : <Maximize className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              ? <Minimize className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
+              : <Maximize className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
             }
           </button>
         </div>
@@ -276,8 +276,8 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
           <>
             <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
               <div className="relative">
-                <div className="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg z-10" />
-                <div className="w-4 h-4 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-75" />
+                <div className="store-map-user-marker w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg z-10" />
+                <div className="store-map-user-ping w-4 h-4 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-75" />
               </div>
             </Marker>
             {showUserPopup && (
@@ -290,7 +290,7 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
                 offset={10}
                 className="z-50"
               >
-                <div className="px-2 py-0.5 font-black text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                <div className="store-map-user-popup px-2 py-0.5 font-black text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400">
                   Yo
                 </div>
               </Popup>
@@ -311,26 +311,26 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
             <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-8 h-3 bg-black/20 rounded-[100%] blur-[2px] group-hover:scale-150 transition-transform" />
             
             {/* Outer Glow / Aura */}
-            <div className="absolute -inset-4 bg-blue-500/20 rounded-full blur-xl animate-pulse-slow opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="store-map-marker-aura absolute -inset-4 bg-blue-500/20 rounded-full blur-xl animate-pulse-slow opacity-0 group-hover:opacity-100 transition-opacity" />
             
             {/* The Pin/Beacon */}
             <div className="relative mb-1 transition-transform duration-500 group-hover:-translate-y-2">
               {/* Main Badge */}
-              <div className="w-12 h-12 rounded-2xl bg-white dark:bg-zinc-900 border-4 border-blue-600 dark:border-blue-500 shadow-2xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
+              <div className="store-map-marker-pin w-12 h-12 rounded-2xl bg-white dark:bg-zinc-900 border-4 border-blue-600 dark:border-blue-500 shadow-2xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
                 <div className="-rotate-45 w-full h-full flex items-center justify-center">
                   {logoUrl ? (
                     <img src={logoUrl} className="w-full h-full object-cover" alt="" />
                   ) : (
-                    <Store className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    <Store className="store-map-marker-icon w-6 h-6 text-blue-600 dark:text-blue-400" />
                   )}
                 </div>
               </div>
               
               {/* Pin Point */}
-              <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-600 dark:bg-blue-500 rotate-45 z-0" />
+              <div className="store-map-marker-point absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-600 dark:bg-blue-500 rotate-45 z-0" />
               
               {/* Inner Pulse */}
-              <div className="absolute inset-0 rounded-2xl bg-blue-400 animate-ping opacity-20 z-0" />
+              <div className="store-map-marker-pulse absolute inset-0 rounded-2xl bg-blue-400 animate-ping opacity-20 z-0" />
             </div>
             
             {/* Store Label (Optional, shown on hover) */}
@@ -352,13 +352,13 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
             className="rounded-xl overflow-hidden"
             maxWidth="300px"
           >
-            <div className="p-2 flex flex-col gap-2 min-w-[200px]">
+            <div className="store-map-popup p-2 flex flex-col gap-2 min-w-[200px]">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0 border shadow-sm">
                   {logoUrl ? (
                     <img src={logoUrl} className="w-full h-full object-cover" alt={storeName} />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-[10px]">
+                    <div className="store-map-popup-default-logo w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-[10px]">
                       {storeName.substring(0, 2).toUpperCase()}
                     </div>
                   )}
@@ -373,7 +373,7 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
 
               <Button
                 onClick={handleDirections}
-                className="w-full h-8 mt-1 text-[10px] uppercase font-bold tracking-wider rounded-lg gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
+                className="store-map-popup-button w-full h-8 mt-1 text-[10px] uppercase font-bold tracking-wider rounded-lg gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20"
                 size="sm"
               >
                 <Navigation className="w-3 h-3" />

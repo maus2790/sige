@@ -5,7 +5,7 @@ import { stores } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { getCurrentUser } from "./auth";
 import { uploadImageFromBuffer, deleteImage } from "@/lib/cloudflare";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 
 export async function updateStore(storeId: string, data: {
   name?: string;
@@ -34,6 +34,8 @@ export async function updateStore(storeId: string, data: {
       .where(eq(stores.id, storeId))
       .run();
 
+    revalidateTag(`store-feed-${storeId}`, "max");
+    revalidateTag("all-store-feeds", "max");
     revalidatePath(`/tienda/${storeId}`);
     return { success: true };
   } catch (error) {
@@ -76,6 +78,8 @@ export async function updateStoreLogo(storeId: string, base64Image: string) {
       .where(eq(stores.id, storeId))
       .run();
 
+    revalidateTag(`store-feed-${storeId}`, "max");
+    revalidateTag("all-store-feeds", "max");
     revalidatePath(`/tienda/${storeId}`);
     return { success: true, url: uploadResult.url };
   } catch (error) {
@@ -114,6 +118,8 @@ export async function updateStoreBanner(storeId: string, base64Image: string) {
       .where(eq(stores.id, storeId))
       .run();
 
+    revalidateTag(`store-feed-${storeId}`, "max");
+    revalidateTag("all-store-feeds", "max");
     revalidatePath(`/tienda/${storeId}`);
     return { success: true, url: uploadResult.url };
   } catch (error) {

@@ -136,7 +136,10 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative flex flex-col overflow-hidden transition-all duration-500 shadow-xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_0_20px_rgba(37,99,235,0.15)] dark:hover:shadow-[0_0_40px_rgba(37,99,235,0.3)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-3xl bg-card/50 backdrop-blur-md ${isClicked ? "ring-4 ring-blue-500/50 ring-offset-4 dark:ring-offset-zinc-950" : ""}`}
+      className={cn(
+        "product-card-premium group relative flex flex-col overflow-hidden transition-all duration-500 shadow-xl hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_0_20px_rgba(37,99,235,0.15)] dark:hover:shadow-[0_0_40px_rgba(37,99,235,0.3)] cursor-pointer h-full border border-white/20 dark:border-white/10 rounded-3xl bg-card/50 backdrop-blur-md",
+        isClicked && "ring-4 ring-blue-500/50 ring-offset-4 dark:ring-offset-zinc-950"
+      )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => {
         setIsHovered(false);
@@ -158,7 +161,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
               {product.comercialConfig.ofertaPorcentaje || 0}% OFF
             </div>
           ) : (product.createdAt && new Date().getTime() - new Date(product.createdAt).getTime() < 7 * 24 * 60 * 60 * 1000) ? (
-            <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black py-1.5 w-[150%] text-center rotate-45 translate-x-[30%] translate-y-[20%] shadow-md uppercase tracking-tighter">
+            <div className="product-card-new-ribbon absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-black py-1.5 w-[150%] text-center rotate-45 translate-x-[30%] translate-y-[20%] shadow-md uppercase tracking-tighter">
               Nuevo
             </div>
           ) : null}
@@ -252,8 +255,8 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
               className={cn(
                 "absolute bottom-2 right-2 w-9 h-9 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center transition-all z-30 border",
                 isInCart
-                  ? "bg-blue-600 text-white border-blue-500 shadow-blue-500/20 scale-110"
-                  : "bg-white/90 dark:bg-zinc-900/90 text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 border-white/20"
+                  ? "product-card-cart-active bg-blue-600 text-white border-blue-500 shadow-blue-500/20 scale-110"
+                  : "product-card-icon-button bg-white/90 dark:bg-zinc-900/90 text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 border-white/20"
               )}
             >
               <ShoppingCart className={cn("w-4 h-4", isInCart && "fill-current")} />
@@ -269,7 +272,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                 e.stopPropagation();
                 router.push(`/mapa?q=${encodeURIComponent(product.name)}&r=0`);
               }}
-              className="absolute bottom-2 left-2 w-9 h-9 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center transition-all z-30 border bg-white/90 dark:bg-zinc-900/90 text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 border-white/20"
+              className="product-card-icon-button absolute bottom-2 left-2 w-9 h-9 backdrop-blur-md rounded-full shadow-lg flex items-center justify-center transition-all z-30 border bg-white/90 dark:bg-zinc-900/90 text-blue-600 dark:text-blue-400 opacity-90 hover:opacity-100 hover:scale-110 active:scale-95 border-white/20"
               title="Ver en el mapa"
             >
               <MapPin className="w-4 h-4" />
@@ -277,8 +280,8 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
           )}
         </div>
 
-        <CardContent className="p-2 pb-1.5">
-          <h3 className="font-bold text-sm line-clamp-1 mb-1.5 leading-tight">
+        <CardContent className="product-card-body p-2 pb-1.5">
+          <h3 className="product-card-title font-bold text-sm line-clamp-1 mb-1.5 leading-tight">
             {product.name}
           </h3>
           <div className="flex flex-col">
@@ -300,7 +303,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
         </CardContent>
 
         <div
-          className={`absolute ${canManage ? 'bottom-[48px]' : 'bottom-0'} left-0 right-0 px-3 py-2 bg-linear-to-t from-black/95 via-black/70 to-transparent dark:from-primary/40 dark:via-background/95 dark:to-transparent dark:backdrop-blur-[1px] transition-all duration-300 flex flex-col gap-1 z-40 ${isHovered || isClicked ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
+          className={`product-card-action-panel absolute ${canManage ? 'bottom-[48px]' : 'bottom-0'} left-0 right-0 px-3 py-2 bg-linear-to-t from-black/95 via-black/70 to-transparent dark:from-primary/40 dark:via-background/95 dark:to-transparent dark:backdrop-blur-[1px] transition-all duration-300 flex flex-col gap-1 z-40 ${isHovered || isClicked ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
             }`}
         >
           <div className="flex flex-col gap-1 w-full animate-in slide-in-from-bottom-4 duration-500">
@@ -308,7 +311,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
               /* Modo dueño de tienda o SuperAdmin */
               <>
                   <Button
-                    className="w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-blue-50/80 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50 dark:hover:bg-blue-900/50 shadow-sm backdrop-blur-sm cursor-pointer"
+                    className="product-card-detail-button w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-blue-50/80 text-blue-700 border-blue-200 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800/50 dark:hover:bg-blue-900/50 shadow-sm backdrop-blur-sm cursor-pointer"
                     variant="outline"
                     onClick={(e) => {
                       e.stopPropagation();
@@ -331,7 +334,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                   </Button>
                 ) : (
                   <Button
-                    className="w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-yellow-50/80 text-yellow-700 border-yellow-200 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800/50 shadow-sm backdrop-blur-sm cursor-pointer"
+                    className="product-card-draft-button w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-yellow-50/80 text-yellow-700 border-yellow-200 hover:bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-800/50 shadow-sm backdrop-blur-sm cursor-pointer"
                     variant="outline"
                     onClick={handleUnpublish}
                     disabled={isPending}
@@ -373,7 +376,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                   className="w-full"
                 >
                   <Button
-                    className="w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-whatsapp-gradient text-white hover:brightness-110 shadow-md shadow-emerald-500/20 cursor-pointer border-none"
+                    className="product-card-whatsapp-button w-full h-7 rounded-lg font-black text-[9px] uppercase tracking-wider bg-whatsapp-gradient text-white hover:brightness-110 shadow-md shadow-emerald-500/20 cursor-pointer border-none"
                   >
                     <WhatsAppIcon className="w-3 h-3 mr-1" />
                     Comprar por WhatsApp
@@ -386,10 +389,10 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
 
         {/* Footer solo para el dueño o SuperAdmin */}
         {canManage && (
-          <div className="border-t mt-auto relative z-50 h-[48px] flex-none overflow-hidden bg-muted/30 backdrop-blur-md">
+          <div className="product-card-owner-footer border-t mt-auto relative z-50 h-[48px] flex-none overflow-hidden bg-muted/30 backdrop-blur-md">
             <div className="flex w-full h-full divide-x divide-border/50">
               <button
-                className="flex-1 flex items-center justify-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all group cursor-pointer"
+                className="product-card-owner-action product-card-owner-edit flex-1 flex items-center justify-center gap-2 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all group cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
                   window.dispatchEvent(new CustomEvent('open-publish-modal', { detail: product }));
@@ -401,7 +404,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
               
               <button
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-2 text-muted-foreground hover:text-red-600 hover:bg-red-500/5 transition-all group cursor-pointer",
+                  "product-card-owner-action product-card-owner-delete flex-1 flex items-center justify-center gap-2 text-muted-foreground hover:text-red-600 hover:bg-red-500/5 transition-all group cursor-pointer",
                   isPending && "opacity-50 pointer-events-none"
                 )}
                 onClick={handleDelete}
