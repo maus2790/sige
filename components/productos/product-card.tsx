@@ -399,7 +399,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                 }}
               >
                 <Pencil className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] font-black uppercase tracking-wider">Editar</span>
+                <span className="text-[9px] md:text-[10px] font-black normal-case tracking-normal md:uppercase md:tracking-wider">Editar</span>
               </button>
               
               <button
@@ -415,7 +415,7 @@ export function ProductCard({ product, isStoreOwner = false }: ProductCardProps)
                 ) : (
                   <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
                 )}
-                <span className="text-[10px] font-black uppercase tracking-wider">Eliminar</span>
+                <span className="text-[9px] md:text-[10px] font-black normal-case tracking-normal md:uppercase md:tracking-wider">Eliminar</span>
               </button>
             </div>
           </div>

@@ -26,7 +26,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { StoreMap } from "@/components/tienda/store-map";
 import { getCurrentUser } from "@/app/actions/auth";
-import { isPremiumTheme, PremiumTheme, usePremiumTheme } from "@/hooks/use-premium-theme";
+import { getPremiumThemeColor, isPremiumTheme, PremiumTheme, usePremiumTheme } from "@/hooks/use-premium-theme";
 
 interface StoreData {
   id: string;
@@ -94,6 +94,29 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
   const storeThemeClass = effectiveStoreTheme === "blue" ? "" : `theme-premium theme-${effectiveStoreTheme}`;
 
   useEffect(() => {
+    const themeClasses = [
+      "theme-premium",
+      "theme-gold",
+      "theme-black",
+      "theme-rose",
+      "theme-emerald",
+      "theme-purple",
+      "theme-ocean",
+      "theme-sunset",
+      "theme-cyan",
+      "theme-ruby",
+    ];
+
+    document.body.classList.remove(...themeClasses);
+    if (effectiveStoreTheme !== "blue") {
+      document.body.classList.add("theme-premium", `theme-${effectiveStoreTheme}`);
+    }
+    const themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const previousThemeColor = themeColorMeta?.content;
+    if (themeColorMeta) {
+      themeColorMeta.content = getPremiumThemeColor(effectiveStoreTheme);
+    }
+
     window.dispatchEvent(
       new CustomEvent("sige-store-theme-change", {
         detail: { theme: effectiveStoreTheme, active: true },
@@ -101,6 +124,10 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
     );
 
     return () => {
+      document.body.classList.remove(...themeClasses);
+      if (themeColorMeta && previousThemeColor) {
+        themeColorMeta.content = previousThemeColor;
+      }
       window.dispatchEvent(
         new CustomEvent("sige-store-theme-change", {
           detail: { theme: "blue", active: false },

@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import MapGL, { Marker, NavigationControl, Popup, MapRef } from "react-map-gl/maplibre";
+import MapGL, { Marker, Popup, MapRef, Source, Layer } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getNearbyStores, searchProductsGeo } from "@/app/actions/map";
 import { useDebounce } from "use-debounce";
 import { formatDistance } from "@/lib/haversine";
-import { Search, MapPin, Navigation, LocateFixed, ArrowLeft, Loader2, Store, Sun, Moon, Maximize, Minimize, Layers, Package, ZoomIn, ZoomOut, Compass } from "lucide-react";
+import { Search, Navigation, LocateFixed, ArrowLeft, Loader2, Store, Sun, Moon, Maximize, Minimize, Layers, Package, ZoomIn, ZoomOut, Compass, PersonStanding, Footprints } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,51 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const DEFAULT_CENTER = { lat: -16.5, lng: -68.15 };
+const RADIUS_OPTIONS = [2, 5, 10, 25, 50, 0];
+
+function buildRadiusCircle(center: { lat: number; lng: number }, radiusKm: number, points = 96) {
+  const coords: [number, number][] = [];
+  const earthRadiusKm = 6371;
+  const lat = center.lat * Math.PI / 180;
+  const lng = center.lng * Math.PI / 180;
+  const angularDistance = radiusKm / earthRadiusKm;
+
+  for (let i = 0; i <= points; i++) {
+    const bearing = (i / points) * Math.PI * 2;
+    const pointLat = Math.asin(
+      Math.sin(lat) * Math.cos(angularDistance) +
+      Math.cos(lat) * Math.sin(angularDistance) * Math.cos(bearing)
+    );
+    const pointLng = lng + Math.atan2(
+      Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(lat),
+      Math.cos(angularDistance) - Math.sin(lat) * Math.sin(pointLat)
+    );
+    coords.push([pointLng * 180 / Math.PI, pointLat * 180 / Math.PI]);
+  }
+
+  return {
+    type: "FeatureCollection" as const,
+    features: [
+      {
+        type: "Feature" as const,
+        properties: {},
+        geometry: {
+          type: "Polygon" as const,
+          coordinates: [coords],
+        },
+      },
+    ],
+  };
+}
+
+function getRadiusBounds(center: { lat: number; lng: number }, radiusKm: number): [[number, number], [number, number]] {
+  const latDelta = radiusKm / 111.32;
+  const lngDelta = radiusKm / (111.32 * Math.cos(center.lat * Math.PI / 180));
+  return [
+    [center.lng - lngDelta, center.lat - latDelta],
+    [center.lng + lngDelta, center.lat + latDelta],
+  ];
+}
 
 export function MapExplorer() {
   const router = useRouter();
@@ -32,6 +77,7 @@ export function MapExplorer() {
   const mapContainerRef = React.useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = React.useState(false);
   const mapRef = React.useRef<MapRef>(null);
+  const liveWatchIdRef = React.useRef<number | null>(null);
 
   React.useEffect(() => {
     const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -49,8 +95,11 @@ export function MapExplorer() {
     }
   }, []);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showUserPopup, setShowUserPopup] = useState(false);
+  const [isLiveTracking, setIsLiveTracking] = useState(false);
   const searchParams = useSearchParams();
-  const [radius, setRadius] = useState<number>(parseInt(searchParams.get("r") || "50")); 
+  const initialRadius = parseInt(searchParams.get("r") || "2");
+  const [radius, setRadius] = useState<number>(RADIUS_OPTIONS.includes(initialRadius) ? initialRadius : 2); 
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [debouncedSearch] = useDebounce(searchQuery, 800);
   
@@ -83,6 +132,7 @@ export function MapExplorer() {
         const lat = position.coords.latitude;
         const lng = position.coords.longitude;
         setUserLocation({ lat, lng });
+        setShowUserPopup(true);
         setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng, zoom: 16 }));
         if (manual) toast.success("Ubicación actualizada.");
         setIsLocating(false);
@@ -108,6 +158,88 @@ export function MapExplorer() {
   useEffect(() => {
     fetchUserLocation();
   }, [fetchUserLocation]);
+
+  const stopLiveTracking = useCallback((notify = true) => {
+    if (liveWatchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(liveWatchIdRef.current);
+      liveWatchIdRef.current = null;
+    }
+    setIsLiveTracking(false);
+    if (notify) toast.info("UbicaciÃ³n en tiempo real desactivada.");
+  }, []);
+
+  const fitToRadius = useCallback((duration = 900) => {
+    if (!mapRef.current || !userLocation) return;
+    if (radius === 0) {
+      handleFocusAll();
+      return;
+    }
+
+    mapRef.current.fitBounds(getRadiusBounds(userLocation, radius), {
+      padding: { top: 92, right: 64, bottom: 112, left: 92 },
+      duration,
+    });
+  }, [radius, userLocation]);
+
+  const startLiveTracking = useCallback(async () => {
+    if (!navigator.geolocation) {
+      toast.error("Tu navegador no soporta geolocalizaciÃ³n en tiempo real.");
+      return;
+    }
+
+    const el = mapContainerRef.current;
+    if (el && !document.fullscreenElement) {
+      try {
+        await el.requestFullscreen();
+      } catch {
+        toast.warning("No se pudo activar pantalla completa, pero intentaremos seguir tu ubicaciÃ³n.");
+      }
+    }
+
+    toast.info("UbicaciÃ³n en tiempo real activada.");
+    setIsLiveTracking(true);
+    setShowUserPopup(true);
+
+    liveWatchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const loc = { lat: position.coords.latitude, lng: position.coords.longitude };
+        setUserLocation(loc);
+        setViewState((prev) => ({ ...prev, latitude: loc.lat, longitude: loc.lng }));
+      },
+      (error) => {
+        console.warn("Live location error:", error);
+        toast.error("Se detuvo la ubicaciÃ³n en tiempo real. Revisa permisos o seÃ±al GPS.");
+        stopLiveTracking(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
+    );
+  }, [stopLiveTracking]);
+
+  const toggleLiveTracking = useCallback(() => {
+    if (isLiveTracking) {
+      stopLiveTracking();
+    } else {
+      startLiveTracking();
+    }
+  }, [isLiveTracking, startLiveTracking, stopLiveTracking]);
+
+  useEffect(() => {
+    if (!isFullscreen && isLiveTracking) {
+      stopLiveTracking();
+    }
+  }, [isFullscreen, isLiveTracking, stopLiveTracking]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && isLiveTracking) {
+        stopLiveTracking();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isLiveTracking, stopLiveTracking]);
+
+  useEffect(() => () => stopLiveTracking(false), [stopLiveTracking]);
 
   // Fetch data
   useEffect(() => {
@@ -213,6 +345,20 @@ export function MapExplorer() {
       duration: 1000
     });
   }, [stores, productsByStore, isProductSearch, userLocation]);
+
+  useEffect(() => {
+    if (!userLocation) return;
+    if (radius === 0) {
+      handleFocusAll();
+      return;
+    }
+    fitToRadius(800);
+  }, [radius, userLocation, stores.length, products.length, fitToRadius, handleFocusAll]);
+
+  const radiusCircleGeoJson = useMemo(() => {
+    if (!userLocation || radius === 0) return null;
+    return buildRadiusCircle(userLocation, radius);
+  }, [userLocation, radius]);
 
   const renderMarkers = () => {
     if (isProductSearch) {
@@ -323,23 +469,6 @@ export function MapExplorer() {
             )}
           </div>
           
-          <div className="flex gap-1 md:gap-2 items-center overflow-x-auto no-scrollbar">
-            <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase shrink-0">Radio:</span>
-            {[5, 10, 25, 50, 0].map(r => (
-              <Button
-                key={r}
-                variant={radius === r ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "map-radius-button h-6 md:h-7 text-[9px] md:text-[10px] uppercase font-black rounded-full px-2 md:px-3 shrink-0",
-                  radius === r && "map-radius-button-active bg-blue-600"
-                )}
-                onClick={() => setRadius(r)}
-              >
-                {r === 0 ? "Todo" : `${r}km`}
-              </Button>
-            ))}
-          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -463,6 +592,29 @@ export function MapExplorer() {
           pitchWithRotate={true}
           attributionControl={false}
         >
+          {radiusCircleGeoJson && (
+            <Source id="user-radius-circle" type="geojson" data={radiusCircleGeoJson}>
+              <Layer
+                id="user-radius-circle-fill"
+                type="fill"
+                paint={{
+                  "fill-color": "#2563eb",
+                  "fill-opacity": 0.08,
+                }}
+              />
+              <Layer
+                id="user-radius-circle-line"
+                type="line"
+                paint={{
+                  "line-color": "#2563eb",
+                  "line-opacity": 0.45,
+                  "line-width": 2,
+                  "line-dasharray": [2, 2],
+                }}
+              />
+            </Source>
+          )}
+
           {/* Custom Navigation Controls (Top Left) */}
           <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
             <button
@@ -513,6 +665,21 @@ export function MapExplorer() {
               {isLocating
                 ? <Loader2 className="map-search-spinner w-4 h-4 text-blue-600 animate-spin" />
                 : <LocateFixed className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              }
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleLiveTracking}
+              className={cn(
+                "w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors",
+                isLiveTracking && "map-radius-button-active text-white"
+              )}
+              title={isLiveTracking ? "Detener ubicaciÃ³n en tiempo real" : "UbicaciÃ³n en tiempo real"}
+            >
+              {isLiveTracking
+                ? <Footprints className="w-4 h-4" />
+                : <PersonStanding className="w-4 h-4 text-gray-700 dark:text-gray-300" />
               }
             </button>
 
@@ -586,12 +753,37 @@ export function MapExplorer() {
           
           {/* User Location Marker */}
           {userLocation && (
+            <>
             <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
-              <div className="relative">
-                <div className="map-user-marker w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg relative z-10"></div>
-                <div className="map-user-marker-ping w-4 h-4 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-75"></div>
+              <div
+                className="relative flex items-center justify-center cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowUserPopup(true);
+                }}
+              >
+                <div className="map-user-marker w-9 h-9 rounded-full border-2 border-white shadow-lg relative z-10 flex items-center justify-center">
+                  {isLiveTracking ? <Footprints className="w-5 h-5 text-white" /> : <PersonStanding className="w-5 h-5 text-white" />}
+                </div>
+                <div className="map-user-marker-ping w-9 h-9 rounded-full absolute top-0 left-0 animate-ping opacity-45"></div>
               </div>
             </Marker>
+            {showUserPopup && (
+              <Popup
+                longitude={userLocation.lng}
+                latitude={userLocation.lat}
+                anchor="bottom"
+                onClose={() => setShowUserPopup(false)}
+                closeButton={false}
+                offset={18}
+                className="z-50"
+              >
+                <div className="map-user-popup px-2 py-0.5 font-black text-[10px] uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                  Yo
+                </div>
+              </Popup>
+            )}
+            </>
           )}
 
           {renderMarkers()}
@@ -688,6 +880,23 @@ export function MapExplorer() {
               </div>
             </Popup>
           )}
+
+          <div className="absolute left-1/2 bottom-4 z-10 flex -translate-x-1/2 items-center gap-1 rounded-full border border-white/30 bg-white/90 px-2 py-1 shadow-2xl backdrop-blur-xl dark:border-white/10 dark:bg-zinc-950/90">
+            {RADIUS_OPTIONS.map(r => (
+              <Button
+                key={r}
+                variant={radius === r ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "map-radius-button h-8 text-[10px] uppercase font-black rounded-full px-3 shrink-0",
+                  radius === r && "map-radius-button-active bg-blue-600"
+                )}
+                onClick={() => setRadius(r)}
+              >
+                {r === 0 ? "Todo" : `${r}km`}
+              </Button>
+            ))}
+          </div>
         </MapGL>
       </div>
     </div>

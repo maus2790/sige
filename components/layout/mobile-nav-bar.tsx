@@ -9,7 +9,7 @@ import { CategorySheet } from "@/components/productos/category-sheet";
 import { QuickPublishModal } from "@/components/productos/quick-publish-modal";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/hooks/use-cart";
-import { isPremiumTheme, PremiumTheme } from "@/hooks/use-premium-theme";
+import { isPremiumTheme, PremiumTheme, usePremiumTheme } from "@/hooks/use-premium-theme";
 import { cn } from "@/lib/utils";
 
 interface Category {
@@ -29,6 +29,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const router = useRouter();
   const cart = useCart();
   const { data: session } = useSession();
+  const { premiumTheme } = usePremiumTheme();
   
   const [isCategoryOpen, setIsCategoryOpen] = React.useState(false);
   const [isPublishOpen, setIsPublishOpen] = React.useState(false);
@@ -36,6 +37,8 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
   const [storeTheme, setStoreTheme] = React.useState<PremiumTheme>("blue");
   const isStorePage = pathname.startsWith("/tienda/");
   const storeThemeClass = isStorePage && storeTheme !== "blue" ? `theme-premium theme-${storeTheme}` : "";
+  const globalThemeClass = premiumTheme !== "blue" ? `theme-premium theme-${premiumTheme}` : "";
+  const activeNavThemeClass = storeThemeClass || globalThemeClass;
 
   React.useEffect(() => {
     setMounted(true);
@@ -99,7 +102,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
 
   return (
     <>
-      <nav className={cn("mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]", storeThemeClass)}>
+      <nav className={cn("mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]", activeNavThemeClass)}>
         <div className="flex justify-around items-center h-16 px-2 pb-[env(safe-area-inset-bottom,0px)]">
           {navItems.map((item, index) => {
             const Icon = item.icon;
@@ -158,7 +161,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
         categories={categories}
         open={isPublishOpen}
         onOpenChange={setIsPublishOpen}
-        themeClassName={storeThemeClass}
+        themeClassName={activeNavThemeClass}
       />
     </>
   );

@@ -11,9 +11,10 @@ interface ProductGalleryProps {
   productName: string;
   imageUrlsThumb?: string[];
   imageUrlsOg?: string[];
+  mobileStickyActions?: React.ReactNode;
 }
 
-export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUrlsOg }: ProductGalleryProps) {
+export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUrlsOg, mobileStickyActions }: ProductGalleryProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [showZoom, setShowZoom] = useState(false);
   const [zoomPos, setZoomPos] = useState({ x: 0, y: 0 });
@@ -29,6 +30,14 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
 
   const handleNext = () => {
     setActiveIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  const handleThumbnailClick = (idx: number) => {
+    setActiveIndex(idx);
+    if (window.innerWidth < 768) {
+      // Offset by 64px for header, or scroll all the way to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -75,38 +84,48 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
   }
 
   return (
-    <div className="flex flex-col md:flex-row gap-0 md:gap-4">
-      {/* Thumbnails - Izquierda en Desktop, Abajo en Móvil */}
-      {images.length > 1 && (
-        <div className="flex md:flex-col gap-2 md:gap-3 overflow-x-auto md:overflow-y-auto pb-1 md:pb-0 h-[10dvh] md:h-full max-h-[500px] w-full md:w-24 scrollbar-hide no-scrollbar items-center md:items-start shrink-0 order-2 md:order-1 justify-center md:justify-start glass md:bg-transparent md:backdrop-blur-none border-t md:border-0 border-white/20 p-1 md:p-2">
-          {thumbs.map((url, idx) => (
-            <button
-              key={idx}
-              onClick={() => setActiveIndex(idx)}
-              className={cn(
-                "relative w-[18dvw] md:w-16 h-[85%] md:h-16 rounded-xl border-2 bg-card shrink-0 overflow-hidden transition-all duration-200 outline-none",
-                activeIndex === idx 
-                  ? "border-primary shadow-md ring-2 ring-primary/20 scale-105 z-10" 
-                  : "border-transparent hover:border-border"
-              )}
-            >
-              <Image
-                src={thumbs[idx]}
-                alt={`${productName} miniatura ${idx + 1}`}
-                fill
-                sizes="(max-width: 768px) 18vw, 64px"
-                className="object-cover"
-              />
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="max-md:contents md:flex md:flex-col md:gap-4 md:h-auto">
+      {/* Sticky Bar for Mobile (Thumbnails + Actions) */}
+      <div className="order-[-1] md:order-1 sticky top-[64px] z-40 bg-background/95 backdrop-blur-md pb-2 pt-2 md:pt-0 border-b md:border-0 md:static md:bg-transparent md:h-full flex flex-col shrink-0 max-md:-mx-4 max-md:px-4">
+        {/* Thumbnails */}
+        {images.length > 1 && (
+          <div className="flex md:flex-col gap-2 md:gap-3 overflow-x-auto md:overflow-y-auto h-[10dvh] md:h-full max-h-[500px] w-full md:w-24 scrollbar-hide no-scrollbar items-center md:items-start shrink-0 justify-center md:justify-start px-2 md:px-2 md:p-2">
+            {thumbs.map((url, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleThumbnailClick(idx)}
+                className={cn(
+                  "relative w-[18dvw] md:w-16 h-[85%] md:h-16 rounded-xl border-2 bg-card shrink-0 overflow-hidden transition-all duration-200 outline-none",
+                  activeIndex === idx 
+                    ? "border-primary shadow-md ring-2 ring-primary/20 scale-105 z-10" 
+                    : "border-transparent hover:border-border"
+                )}
+              >
+                <Image
+                  src={thumbs[idx]}
+                  alt={`${productName} miniatura ${idx + 1}`}
+                  fill
+                  sizes="(max-width: 768px) 18vw, 64px"
+                  className="object-cover"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+        
+        {/* Mobile Actions */}
+        {mobileStickyActions && (
+          <div className="md:hidden mt-2 px-2">
+            {mobileStickyActions}
+          </div>
+        )}
+      </div>
 
       <div 
         className={cn(
-          "relative bg-card overflow-hidden group cursor-crosshair touch-none transition-all order-1 md:order-2 md:flex-1",
-          "rounded-none md:rounded-2xl border-0 md:border shadow-none md:shadow-sm",
-          "w-full aspect-4/3"
+          "relative bg-card overflow-hidden group cursor-crosshair touch-none transition-all order-[-2] md:order-2 md:flex-1",
+          "rounded-none md:rounded-2xl border-0 md:border shadow-none md:shadow-sm shrink-0",
+          "w-full aspect-4/3 max-md:-mx-4 max-md:w-[calc(100%+2rem)]"
         )}
         ref={containerRef}
         onMouseEnter={() => setShowZoom(true)}

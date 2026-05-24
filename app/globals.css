@@ -1971,6 +1971,11 @@
   box-shadow: 0 22px 58px -34px rgb(var(--premium-shadow-rgb) / .84) !important;
 }
 
+.store-map .maplibregl-ctrl-attrib,
+.store-map .maplibregl-ctrl-logo {
+  display: none !important;
+}
+
 .dark.theme-premium .store-map,
 .dark .theme-premium .store-map {
   box-shadow: 0 0 34px rgb(var(--premium-glow-rgb) / .16) !important;
@@ -2013,8 +2018,14 @@
 .theme-premium .store-map-user-marker,
 .theme-premium .store-map-user-ping,
 .theme-premium .store-map-marker-point,
-.theme-premium .store-map-marker-pulse {
+.theme-premium .store-map-marker-pulse,
+.theme-premium .store-map-live-active {
   background: var(--premium-button-gradient) !important;
+}
+
+.theme-premium .store-map-live-active,
+.theme-premium .map-radius-button-active {
+  color: var(--premium-contrast) !important;
 }
 
 .theme-premium .store-map-marker-aura {
@@ -2042,12 +2053,20 @@
 
 .theme-premium .store-map-popup {
   background: color-mix(in srgb, var(--premium-bg-end) 98%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--premium-accent) 38%, transparent) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, white 58%, transparent),
+    0 16px 42px -28px rgb(var(--premium-shadow-rgb) / .82) !important;
   color: var(--foreground) !important;
 }
 
 .dark.theme-premium .store-map-popup,
 .dark .theme-premium .store-map-popup {
   background: color-mix(in srgb, var(--premium-bg-dark-mid) 98%, transparent) !important;
+  border-color: color-mix(in srgb, var(--premium-accent-soft) 38%, transparent) !important;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--premium-accent-soft) 14%, transparent),
+    0 0 34px rgb(var(--premium-glow-rgb) / .20) !important;
 }
 
 .theme-premium.app-navbar,
@@ -2088,6 +2107,8 @@
 .theme-premium.app-navbar .text-brand-gradient,
 .theme-premium.app-navbar .text-primary,
 .theme-premium.mobile-bottom-nav .text-primary,
+.theme-premium.user-menu-content .text-primary,
+.theme-premium.notification-menu-content .text-primary,
 .theme-premium .user-menu-content .text-primary,
 .theme-premium .notification-menu-content .text-primary,
 .theme-premium .notification-trigger:hover svg {
@@ -2099,6 +2120,8 @@
 .dark .theme-premium.app-navbar .text-brand-gradient,
 .dark .theme-premium.app-navbar .text-primary,
 .dark .theme-premium.mobile-bottom-nav .text-primary,
+.dark .theme-premium.user-menu-content .text-primary,
+.dark .theme-premium.notification-menu-content .text-primary,
 .dark .theme-premium .user-menu-content .text-primary,
 .dark .theme-premium .notification-menu-content .text-primary,
 .dark .theme-premium .notification-trigger:hover svg {
@@ -2107,14 +2130,20 @@
 
 .theme-premium .user-menu-content [data-highlighted],
 .theme-premium .notification-menu-content [data-highlighted],
+.theme-premium.user-menu-content [data-highlighted],
+.theme-premium.notification-menu-content [data-highlighted],
 .theme-premium .notification-item:hover,
+.theme-premium.notification-menu-content .notification-item:hover,
 .theme-premium .notification-subscribe-panel {
   background: color-mix(in srgb, var(--premium-accent-soft) 58%, transparent) !important;
 }
 
 .dark .theme-premium .user-menu-content [data-highlighted],
 .dark .theme-premium .notification-menu-content [data-highlighted],
+.dark .theme-premium.user-menu-content [data-highlighted],
+.dark .theme-premium.notification-menu-content [data-highlighted],
 .dark .theme-premium .notification-item:hover,
+.dark .theme-premium.notification-menu-content .notification-item:hover,
 .dark .theme-premium .notification-subscribe-panel {
   background: color-mix(in srgb, var(--premium-bg-dark-start) 82%, transparent) !important;
 }
@@ -2254,4 +2283,12 @@
 .dark .theme-premium .store-map-popup h3,
 .dark .theme-premium .maplibregl-popup-content h3 {
   color: color-mix(in srgb, var(--foreground) 94%, white) !important;
+}
+
+.theme-premium .maplibregl-popup-content {
+  border: 1px solid color-mix(in srgb, var(--premium-accent) 38%, transparent) !important;
+}
+
+.dark .theme-premium .maplibregl-popup-content {
+  border-color: color-mix(in srgb, var(--premium-accent-soft) 38%, transparent) !important;
 }

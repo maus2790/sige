@@ -448,7 +448,11 @@ export function QuickPublishModal({ categories, open, onOpenChange, productToEdi
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className={cn("quick-publish-dialog p-0 overflow-hidden border-none rounded-t-[2.5rem] h-auto max-h-[90vh]", themeClassName)}>
+      <SheetContent 
+        side="bottom" 
+        className={cn("quick-publish-dialog p-0 overflow-hidden border-none rounded-t-[2.5rem] h-auto max-h-[90vh]", themeClassName)}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <SheetTitle className="sr-only">Publicación Rápida</SheetTitle>
         <SheetDescription className="sr-only">Completa los datos para vender tu producto.</SheetDescription>
         {formContentNode}

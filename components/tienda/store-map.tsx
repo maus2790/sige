@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
-import Map, { Marker, NavigationControl, Popup, MapRef } from "react-map-gl/maplibre";
+import Map, { Marker, Popup, MapRef } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MapPin, Navigation, LocateFixed, Loader2, Maximize, Minimize, Store, Sun, Moon, Layers, ZoomIn, ZoomOut, Compass } from "lucide-react";
+import { Navigation, LocateFixed, Loader2, Maximize, Minimize, Store, Sun, Moon, Layers, ZoomIn, ZoomOut, Compass, PersonStanding, Footprints } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useMapStyle, MapStyleKey } from "@/hooks/use-map-style";
+import { useMapStyle } from "@/hooks/use-map-style";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,10 +33,26 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showUserPopup, setShowUserPopup] = useState(false);
+  const [isLiveTracking, setIsLiveTracking] = useState(false);
   const [viewState, setViewState] = useState({ longitude, latitude, zoom: 15, bearing: 0, pitch: 0 });
   const { mapStyle, styleKey, theme, toggleTheme, setManualStyle } = useMapStyle();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapRef>(null);
+  const liveWatchIdRef = useRef<number | null>(null);
+
+  const fitStoreAndUser = useCallback((loc: { lat: number; lng: number }, duration = 1000) => {
+    if (!mapRef.current) return;
+
+    const bounds: [[number, number], [number, number]] = [
+      [Math.min(longitude, loc.lng), Math.min(latitude, loc.lat)],
+      [Math.max(longitude, loc.lng), Math.max(latitude, loc.lat)],
+    ];
+
+    mapRef.current.fitBounds(bounds, {
+      padding: { top: 80, right: 80, bottom: 80, left: 80 },
+      duration,
+    });
+  }, [latitude, longitude]);
 
   const handleDirections = async () => {
     const dest = `${latitude},${longitude}`;
@@ -97,7 +113,7 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
         const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserLocation(loc);
         setShowUserPopup(true);
-        setViewState((prev) => ({ ...prev, latitude: loc.lat, longitude: loc.lng, zoom: 15 }));
+        fitStoreAndUser(loc);
         toast.success("Ubicación encontrada.");
         setIsLocating(false);
       },
@@ -107,7 +123,7 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
-  }, []);
+  }, [fitStoreAndUser]);
 
   const handleFullscreen = useCallback(() => {
     const el = containerRef.current;
@@ -125,6 +141,75 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
     return () => document.removeEventListener("fullscreenchange", onFsChange);
   }, []);
 
+  const stopLiveTracking = useCallback((notify = true) => {
+    if (liveWatchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(liveWatchIdRef.current);
+      liveWatchIdRef.current = null;
+    }
+    setIsLiveTracking(false);
+    if (notify) toast.info("UbicaciÃ³n en tiempo real desactivada.");
+  }, []);
+
+  const startLiveTracking = useCallback(async () => {
+    if (!navigator.geolocation) {
+      toast.error("Tu navegador no soporta geolocalizaciÃ³n en tiempo real.");
+      return;
+    }
+
+    const el = containerRef.current;
+    if (el && !document.fullscreenElement) {
+      try {
+        await el.requestFullscreen();
+      } catch {
+        toast.warning("No se pudo activar pantalla completa, pero intentaremos seguir tu ubicaciÃ³n.");
+      }
+    }
+
+    toast.info("UbicaciÃ³n en tiempo real activada.");
+    setIsLiveTracking(true);
+    setShowUserPopup(true);
+
+    liveWatchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(loc);
+        fitStoreAndUser(loc, 650);
+      },
+      (error) => {
+        console.warn("Live location error:", error);
+        toast.error("Se detuvo la ubicaciÃ³n en tiempo real. Revisa permisos o seÃ±al GPS.");
+        stopLiveTracking(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
+    );
+  }, [fitStoreAndUser, stopLiveTracking]);
+
+  const toggleLiveTracking = useCallback(() => {
+    if (isLiveTracking) {
+      stopLiveTracking();
+    } else {
+      startLiveTracking();
+    }
+  }, [isLiveTracking, startLiveTracking, stopLiveTracking]);
+
+  React.useEffect(() => {
+    if (!isFullscreen && isLiveTracking) {
+      stopLiveTracking();
+    }
+  }, [isFullscreen, isLiveTracking, stopLiveTracking]);
+
+  React.useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && isLiveTracking) {
+        stopLiveTracking();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isLiveTracking, stopLiveTracking]);
+
+  React.useEffect(() => () => stopLiveTracking(false), [stopLiveTracking]);
+
   return (
     <div 
       ref={containerRef} 
@@ -141,7 +226,7 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
         interactiveLayerIds={[]}
       >
         {/* Custom Navigation Controls */}
-        <div className="absolute bottom-6 right-3 flex flex-col gap-1 z-10">
+        <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
           <button
             type="button"
             onClick={() => {
@@ -190,6 +275,21 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
             {isLocating
               ? <Loader2 className="store-map-spinner w-4 h-4 text-blue-600 animate-spin" />
               : <LocateFixed className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
+            }
+          </button>
+
+          <button
+            type="button"
+            onClick={toggleLiveTracking}
+            className={cn(
+              "store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors",
+              isLiveTracking && "store-map-live-active"
+            )}
+            title={isLiveTracking ? "Detener ubicaciÃ³n en tiempo real" : "UbicaciÃ³n en tiempo real"}
+          >
+            {isLiveTracking
+              ? <Footprints className="store-map-control-icon w-4 h-4" />
+              : <PersonStanding className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
             }
           </button>
 
@@ -276,8 +376,10 @@ export function StoreMap({ latitude, longitude, storeName, storeAddress, logoUrl
           <>
             <Marker longitude={userLocation.lng} latitude={userLocation.lat} anchor="center">
               <div className="relative">
-                <div className="store-map-user-marker w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg z-10" />
-                <div className="store-map-user-ping w-4 h-4 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-75" />
+                <div className="store-map-user-marker w-9 h-9 bg-blue-500 rounded-full border-2 border-white shadow-lg z-10 flex items-center justify-center">
+                  {isLiveTracking ? <Footprints className="w-5 h-5 text-white" /> : <PersonStanding className="w-5 h-5 text-white" />}
+                </div>
+                <div className="store-map-user-ping w-9 h-9 bg-blue-500 rounded-full absolute top-0 left-0 animate-ping opacity-45" />
               </div>
             </Marker>
             {showUserPopup && (

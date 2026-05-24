@@ -393,6 +393,9 @@ export function StoreCustomizer({ store, open, onOpenChange, onThemeChange }: St
                     <LocationPickerMap 
                       initialLatitude={editLatitude}
                       initialLongitude={editLongitude}
+                      storeName={editName || "Mi tienda"}
+                      logoUrl={editLogo}
+                      address={editAddress}
                       onLocationChange={(lat, lng, address) => {
                         setEditLatitude(lat);
                         setEditLongitude(lng);
@@ -418,6 +421,9 @@ export function StoreCustomizer({ store, open, onOpenChange, onThemeChange }: St
                   mapClassName="flex-1 rounded-2xl shadow-inner border bg-background h-full"
                   initialLatitude={editLatitude}
                   initialLongitude={editLongitude}
+                  storeName={editName || "Mi tienda"}
+                  logoUrl={editLogo}
+                  address={editAddress}
                   onLocationChange={(lat, lng, address) => {
                     setEditLatitude(lat);
                     setEditLongitude(lng);

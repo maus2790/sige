@@ -76,8 +76,11 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [storeTheme, setStoreTheme] = useState<PremiumTheme>("blue");
+  const [isThemeGridOpen, setIsThemeGridOpen] = useState(false);
   const isStoreRoute = pathname.startsWith("/tienda/");
   const storeThemeClass = isStoreRoute && storeTheme !== "blue" ? `theme-premium theme-${storeTheme}` : "";
+  const globalThemeClass = premiumTheme !== "blue" ? `theme-premium theme-${premiumTheme}` : "";
+  const activeHeaderThemeClass = storeThemeClass || globalThemeClass;
 
   const handleHeaderRefresh = async () => {
     setIsRefreshing(true);
@@ -157,7 +160,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
   return (
     <>
-      <header className={cn("app-navbar sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300", storeThemeClass)}>
+      <header className={cn("app-navbar sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300", activeHeaderThemeClass)}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -302,7 +305,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
                 {/* Centro de Notificaciones */}
                 {activeUser && (
-                  <NotificationCenter themeClassName={storeThemeClass} />
+                  <NotificationCenter themeClassName={activeHeaderThemeClass} />
                 )}
 
                 {/* Carrito Link */}
@@ -327,7 +330,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className={cn("user-menu-content w-72", storeThemeClass)} align="end" forceMount>
+                    <DropdownMenuContent className={cn("user-menu-content w-80", activeHeaderThemeClass)} align="end" forceMount>
                       <DropdownMenuLabel className="font-normal">
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-medium leading-none">{activeUser.name}</p>
@@ -412,16 +415,27 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                       <div className="px-2 py-2">
                         <div className="mb-2 flex items-center gap-2">
                           <Palette className="h-4 w-4 text-primary" />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-[10px] font-black uppercase tracking-widest leading-none text-muted-foreground">
                               Tema de Marca
                             </p>
                             <p className="text-sm font-bold leading-tight">
-                              Desliza para explorar
+                              {premiumThemes.find((themeOption) => themeOption.value === premiumTheme)?.label || "Blue Premium"}
                             </p>
                           </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsThemeGridOpen((value) => !value)}
+                            className="theme-grid-toggle h-8 rounded-lg px-2 text-xs font-bold"
+                          >
+                            <Palette className="mr-1 h-3.5 w-3.5" />
+                            Paleta
+                            <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", isThemeGridOpen && "rotate-180")} />
+                          </Button>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                        <div className={cn("grid gap-2 overflow-hidden transition-all duration-300", isThemeGridOpen ? "grid-cols-2 max-h-[360px] opacity-100" : "max-h-0 opacity-0")}>
                           {premiumThemes.map((themeOption) => {
                             const isSelected = premiumTheme === themeOption.value;
 
@@ -431,7 +445,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                                 type="button"
                                 onClick={() => setPremiumTheme(themeOption.value)}
                                 className={cn(
-                                  "relative flex h-20 w-28 shrink-0 flex-col justify-between overflow-hidden rounded-lg border p-2 text-left transition-all duration-300",
+                                  "relative flex h-16 min-w-0 flex-col justify-between overflow-hidden rounded-lg border p-2 text-left transition-all duration-300",
                                   isSelected
                                     ? "border-primary shadow-lg shadow-primary/20 ring-2 ring-primary/25"
                                     : "border-border hover:border-primary/50"
@@ -487,7 +501,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
         open={isPublishOpen}
         onOpenChange={setIsPublishOpen}
         productToEdit={editingProduct}
-        themeClassName={storeThemeClass}
+        themeClassName={activeHeaderThemeClass}
       />
     </>
   );

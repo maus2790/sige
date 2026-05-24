@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import Map, { Marker, NavigationControl, MapRef } from "react-map-gl/maplibre";
+import Map, { Marker, MapRef, Popup } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MapPin, Search, Navigation, LocateFixed, Maximize, Minimize, Sun, Moon, ZoomIn, ZoomOut, Compass, Layers } from "lucide-react";
+import { Search, Navigation, LocateFixed, Maximize, Minimize, Sun, Moon, ZoomIn, ZoomOut, Compass, Layers, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "use-debounce";
@@ -25,6 +25,9 @@ interface LocationPickerMapProps {
   onLocationChange: (lat: number, lng: number, address?: string) => void;
   className?: string;
   mapClassName?: string;
+  storeName?: string;
+  logoUrl?: string | null;
+  address?: string;
 }
 
 const DEFAULT_CENTER = { lat: -16.5, lng: -68.15 };
@@ -35,6 +38,9 @@ export function LocationPickerMap({
   onLocationChange,
   className,
   mapClassName,
+  storeName = "Mi tienda",
+  logoUrl,
+  address,
 }: LocationPickerMapProps) {
   const { mapStyle, styleKey, theme, toggleTheme, setManualStyle } = useMapStyle();
   const mapRef = useRef<MapRef>(null);
@@ -56,6 +62,7 @@ export function LocationPickerMap({
   const [debouncedSearch] = useDebounce(searchQuery, 1000);
   const [isSearching, setIsSearching] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showPopup, setShowPopup] = useState(true);
 
   // Fullscreen API
   const handleFullscreen = useCallback(() => {
@@ -90,6 +97,7 @@ export function LocationPickerMap({
           const newLng = parseFloat(lon);
           setViewState((prev) => ({ ...prev, latitude: newLat, longitude: newLng, zoom: 15 }));
           setMarker({ lat: newLat, lng: newLng });
+          setShowPopup(true);
           onLocationChange(newLat, newLng, display_name);
         } else {
           toast.error("No se encontraron resultados para la búsqueda.");
@@ -107,6 +115,7 @@ export function LocationPickerMap({
     const lat = e.lngLat.lat;
     const lng = e.lngLat.lng;
     setMarker({ lat, lng });
+    setShowPopup(true);
     onLocationChange(lat, lng);
   }, [onLocationChange]);
 
@@ -118,6 +127,7 @@ export function LocationPickerMap({
     const lat = e.lngLat.lat;
     const lng = e.lngLat.lng;
     setMarker({ lat, lng });
+    setShowPopup(true);
     onLocationChange(lat, lng);
   }, [onLocationChange]);
 
@@ -138,6 +148,7 @@ export function LocationPickerMap({
           zoom: 16 
         }));
         setMarker({ lat, lng });
+        setShowPopup(true);
         onLocationChange(lat, lng);
         toast.success("Ubicación actualizada.");
       },
@@ -180,7 +191,7 @@ export function LocationPickerMap({
       {/* Map */}
       <div
         ref={containerRef}
-        className={cn("h-[300px] rounded-xl overflow-hidden border bg-muted relative", mapClassName)}
+        className={cn("store-map h-[300px] rounded-xl overflow-hidden border bg-muted relative", mapClassName)}
       >
         <Map
           ref={mapRef}
@@ -190,39 +201,40 @@ export function LocationPickerMap({
           onClick={onMapClick}
           interactiveLayerIds={[]}
           cursor="crosshair"
+          attributionControl={false}
         >
           {/* Custom Navigation Controls */}
-          <div className="absolute bottom-6 right-3 flex flex-col gap-1 z-10">
+          <div className="absolute top-3 left-3 flex flex-col gap-1 z-10">
             <button
               type="button"
               onClick={() => {
                 mapRef.current?.zoomIn();
               }}
-              className="w-8 h-8 bg-white dark:bg-zinc-800 rounded-t-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              className="store-map-control w-8 h-8 bg-white dark:bg-zinc-800 rounded-t-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
               title="Aumentar zoom"
             >
-              <ZoomIn className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              <ZoomIn className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
             </button>
             <button
               type="button"
               onClick={() => {
                 mapRef.current?.zoomOut();
               }}
-              className="w-8 h-8 bg-white dark:bg-zinc-800 border-x border-b border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              className="store-map-control w-8 h-8 bg-white dark:bg-zinc-800 border-x border-b border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
               title="Disminuir zoom"
             >
-              <ZoomOut className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              <ZoomOut className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
             </button>
             <button
               type="button"
               onClick={() => {
                 mapRef.current?.easeTo({ bearing: 0, pitch: 0, duration: 1000 });
               }}
-              className="w-8 h-8 mt-1 bg-white dark:bg-zinc-800 rounded-b-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors group"
+              className="store-map-control w-8 h-8 mt-1 bg-white dark:bg-zinc-800 rounded-b-xl border border-border/50 shadow-lg flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors group"
               title="Restablecer orientación"
             >
               <Compass 
-                className="w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform duration-300" 
+                className="store-map-control-icon w-4 h-4 text-blue-600 dark:text-blue-400 transition-transform duration-300" 
                 style={{ transform: `rotate(${-(viewState.bearing || 0)}deg)` }}
               />
             </button>
@@ -234,22 +246,22 @@ export function LocationPickerMap({
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); handleGetCurrentLocation(); }}
-              className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
               title="Mi ubicación"
             >
-              <LocateFixed className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+              <LocateFixed className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
             </button>
 
             {/* Theme toggle button */}
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); toggleTheme(); }}
-              className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
               title={theme === "light" ? "Modo oscuro del mapa" : "Modo claro del mapa"}
             >
               {theme === "light" 
-                ? <Moon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-                : <Sun className="w-4 h-4 text-yellow-500" />
+                ? <Moon className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
+                : <Sun className="store-map-control-icon w-4 h-4 text-yellow-500" />
               }
             </button>
 
@@ -258,10 +270,10 @@ export function LocationPickerMap({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors outline-none"
+                  className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors outline-none"
                   title="Cambiar capa del mapa"
                 >
-                  <Layers className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                  <Layers className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="left" className="rounded-2xl shadow-premium border-white/20 dark:border-white/10 p-1.5 min-w-[140px] z-100 backdrop-blur-xl bg-white/90 dark:bg-zinc-900/90">
@@ -269,25 +281,25 @@ export function LocationPickerMap({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={() => setManualStyle('positron')}
-                  className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'positron' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                  className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'positron' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
                 >
                   <div className="w-2 h-2 rounded-full bg-slate-200" /> Positron (Claro)
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => setManualStyle('dark')}
-                  className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'dark' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                  className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'dark' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
                 >
                   <div className="w-2 h-2 rounded-full bg-slate-900" /> Oscuro
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => setManualStyle('liberty')}
-                  className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'liberty' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                  className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'liberty' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
                 >
                   <div className="w-2 h-2 rounded-full bg-emerald-400" /> Liberty (Color)
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => setManualStyle('bright')}
-                  className={cn("rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'bright' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
+                  className={cn("store-map-layer-item rounded-xl text-xs font-bold gap-2 px-3 py-2 cursor-pointer", styleKey === 'bright' && "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400")}
                 >
                   <div className="w-2 h-2 rounded-full bg-yellow-400" /> Brillante
                 </DropdownMenuItem>
@@ -298,12 +310,12 @@ export function LocationPickerMap({
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); handleFullscreen(); }}
-              className="w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
+              className="store-map-control w-7 h-7 bg-white dark:bg-zinc-800 rounded-md shadow-[0_0_0_2px_rgba(0,0,0,0.15)] flex items-center justify-center hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
               title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
             >
               {isFullscreen
-                ? <Minimize className="w-4 h-4 text-gray-700 dark:text-gray-300" />
-                : <Maximize className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                ? <Minimize className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
+                : <Maximize className="store-map-control-icon w-4 h-4 text-gray-700 dark:text-gray-300" />
               }
             </button>
           </div>
@@ -316,23 +328,33 @@ export function LocationPickerMap({
               draggable
               onDragEnd={onMarkerDragEnd}
             >
-              <div className="relative flex flex-col items-center group cursor-grab active:cursor-grabbing">
+              <div
+                className="relative flex flex-col items-center group cursor-grab active:cursor-grabbing"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowPopup(true);
+                }}
+              >
                 {/* Glow / Aura */}
-                <div className="absolute -inset-4 bg-red-500/20 rounded-full blur-xl animate-pulse opacity-50 group-hover:opacity-100 transition-opacity" />
+                <div className="store-map-marker-aura absolute -inset-4 bg-blue-500/20 rounded-full blur-xl animate-pulse opacity-50 group-hover:opacity-100 transition-opacity" />
                 
                 {/* The Pin/Beacon */}
                 <div className="relative mb-1 transition-transform duration-300 group-hover:-translate-y-1">
-                  <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 border-2 border-red-600 dark:border-red-500 shadow-xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
+                  <div className="store-map-marker-pin w-12 h-12 rounded-2xl bg-white dark:bg-zinc-900 border-4 border-blue-600 dark:border-blue-500 shadow-2xl flex items-center justify-center overflow-hidden rotate-45 relative z-10">
                     <div className="-rotate-45 w-full h-full flex items-center justify-center">
-                      <MapPin className="w-5 h-5 text-red-600 dark:text-red-400" />
+                      {logoUrl ? (
+                        <img src={logoUrl} className="w-full h-full object-cover" alt="" />
+                      ) : (
+                        <Store className="store-map-marker-icon w-6 h-6 text-blue-600 dark:text-blue-400" />
+                      )}
                     </div>
                   </div>
                   
                   {/* Pin Point */}
-                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-red-600 dark:bg-red-500 rotate-45 z-0" />
+                  <div className="store-map-marker-point absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-blue-600 dark:bg-blue-500 rotate-45 z-0" />
                   
                   {/* Inner Pulse */}
-                  <div className="absolute inset-0 rounded-xl bg-red-400 animate-ping opacity-20 z-0" />
+                  <div className="store-map-marker-pulse absolute inset-0 rounded-2xl bg-blue-400 animate-ping opacity-20 z-0" />
                 </div>
                 
                 {/* Drag hint */}
@@ -341,6 +363,44 @@ export function LocationPickerMap({
                 </div>
               </div>
             </Marker>
+          )}
+          {marker && showPopup && (
+            <Popup
+              longitude={marker.lng}
+              latitude={marker.lat}
+              anchor="bottom"
+              onClose={() => setShowPopup(false)}
+              closeButton={false}
+              closeOnClick={false}
+              offset={45}
+              className="rounded-xl overflow-hidden"
+              maxWidth="300px"
+            >
+              <div className="store-map-popup p-2 flex flex-col gap-2 min-w-[200px]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shrink-0 border shadow-sm">
+                    {logoUrl ? (
+                      <img src={logoUrl} className="w-full h-full object-cover" alt={storeName} />
+                    ) : (
+                      <div className="store-map-popup-default-logo w-full h-full flex items-center justify-center bg-blue-100 text-blue-600 font-black text-[10px]">
+                        {storeName.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-black text-sm leading-tight truncate">{storeName}</h3>
+                    {(address || searchQuery) && (
+                      <p className="text-[10px] text-muted-foreground leading-tight truncate mt-0.5">
+                        {address || searchQuery}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground leading-tight">
+                  Arrastra el marcador o haz clic en el mapa para ajustar la ubicaci&oacute;n.
+                </p>
+              </div>
+            </Popup>
           )}
         </Map>
       </div>

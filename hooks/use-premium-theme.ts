@@ -87,12 +87,38 @@ const THEME_CLASSES = PREMIUM_THEMES.map((theme) => `theme-${theme.value}`);
 const STORAGE_KEY = "sige-premium-theme";
 const PREMIUM_THEME_CHANGE_EVENT = "sige-premium-theme-change";
 
+const PREMIUM_THEME_COLORS: Record<PremiumTheme, string> = {
+  blue: "#2563eb",
+  gold: "#d97706",
+  rose: "#e11d48",
+  emerald: "#059669",
+  purple: "#7c3aed",
+  ocean: "#0284c7",
+  sunset: "#ea580c",
+  cyan: "#0891b2",
+  ruby: "#dc2626",
+  black: "#09090b",
+};
+
+export function getPremiumThemeColor(theme: PremiumTheme) {
+  return PREMIUM_THEME_COLORS[theme] || PREMIUM_THEME_COLORS.blue;
+}
+
+function applyThemeColor(theme: PremiumTheme) {
+  const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  if (meta) {
+    meta.content = getPremiumThemeColor(theme);
+  }
+}
+
 function applyPremiumTheme(theme: PremiumTheme) {
   document.documentElement.classList.remove("theme-premium", ...THEME_CLASSES);
 
   if (theme !== "blue") {
     document.documentElement.classList.add("theme-premium", `theme-${theme}`);
   }
+
+  applyThemeColor(theme);
 }
 
 function readPremiumTheme(): PremiumTheme {

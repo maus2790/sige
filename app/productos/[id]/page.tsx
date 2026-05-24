@@ -191,29 +191,29 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
 
       <main className="container mx-auto px-4 py-2 md:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          {/* Columna Izquierda: Galería de Imágenes - Sticky en Desktop y Móvil */}
-          <div className="lg:col-span-7 sticky top-16 md:top-24 z-30 md:bg-transparent -mx-4 md:mx-0 px-0 md:px-0 pb-0 md:pb-0 border-b md:border-0 self-start">
+          {/* Columna Izquierda: Galería de Imágenes - Sticky en Desktop, Scrollable en Móvil */}
+          <div className="max-md:contents lg:col-span-7 md:sticky md:top-24 z-30 md:bg-transparent md:mx-0 md:px-0 md:pb-0 md:border-0 md:self-start md:h-auto flex flex-col">
              <ProductGallery 
                imageUrls={product.imageUrls || []} 
                imageUrlsThumb={product.imageUrlsThumb || []}
                imageUrlsOg={product.imageUrlsOg || []}
                productName={product.name} 
+               mobileStickyActions={
+                 <div className="flex items-center gap-2 px-2 h-10 w-full mb-1">
+                   <Link href={`/tienda/${product.storeId}`} className="flex-1">
+                     <Button variant="outline" className="w-full h-9 rounded-xl gap-1.5 font-bold text-[10px] uppercase border-2 shadow-sm">
+                       <Store className="w-3.5 h-3.5" />
+                       Tienda
+                     </Button>
+                   </Link>
+                   <ShareWhatsAppButton
+                     productId={product.id}
+                     productName={product.name}
+                     className="flex-1 h-9 rounded-xl border-2 text-[10px] font-bold gap-1.5 uppercase shadow-sm"
+                   />
+                 </div>
+               }
              />
-             
-             {/* Botones de acción fijos en móvil (5dvh) */}
-             <div className="flex md:hidden items-center gap-2 px-4 h-[5dvh] glass border-t border-white/20">
-               <Link href={`/tienda/${product.storeId}`} className="flex-1">
-                 <Button variant="outline" className="w-full h-8 rounded-xl gap-1.5 font-bold text-[10px] uppercase border-2">
-                   <Store className="w-3.5 h-3.5" />
-                   Tienda
-                 </Button>
-               </Link>
-               <ShareWhatsAppButton
-                 productId={product.id}
-                 productName={product.name}
-                 className="flex-1 h-8 rounded-xl border-2 text-[10px] font-bold gap-1.5 uppercase"
-               />
-             </div>
           </div>
 
           {/* Columna Derecha: Información y Compra */}
