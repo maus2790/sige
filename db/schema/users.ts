@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable("users", {
     id: text("id").primaryKey(),
@@ -13,6 +13,7 @@ export const users = sqliteTable("users", {
     resetTokenExpiry: integer("reset_token_expiry", { mode: "timestamp" }),
     provider: text("provider"),
     image: text("image"),
+    balance: real("balance"),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 

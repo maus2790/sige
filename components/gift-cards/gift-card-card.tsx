@@ -8,17 +8,7 @@ import { Gift, AlertCircle, CheckCircle, Calendar, ChevronRight, Send, Cake, Hea
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { deleteGiftCard } from '@/app/actions/gift-cards';
 import { toast } from 'sonner';
-
-const TEMPLATES = [
-  { id: 1, name: 'BLUE CARD', className: 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900' },
-  { id: 2, name: 'BLACK CARD', className: 'bg-linear-to-br from-zinc-800 via-zinc-900 to-black' },
-  { id: 3, name: 'GOLD CARD', className: 'bg-linear-to-br from-yellow-400 via-amber-500 to-orange-600' },
-  { id: 4, name: 'ROSE CARD', className: 'bg-linear-to-br from-rose-500 via-pink-600 to-fuchsia-700' },
-  { id: 5, name: 'EMERALD CARD', className: 'bg-linear-to-br from-emerald-500 via-green-600 to-teal-800' },
-  { id: 6, name: 'PURPLE CARD', className: 'bg-linear-to-br from-purple-600 via-violet-700 to-indigo-950' },
-  { id: 7, name: 'ORANGE CARD', className: 'bg-linear-to-br from-orange-400 via-red-500 to-rose-600' },
-  { id: 8, name: 'NEON CARD', className: 'bg-zinc-950 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' },
-];
+import { GIFT_CARD_TEMPLATES, getGiftCardTemplate } from './gift-card-templates';
 
 import { GiftCardSendDialog } from './gift-card-send-dialog';
 
@@ -35,6 +25,7 @@ interface GiftCardCardProps {
     occasion?: string | null;
     recipientId?: string | null;
     recipientEmail?: string | null;
+    recipientPhone?: string | null;
     recipientName?: string | null;
     cardImageUrl?: string | null;
   };
@@ -104,7 +95,16 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
   const balancePct = Math.round((giftCard.balance / giftCard.amount) * 100);
   const remainingDays = Math.ceil((expiresAtMs - Date.now()) / (1000 * 60 * 60 * 24));
   
-  const template = TEMPLATES.find(t => t.id === giftCard.templateId) || TEMPLATES[0];
+  const template = getGiftCardTemplate(giftCard.templateId);
+  const deliveryLabel = type === 'saved'
+    ? 'Guardada'
+    : giftCard.recipientPhone
+      ? 'WhatsApp'
+      : giftCard.recipientId
+        ? 'SIGE'
+        : giftCard.recipientEmail
+          ? 'Email'
+          : null;
 
   return (
     <div className="block group">
@@ -150,9 +150,14 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
                 <div className="text-right">
                   <p className="text-[8px] lg:text-[10px] font-black tracking-widest opacity-90 uppercase">SIGE DIGITAL</p>
                   <p className="text-[6px] lg:text-[7px] font-bold opacity-60 tracking-wider">
-                    {TEMPLATES.find(t => t.id === giftCard.templateId)?.name || 'PLATINUM CARD'}
+                    {getGiftCardTemplate(giftCard.templateId).name || 'PLATINUM CARD'}
                   </p>
                   <div className="flex items-center justify-end gap-1.5 mt-1">
+                    {deliveryLabel && (
+                      <Badge variant="outline" className="bg-white/20 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">
+                        {deliveryLabel}
+                      </Badge>
+                    )}
                     {isExpired ? (
                       <Badge variant="outline" className="bg-red-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">EXPIRADA</Badge>
                     ) : isFullyRedeemed ? (
@@ -272,7 +277,7 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
            <GiftCardSendDialog 
              giftCard={giftCard} 
              trigger={
-               <Button className="bg-linear-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-blue-500/10 border border-white/10 uppercase tracking-wider text-[10px] gap-2">
+               <Button className="gift-card-primary-action bg-linear-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-blue-500/10 border border-white/10 uppercase tracking-wider text-[10px] gap-2">
                  <Send className="h-3.5 w-3.5" />
                  Enviar este Regalo
                </Button>

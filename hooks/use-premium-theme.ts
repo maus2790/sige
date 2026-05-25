@@ -58,9 +58,9 @@ export const PREMIUM_THEMES: Array<{
   },
   {
     value: "sunset",
-    label: "Sunset Premium",
-    shortLabel: "SUNSET CARD",
-    swatchGradient: "linear-gradient(135deg, #fed7aa 0%, #ec4899 48%, #991b1b 100%)",
+    label: "Orange Premium",
+    shortLabel: "ORANGE CARD",
+    swatchGradient: "linear-gradient(135deg, #fb923c 0%, #ef4444 48%, #e11d48 100%)",
   },
   {
     value: "cyan",
@@ -76,9 +76,9 @@ export const PREMIUM_THEMES: Array<{
   },
   {
     value: "black",
-    label: "Black Premium",
-    shortLabel: "BLACK CARD",
-    swatchGradient: "linear-gradient(135deg, #e4e4e7 0%, #52525b 48%, #000000 100%)",
+    label: "Neon Premium",
+    shortLabel: "NEON CARD",
+    swatchGradient: "linear-gradient(135deg, #020617 0%, #0891b2 48%, #22d3ee 100%)",
   },
 ];
 
@@ -97,7 +97,7 @@ const PREMIUM_THEME_COLORS: Record<PremiumTheme, string> = {
   sunset: "#ea580c",
   cyan: "#0891b2",
   ruby: "#dc2626",
-  black: "#09090b",
+  black: "#06b6d4",
 };
 
 export function getPremiumThemeColor(theme: PremiumTheme) {

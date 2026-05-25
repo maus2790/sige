@@ -27,3 +27,16 @@ export const giftCards = sqliteTable('gift_cards', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
+
+export const giftCardRecharges = sqliteTable('gift_card_recharges', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  amount: real('amount').notNull().default(0),
+  paymentMethod: text('payment_method').notNull(), // 'qr', 'bank_transfer', 'tigo_money', 'operator'
+  transactionNumber: text('transaction_number'),
+  receiptUrl: text('receipt_url'),
+  status: text('status').notNull().default('pending'), // 'pending', 'approved', 'rejected', 'pending_operator'
+  rejectionReason: text('rejection_reason'),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
+});

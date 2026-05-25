@@ -28,6 +28,8 @@ interface GiftCardSendDialogProps {
     amount: number;
     recipientName?: string | null;
     recipientEmail?: string | null;
+    recipientPhone?: string | null;
+    recipientId?: string | null;
     message?: string | null;
   };
   trigger?: React.ReactNode;
@@ -39,11 +41,13 @@ export function GiftCardSendDialog({ giftCard, trigger }: GiftCardSendDialogProp
   const [loading, setLoading] = useState(false);
   
   // Delivery State
-  const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'whatsapp' | 'sige'>('email');
+  const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'whatsapp' | 'sige'>(
+    giftCard.recipientPhone ? 'whatsapp' : giftCard.recipientId ? 'sige' : 'email'
+  );
   const [recipientName, setRecipientName] = useState(giftCard.recipientName || '');
   const [recipientEmail, setRecipientEmail] = useState(giftCard.recipientEmail || '');
-  const [whatsappNumber, setWhatsappNumber] = useState('');
-  const [recipientId, setRecipientId] = useState<string>('');
+  const [whatsappNumber, setWhatsappNumber] = useState(giftCard.recipientPhone || '');
+  const [recipientId, setRecipientId] = useState<string>(giftCard.recipientId || '');
   const [sigeUsers, setSigeUsers] = useState<any[]>([]);
 
   useEffect(() => {
@@ -60,6 +64,7 @@ export function GiftCardSendDialog({ giftCard, trigger }: GiftCardSendDialogProp
         recipientName,
         recipientEmail: deliveryMethod === 'sige' ? (sigeUsers.find(u => u.id === recipientId)?.email || '') : recipientEmail,
         recipientId: deliveryMethod === 'sige' ? recipientId : undefined,
+        recipientPhone: deliveryMethod === 'whatsapp' ? whatsappNumber : undefined,
       });
 
       if (result.success) {

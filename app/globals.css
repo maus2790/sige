@@ -225,34 +225,34 @@
 }
 
 .theme-black {
-  --background: oklch(0.985 0.003 260);
-  --foreground: oklch(0.13 0.01 260);
+  --background: oklch(0.985 0.01 205);
+  --foreground: oklch(0.12 0.025 225);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.13 0.01 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.13 0.01 260);
-  --primary: oklch(0.22 0.01 260);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.94 0.004 260);
-  --secondary-foreground: oklch(0.13 0.01 260);
-  --muted: oklch(0.94 0.004 260);
-  --muted-foreground: oklch(0.45 0.01 260);
-  --accent: oklch(0.9 0.006 260);
-  --accent-foreground: oklch(0.13 0.01 260);
-  --border: oklch(0.86 0.006 260);
-  --input: oklch(0.86 0.006 260);
-  --ring: oklch(0.28 0.01 260);
+  --primary: oklch(0.68 0.14 210);
+  --primary-foreground: oklch(0.10 0.02 225);
+  --secondary: oklch(0.94 0.014 205);
+  --secondary-foreground: oklch(0.12 0.025 225);
+  --muted: oklch(0.94 0.014 205);
+  --muted-foreground: oklch(0.43 0.03 215);
+  --accent: oklch(0.9 0.03 205);
+  --accent-foreground: oklch(0.12 0.025 225);
+  --border: oklch(0.85 0.028 205);
+  --input: oklch(0.85 0.028 205);
+  --ring: oklch(0.68 0.14 210);
   --sidebar: oklch(0.98 0.003 260);
   --sidebar-foreground: oklch(0.13 0.01 260);
-  --sidebar-primary: oklch(0.22 0.01 260);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.94 0.004 260);
-  --sidebar-accent-foreground: oklch(0.13 0.01 260);
-  --sidebar-border: oklch(0.86 0.006 260);
-  --sidebar-ring: oklch(0.28 0.01 260);
-  --brand-gradient: linear-gradient(135deg, #52525b 0%, #09090b 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #71717a 0%, #18181b 100%);
-  --blue-gradient: linear-gradient(135deg, #71717a 0%, #27272a 50%, #09090b 100%);
+  --sidebar-primary: oklch(0.68 0.14 210);
+  --sidebar-primary-foreground: oklch(0.10 0.02 225);
+  --sidebar-accent: oklch(0.94 0.014 205);
+  --sidebar-accent-foreground: oklch(0.12 0.025 225);
+  --sidebar-border: oklch(0.85 0.028 205);
+  --sidebar-ring: oklch(0.68 0.14 210);
+  --brand-gradient: linear-gradient(135deg, #020617 0%, #0891b2 48%, #22d3ee 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #0f172a 0%, #06b6d4 48%, #67e8f9 100%);
+  --blue-gradient: linear-gradient(135deg, #020617 0%, #0891b2 50%, #22d3ee 100%);
 }
 
 .dark.theme-black,
@@ -282,9 +282,9 @@
   --sidebar-accent-foreground: oklch(0.96 0.004 260);
   --sidebar-border: oklch(0.28 0.008 260);
   --sidebar-ring: oklch(0.82 0.01 260);
-  --brand-gradient: linear-gradient(135deg, #a1a1aa 0%, #27272a 45%, #000 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #d4d4d8 0%, #3f3f46 45%, #18181b 100%);
-  --blue-gradient: linear-gradient(135deg, #e4e4e7 0%, #a1a1aa 45%, #3f3f46 100%);
+  --brand-gradient: linear-gradient(135deg, #020617 0%, #0891b2 45%, #22d3ee 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #0f172a 0%, #06b6d4 45%, #67e8f9 100%);
+  --blue-gradient: linear-gradient(135deg, #020617 0%, #0891b2 45%, #22d3ee 100%);
 }
 
 .theme-rose {
@@ -500,26 +500,26 @@
 }
 
 .theme-black {
-  --premium-bg-start: #f4f4f5;
-  --premium-bg-end: #ffffff;
-  --premium-bg-dark-start: #09090b;
-  --premium-bg-dark-mid: #121216;
-  --premium-bg-dark-end: #000000;
-  --premium-accent: #27272a;
-  --premium-accent-strong: #09090b;
-  --premium-accent-soft: #e4e4e7;
-  --premium-contrast: #ffffff;
-  --premium-dark-contrast: #09090b;
-  --premium-surface: rgba(250, 250, 250, .74);
-  --premium-surface-strong: rgba(244, 244, 245, .94);
-  --premium-dark-surface: rgba(12, 12, 14, .74);
-  --premium-dark-surface-strong: rgba(24, 24, 27, .94);
-  --premium-hero-gradient: linear-gradient(135deg, rgba(0, 0, 0, .12) 0%, rgba(113, 113, 122, .16) 42%, rgba(255, 255, 255, 0) 100%), linear-gradient(135deg, #71717a 0%, #27272a 45%, #09090b 100%);
-  --premium-hero-gradient-dark: linear-gradient(135deg, rgba(244, 244, 245, .10) 0%, rgba(82, 82, 91, .16) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #3f3f46 0%, #18181b 44%, #000 100%);
-  --premium-button-gradient: linear-gradient(135deg, #71717a 0%, #09090b 100%);
-  --premium-button-gradient-dark: linear-gradient(135deg, #d4d4d8 0%, #52525b 48%, #18181b 100%);
-  --premium-shadow-rgb: 9 9 11;
-  --premium-glow-rgb: 212 212 216;
+  --premium-bg-start: #ecfeff;
+  --premium-bg-end: #f8ffff;
+  --premium-bg-dark-start: #020617;
+  --premium-bg-dark-mid: #06131f;
+  --premium-bg-dark-end: #020617;
+  --premium-accent: #06b6d4;
+  --premium-accent-strong: #0891b2;
+  --premium-accent-soft: #cffafe;
+  --premium-contrast: #f8ffff;
+  --premium-dark-contrast: #020617;
+  --premium-surface: rgba(248, 255, 255, .74);
+  --premium-surface-strong: rgba(236, 254, 255, .94);
+  --premium-dark-surface: rgba(2, 6, 23, .78);
+  --premium-dark-surface-strong: rgba(8, 20, 31, .94);
+  --premium-hero-gradient: linear-gradient(135deg, rgba(2, 6, 23, .18) 0%, rgba(6, 182, 212, .16) 42%, rgba(255, 255, 255, 0) 100%), linear-gradient(135deg, #020617 0%, #0891b2 48%, #22d3ee 100%);
+  --premium-hero-gradient-dark: linear-gradient(135deg, rgba(34, 211, 238, .16) 0%, rgba(8, 145, 178, .24) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #020617 0%, #083344 44%, #06b6d4 100%);
+  --premium-button-gradient: linear-gradient(135deg, #020617 0%, #0891b2 48%, #22d3ee 100%);
+  --premium-button-gradient-dark: linear-gradient(135deg, #020617 0%, #0891b2 48%, #67e8f9 100%);
+  --premium-shadow-rgb: 8 145 178;
+  --premium-glow-rgb: 34 211 238;
 }
 
 .theme-rose {
@@ -700,27 +700,27 @@
   --sidebar-accent-foreground: oklch(0.18 0.04 35);
   --sidebar-border: oklch(0.9 0.03 35);
   --sidebar-ring: oklch(0.64 0.19 35);
-  --brand-gradient: linear-gradient(135deg, #fb923c 0%, #db2777 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #fdba74 0%, #ec4899 100%);
-  --blue-gradient: linear-gradient(135deg, #fb923c 0%, #ec4899 50%, #991b1b 100%);
+  --brand-gradient: linear-gradient(135deg, #fb923c 0%, #ef4444 52%, #e11d48 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #fdba74 0%, #f97316 45%, #f43f5e 100%);
+  --blue-gradient: linear-gradient(135deg, #fb923c 0%, #ef4444 50%, #e11d48 100%);
   --premium-bg-start: #ffedd5;
   --premium-bg-end: #fff7ed;
   --premium-bg-dark-start: #2a1104;
   --premium-bg-dark-mid: #180905;
-  --premium-bg-dark-end: #2a0715;
+  --premium-bg-dark-end: #2a0707;
   --premium-accent: #ea580c;
-  --premium-accent-strong: #db2777;
+  --premium-accent-strong: #dc2626;
   --premium-accent-soft: #ffedd5;
   --premium-contrast: #fff7ed;
   --premium-dark-contrast: #180905;
   --premium-surface: rgba(255, 247, 237, .74);
   --premium-surface-strong: rgba(255, 237, 213, .94);
   --premium-dark-surface: rgba(42, 17, 4, .74);
-  --premium-dark-surface-strong: rgba(42, 7, 21, .94);
-  --premium-hero-gradient: linear-gradient(135deg, rgba(153, 27, 27, .16) 0%, rgba(251, 146, 60, .14) 42%, rgba(255, 255, 255, 0) 100%), linear-gradient(135deg, #fb923c 0%, #ec4899 45%, #991b1b 100%);
-  --premium-hero-gradient-dark: linear-gradient(135deg, rgba(253, 186, 116, .12) 0%, rgba(219, 39, 119, .18) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #7f1d1d 0%, #db2777 44%, #180905 100%);
-  --premium-button-gradient: linear-gradient(135deg, #fb923c 0%, #db2777 100%);
-  --premium-button-gradient-dark: linear-gradient(135deg, #fdba74 0%, #ec4899 48%, #991b1b 100%);
+  --premium-dark-surface-strong: rgba(42, 7, 7, .94);
+  --premium-hero-gradient: linear-gradient(135deg, rgba(153, 27, 27, .16) 0%, rgba(251, 146, 60, .14) 42%, rgba(255, 255, 255, 0) 100%), linear-gradient(135deg, #fb923c 0%, #ef4444 48%, #e11d48 100%);
+  --premium-hero-gradient-dark: linear-gradient(135deg, rgba(253, 186, 116, .12) 0%, rgba(220, 38, 38, .18) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #7f1d1d 0%, #dc2626 44%, #180905 100%);
+  --premium-button-gradient: linear-gradient(135deg, #fb923c 0%, #ef4444 48%, #e11d48 100%);
+  --premium-button-gradient-dark: linear-gradient(135deg, #fdba74 0%, #f97316 48%, #991b1b 100%);
   --premium-shadow-rgb: 153 27 27;
   --premium-glow-rgb: 251 146 60;
 }
@@ -752,9 +752,9 @@
   --sidebar-accent-foreground: oklch(0.97 0.012 35);
   --sidebar-border: oklch(0.27 0.03 35);
   --sidebar-ring: oklch(0.74 0.16 35);
-  --brand-gradient: linear-gradient(135deg, #fdba74 0%, #ec4899 45%, #7f1d1d 100%);
-  --brand-gradient-hover: linear-gradient(135deg, #fed7aa 0%, #f472b6 45%, #991b1b 100%);
-  --blue-gradient: linear-gradient(135deg, #fed7aa 0%, #fb923c 45%, #db2777 100%);
+  --brand-gradient: linear-gradient(135deg, #fdba74 0%, #f97316 45%, #7f1d1d 100%);
+  --brand-gradient-hover: linear-gradient(135deg, #fed7aa 0%, #fb923c 45%, #991b1b 100%);
+  --blue-gradient: linear-gradient(135deg, #fed7aa 0%, #fb923c 45%, #dc2626 100%);
 }
 
 .theme-cyan {
@@ -2291,4 +2291,233 @@
 
 .dark .theme-premium .maplibregl-popup-content {
   border-color: color-mix(in srgb, var(--premium-accent-soft) 38%, transparent) !important;
+}
+
+.theme-premium .gift-card-section,
+.theme-premium .gift-card-buy-section {
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--premium-accent) 12%, transparent), transparent 24rem),
+    var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+.dark.theme-premium .gift-card-section,
+.dark.theme-premium .gift-card-buy-section,
+.dark .theme-premium .gift-card-section,
+.dark .theme-premium .gift-card-buy-section {
+  background:
+    radial-gradient(circle at 18% 0%, color-mix(in srgb, var(--premium-accent) 14%, transparent), transparent 24rem),
+    var(--background) !important;
+}
+
+.theme-premium .gift-card-hero,
+.theme-premium .gift-card-form-header,
+.theme-premium .gift-card-primary-action,
+.theme-premium .gift-card-step-active,
+.theme-premium .gift-card-step-connector-active,
+.theme-premium .gift-card-option-selected,
+.theme-premium .gift-card-bottom-main {
+  background: var(--premium-button-gradient) !important;
+  color: var(--premium-contrast) !important;
+  border-color: transparent !important;
+  box-shadow: 0 18px 38px -24px rgb(var(--premium-shadow-rgb) / .88) !important;
+}
+
+.theme-premium .gift-card-hero,
+.theme-premium .gift-card-form-header {
+  background: var(--premium-hero-gradient) !important;
+}
+
+.theme-premium .gift-card-hero {
+  box-shadow: none !important;
+}
+
+.dark.theme-premium .gift-card-hero,
+.dark.theme-premium .gift-card-form-header,
+.dark.theme-premium .gift-card-primary-action,
+.dark.theme-premium .gift-card-step-active,
+.dark.theme-premium .gift-card-step-connector-active,
+.dark.theme-premium .gift-card-option-selected,
+.dark.theme-premium .gift-card-bottom-main,
+.dark .theme-premium .gift-card-hero,
+.dark .theme-premium .gift-card-form-header,
+.dark .theme-premium .gift-card-primary-action,
+.dark .theme-premium .gift-card-step-active,
+.dark .theme-premium .gift-card-step-connector-active,
+.dark .theme-premium .gift-card-option-selected,
+.dark .theme-premium .gift-card-bottom-main {
+  background: var(--premium-button-gradient-dark) !important;
+  color: var(--premium-dark-contrast) !important;
+}
+
+.dark.theme-premium .gift-card-hero,
+.dark.theme-premium .gift-card-form-header,
+.dark .theme-premium .gift-card-hero,
+.dark .theme-premium .gift-card-form-header {
+  background: var(--premium-hero-gradient-dark) !important;
+  color: color-mix(in srgb, var(--premium-accent-soft) 92%, white) !important;
+}
+
+.theme-premium .gift-card-hero-button {
+  background: color-mix(in srgb, white 15%, transparent) !important;
+  border-color: color-mix(in srgb, white 26%, transparent) !important;
+  color: white !important;
+}
+
+.theme-premium .gift-card-steps,
+.theme-premium .gift-card-preview-shell,
+.theme-premium .gift-card-bottom-nav {
+  background: color-mix(in srgb, var(--premium-bg-end) 90%, transparent) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 20%, transparent) !important;
+  color: var(--foreground) !important;
+}
+
+.dark.theme-premium .gift-card-steps,
+.dark.theme-premium .gift-card-preview-shell,
+.dark.theme-premium .gift-card-bottom-nav,
+.dark .theme-premium .gift-card-steps,
+.dark .theme-premium .gift-card-preview-shell,
+.dark .theme-premium .gift-card-bottom-nav {
+  background: color-mix(in srgb, var(--premium-bg-dark-mid) 90%, transparent) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 22%, transparent) !important;
+}
+
+.theme-premium .gift-card-form-card,
+.theme-premium .gift-card-panel,
+.theme-premium .gift-card-stat-card,
+.theme-premium .gift-card-tabs-nav,
+.theme-premium .gift-card-info-panel {
+  background: var(--premium-surface-strong) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 22%, transparent) !important;
+  color: var(--foreground) !important;
+  box-shadow: 0 20px 48px -32px rgb(var(--premium-shadow-rgb) / .72) !important;
+}
+
+.dark.theme-premium .gift-card-form-card,
+.dark.theme-premium .gift-card-panel,
+.dark.theme-premium .gift-card-stat-card,
+.dark.theme-premium .gift-card-tabs-nav,
+.dark.theme-premium .gift-card-info-panel,
+.dark .theme-premium .gift-card-form-card,
+.dark .theme-premium .gift-card-panel,
+.dark .theme-premium .gift-card-stat-card,
+.dark .theme-premium .gift-card-tabs-nav,
+.dark .theme-premium .gift-card-info-panel {
+  background: var(--premium-dark-surface-strong) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 24%, transparent) !important;
+  box-shadow: 0 0 28px rgb(var(--premium-glow-rgb) / .12) !important;
+}
+
+.theme-premium .gift-card-stat-card-active,
+.theme-premium .gift-card-mobile-history,
+.theme-premium .gift-card-panel-icon,
+.theme-premium .gift-card-empty-icon,
+.theme-premium .gift-card-secondary-action {
+  background: color-mix(in srgb, var(--premium-accent-soft) 70%, white) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 28%, transparent) !important;
+  color: var(--premium-accent-strong) !important;
+}
+
+.dark.theme-premium .gift-card-stat-card-active,
+.dark.theme-premium .gift-card-mobile-history,
+.dark.theme-premium .gift-card-panel-icon,
+.dark.theme-premium .gift-card-empty-icon,
+.dark.theme-premium .gift-card-secondary-action,
+.dark .theme-premium .gift-card-stat-card-active,
+.dark .theme-premium .gift-card-mobile-history,
+.dark .theme-premium .gift-card-panel-icon,
+.dark .theme-premium .gift-card-empty-icon,
+.dark .theme-premium .gift-card-secondary-action {
+  background: color-mix(in srgb, var(--premium-bg-dark-start) 86%, transparent) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 30%, transparent) !important;
+  color: color-mix(in srgb, var(--premium-accent-soft) 88%, white) !important;
+}
+
+.theme-premium .gift-card-themed-text,
+.theme-premium .gift-card-themed-badge,
+.theme-premium .gift-card-bottom-active,
+.theme-premium .gift-card-stat-card-active svg,
+.theme-premium .gift-card-mobile-history svg {
+  color: var(--premium-accent-strong) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 32%, transparent) !important;
+}
+
+.dark.theme-premium .gift-card-themed-text,
+.dark.theme-premium .gift-card-themed-badge,
+.dark.theme-premium .gift-card-bottom-active,
+.dark.theme-premium .gift-card-stat-card-active svg,
+.dark.theme-premium .gift-card-mobile-history svg,
+.dark .theme-premium .gift-card-themed-text,
+.dark .theme-premium .gift-card-themed-badge,
+.dark .theme-premium .gift-card-bottom-active,
+.dark .theme-premium .gift-card-stat-card-active svg,
+.dark .theme-premium .gift-card-mobile-history svg {
+  color: color-mix(in srgb, var(--premium-accent-soft) 88%, white) !important;
+}
+
+.theme-premium .gift-card-selectable:hover,
+.theme-premium .gift-card-suggestion:hover,
+.theme-premium .gift-card-upload-zone:hover {
+  background: color-mix(in srgb, var(--premium-accent-soft) 58%, transparent) !important;
+  border-color: color-mix(in srgb, var(--premium-accent) 36%, transparent) !important;
+  color: var(--premium-accent-strong) !important;
+}
+
+.dark.theme-premium .gift-card-selectable:hover,
+.dark.theme-premium .gift-card-suggestion:hover,
+.dark.theme-premium .gift-card-upload-zone:hover,
+.dark .theme-premium .gift-card-selectable:hover,
+.dark .theme-premium .gift-card-suggestion:hover,
+.dark .theme-premium .gift-card-upload-zone:hover {
+  background: color-mix(in srgb, var(--premium-bg-dark-start) 82%, transparent) !important;
+  color: color-mix(in srgb, var(--premium-accent-soft) 88%, white) !important;
+}
+
+.theme-premium .gift-card-template-selected {
+  border-color: color-mix(in srgb, var(--premium-accent) 82%, white) !important;
+  box-shadow: 0 18px 34px -22px rgb(var(--premium-shadow-rgb) / .9) !important;
+}
+
+.theme-premium .gift-card-template-check {
+  background: var(--premium-button-gradient) !important;
+}
+
+.theme-premium .gift-card-tabs-trigger {
+  color: color-mix(in srgb, var(--foreground) 64%, var(--premium-accent-strong)) !important;
+}
+
+.theme-premium .gift-card-tabs-trigger:hover {
+  background: color-mix(in srgb, var(--premium-accent-soft) 58%, transparent) !important;
+  color: var(--premium-accent-strong) !important;
+}
+
+.theme-premium .gift-card-tabs-trigger-active {
+  background: var(--premium-button-gradient) !important;
+  color: var(--premium-contrast) !important;
+  box-shadow: 0 14px 28px -22px rgb(var(--premium-shadow-rgb) / .92) !important;
+}
+
+.dark.theme-premium .gift-card-tabs-trigger,
+.dark .theme-premium .gift-card-tabs-trigger {
+  color: color-mix(in srgb, var(--foreground) 74%, var(--premium-accent-soft)) !important;
+}
+
+.dark.theme-premium .gift-card-tabs-trigger:hover,
+.dark .theme-premium .gift-card-tabs-trigger:hover {
+  background: color-mix(in srgb, var(--premium-bg-dark-start) 78%, transparent) !important;
+  color: color-mix(in srgb, var(--premium-accent-soft) 88%, white) !important;
+}
+
+.dark.theme-premium .gift-card-tabs-trigger-active,
+.dark .theme-premium .gift-card-tabs-trigger-active {
+  background: var(--premium-button-gradient-dark) !important;
+  color: var(--premium-dark-contrast) !important;
+}
+
+.theme-premium .gift-card-themed-input:focus,
+.theme-premium .gift-card-themed-input:focus-visible,
+.theme-premium .gift-card-buy-section input:focus,
+.theme-premium .gift-card-buy-section textarea:focus {
+  border-color: color-mix(in srgb, var(--premium-accent) 58%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--premium-accent) 14%, transparent) !important;
 }

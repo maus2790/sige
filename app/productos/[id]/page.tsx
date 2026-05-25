@@ -414,10 +414,10 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
 
       {/* Sticky Bottom Bar for Mobile Only */}
       <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t shadow-glass z-40 md:hidden animate-in slide-in-from-bottom-full duration-500">
-        <div className="flex items-center justify-between gap-4 px-4 h-20">
+        <div className="flex items-center justify-between gap-4 px-4 h-16">
           <div className="flex flex-col shrink-0">
             <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total</span>
-            <span className="text-xl font-black text-foreground">
+            <span className="text-lg font-black text-foreground">
               Bs. {(product.comercialConfig?.precioOferta || product.comercialConfig?.precioVenta || 0).toFixed(2)}
             </span>
           </div>
@@ -438,13 +438,13 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
           >
             <Button 
               className={cn(
-                "w-full h-12 text-sm font-bold gap-2 rounded-2xl border-0 transition-all",
+                "w-full h-10 text-xs font-bold gap-2 rounded-xl border-0 transition-all",
                 isOutOfStock 
                   ? "bg-muted text-muted-foreground cursor-not-allowed opacity-100" 
                   : "bg-[#25D366] hover:bg-[#20ba5a] text-white shadow-[0_8px_16px_rgba(37,211,102,0.2)]"
               )}
             >
-              <WhatsAppIcon className="w-5 h-5" />
+              <WhatsAppIcon className="w-4 h-4" />
               {isOutOfStock ? "Agotado" : "Comprar por WhatsApp"}
             </Button>
           </a>

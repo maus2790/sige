@@ -84,7 +84,7 @@ export function ProductGallery({ imageUrls, productName, imageUrlsThumb, imageUr
   }
 
   return (
-    <div className="max-md:contents md:flex md:flex-col md:gap-4 md:h-auto">
+    <div className="max-md:contents md:flex md:flex-row md:gap-4 md:h-auto">
       {/* Sticky Bar for Mobile (Thumbnails + Actions) */}
       <div className="order-[-1] md:order-1 sticky top-[64px] z-40 bg-background/95 backdrop-blur-md pb-2 pt-2 md:pt-0 border-b md:border-0 md:static md:bg-transparent md:h-full flex flex-col shrink-0 max-md:-mx-4 max-md:px-4">
         {/* Thumbnails */}

@@ -8,24 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Gift, Search, User, Mail, MessageCircle, Check, CreditCard, ChevronRight, ChevronLeft, Cake, Heart, GraduationCap, CalendarDays, Baby, Handshake, TreePine, Sparkles, Home, PartyPopper, Send, Wallet, Clock, Upload, Plus } from 'lucide-react';
-import { purchaseGiftCard, searchGiftingProducts, saveGiftCardToWallet, getSIGEUsers, uploadGiftCardImage, uploadGiftCardReceipt } from '@/app/actions/gift-cards';
+import { Gift, Search, User, Mail, MessageCircle, Check, CreditCard, ChevronRight, ChevronLeft, Cake, Heart, GraduationCap, CalendarDays, Baby, Handshake, TreePine, Sparkles, Home, PartyPopper, Send, Wallet, Calendar } from 'lucide-react';
+import { purchaseGiftCard, searchGiftingProducts, getSIGEUsers, uploadGiftCardImage } from '@/app/actions/gift-cards';
 import { toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
 import { useDebounce } from 'use-debounce';
-
-const TEMPLATES = [
-  { id: 1, name: 'BLUE CARD', className: 'bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900' },
-  { id: 2, name: 'BLACK CARD', className: 'bg-linear-to-br from-zinc-800 via-zinc-900 to-black' },
-  { id: 3, name: 'GOLD CARD', className: 'bg-linear-to-br from-yellow-400 via-amber-500 to-orange-600' },
-  { id: 4, name: 'ROSE CARD', className: 'bg-linear-to-br from-rose-500 via-pink-600 to-fuchsia-700' },
-  { id: 5, name: 'EMERALD CARD', className: 'bg-linear-to-br from-emerald-500 via-green-600 to-teal-800' },
-  { id: 6, name: 'PURPLE CARD', className: 'bg-linear-to-br from-purple-600 via-violet-700 to-indigo-950' },
-  { id: 7, name: 'ORANGE CARD', className: 'bg-linear-to-br from-orange-400 via-red-500 to-rose-600' },
-  { id: 8, name: 'NEON CARD', className: 'bg-zinc-950 border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]' },
-];
+import { GIFT_CARD_TEMPLATES, getGiftCardTemplate } from './gift-card-templates';
 
 const EVENT_MESSAGES: Record<string, string[]> = {
   cumpleaños: [
@@ -100,10 +89,11 @@ const EVENT_MESSAGES: Record<string, string[]> = {
   ]
 };
 
-const PREDEFINED_AMOUNTS = [10, 20, 50, 100, 150, 200, 300, 500, 1000];
+const PREDEFINED_AMOUNTS = [10, 20, 50, 100, 150, 200, 300, 500, 1000, 3000, 5000, 10000];
+const MAX_GIFT_CARD_AMOUNT = 10000;
 const MAX_CHARS = 60;
 
-export function GiftCardBuyForm() {
+export function GiftCardBuyForm({ availableBalance }: { availableBalance: number }) {
   const router = useRouter();
   const { data: session } = useSession();
   const [step, setStep] = useState(1);
@@ -123,24 +113,11 @@ export function GiftCardBuyForm() {
   const [recipientId, setRecipientId] = useState<string>('');
   const [sigeUsers, setSigeUsers] = useState<any[]>([]);
   const [giftCardCode, setGiftCardCode] = useState('');
-  const [scheduledDate, setScheduledDate] = useState('');
-  const [isScheduled, setIsScheduled] = useState(false);
-  const [purchasedId, setPurchasedId] = useState<string | null>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'qr' | 'transfer' | 'tigo' | null>(null);
-
-  const handleReceiptUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setReceiptFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setReceiptPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
+  
+  // Delivery option: 'send' (Enviar ahora), 'save' (Guardar para después), 'schedule' (Programar envío)
+  const [deliveryOption, setDeliveryOption] = useState<'send' | 'save' | 'schedule'>('send');
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('');
 
   // Generar código cuando se llega al paso 3
   useEffect(() => {
@@ -154,7 +131,7 @@ export function GiftCardBuyForm() {
       setGiftCardCode(code);
     }
     
-    if (step === 3 && sigeUsers.length === 0) {
+    if (step === 4 && sigeUsers.length === 0) {
       getSIGEUsers().then(setSigeUsers);
     }
   }, [step, giftCardCode, sigeUsers.length]);
@@ -236,100 +213,123 @@ export function GiftCardBuyForm() {
     }
   };
 
-  const handlePurchase = async () => {
-    const isFormValid = () => {
-      if (!recipientName) return false;
-      if (deliveryMethod === 'email') return !!recipientEmail;
-      if (deliveryMethod === 'whatsapp') return !!whatsappNumber;
-      if (deliveryMethod === 'sige') return !!recipientId;
-      return false;
-    };
+  const amountError = amount > MAX_GIFT_CARD_AMOUNT
+    ? `El monto maximo por Gift Card es Bs. ${MAX_GIFT_CARD_AMOUNT.toLocaleString('es-BO')}`
+    : amount > availableBalance
+      ? 'No tienes saldo global suficiente para este monto'
+      : '';
+  const canContinueFromAmount = amount > 0 && !amountError;
 
-    if (!isFormValid()) {
-      toast.error('Por favor completa los datos del destinatario');
+  const generateFinalCardImage = async () => {
+    if (!cardRef.current) return undefined;
+
+    toast.loading('Generando diseÃ±o final...', { id: 'card-image' });
+    try {
+      const dataUrl = await toPng(cardRef.current, {
+        cacheBust: true,
+        pixelRatio: 2,
+        style: { margin: '0' },
+        fontEmbedCSS: '',
+        filter: (node: any) => {
+          if (node.tagName === 'STYLE' || node.tagName === 'LINK') {
+            try {
+              const sheet = (node as any).sheet;
+              if (sheet && !sheet.cssRules) return false;
+            } catch {
+              return false;
+            }
+          }
+          return true;
+        }
+      });
+      const imgResult = await uploadGiftCardImage(dataUrl);
+      if (imgResult.success) {
+        toast.success('DiseÃ±o generado', { id: 'card-image' });
+        return imgResult.url;
+      }
+      toast.error('Error al subir diseÃ±o', { id: 'card-image' });
+    } catch (e) {
+      console.error("Error generating card image", e);
+      toast.error('Error generando vista previa', { id: 'card-image' });
+    }
+
+    return undefined;
+  };
+
+  const handlePurchaseFlow = async () => {
+    if (!canContinueFromAmount) {
+      toast.error(amountError || 'Por favor ingresa un monto válido');
       return;
+    }
+    if (!recipientName) {
+      toast.error('Por favor escribe el nombre del destinatario');
+      return;
+    }
+
+    if (deliveryOption === 'send') {
+      if (deliveryMethod === 'email' && !recipientEmail) {
+        toast.error('Por favor ingresa el correo del destinatario');
+        return;
+      }
+      if (deliveryMethod === 'whatsapp' && !whatsappNumber) {
+        toast.error('Por favor ingresa el número de WhatsApp');
+        return;
+      }
+      if (deliveryMethod === 'sige' && !recipientId) {
+        toast.error('Por favor selecciona un usuario SIGE');
+        return;
+      }
+    } else if (deliveryOption === 'schedule') {
+      if (!scheduleDate || !scheduleTime) {
+        toast.error('Por favor selecciona la fecha y hora programada');
+        return;
+      }
+      const combined = new Date(`${scheduleDate}T${scheduleTime}`);
+      if (combined <= new Date()) {
+        toast.error('La fecha y hora programada debe ser en el futuro');
+        return;
+      }
     }
 
     setLoading(true);
     try {
-      let finalReceiptUrl = undefined;
-      let finalCardImageUrl = undefined;
+      const finalCardImageUrl = await generateFinalCardImage();
+      toast.loading(
+        deliveryOption === 'send' ? 'Procesando Gift Card...' : 
+        deliveryOption === 'schedule' ? 'Programando Gift Card...' : 'Guardando Gift Card...',
+        { id: 'purchase' }
+      );
 
-      // 1. Si hay comprobante de pago, subirlo a R2
-      if (receiptPreview && paymentMethod !== 'qr') {
-        toast.loading('Subiendo comprobante...', { id: 'upload-receipt' });
-        const receiptResult = await uploadGiftCardReceipt(receiptPreview);
-        if (receiptResult.success) {
-          finalReceiptUrl = receiptResult.url;
-          toast.success('Comprobante subido', { id: 'upload-receipt' });
-        } else {
-          toast.error('Error al subir comprobante', { id: 'upload-receipt' });
-        }
-      }
+      const isSave = deliveryOption === 'save' || deliveryOption === 'schedule';
+      const scheduledAt = deliveryOption === 'schedule' ? new Date(`${scheduleDate}T${scheduleTime}`) : undefined;
 
-      // 2. Generar imagen de la tarjeta SIEMPRE para guardarla
-      if (cardRef.current) {
-        toast.loading('Generando diseño final...', { id: 'card-image' });
-        try {
-          const dataUrl = await toPng(cardRef.current, { 
-            cacheBust: true,
-            pixelRatio: 2, 
-            style: { margin: '0' },
-            fontEmbedCSS: '', // Avoid CSS rules access errors for fonts
-            filter: (node: any) => {
-              // Skip style/link tags that might have CORS issues
-              if (node.tagName === 'STYLE' || node.tagName === 'LINK') {
-                try {
-                  const sheet = (node as any).sheet;
-                  if (sheet && !sheet.cssRules) return false;
-                } catch (e) {
-                  return false;
-                }
-              }
-              return true;
-            }
-          });
-          const imgResult = await uploadGiftCardImage(dataUrl);
-          if (imgResult.success) {
-            finalCardImageUrl = imgResult.url;
-            toast.success('Diseño generado', { id: 'card-image' });
-          } else {
-            toast.error('Error al subir diseño', { id: 'card-image' });
-          }
-        } catch (e) {
-          console.error("Error generating card image", e);
-          toast.error('Error generando vista previa', { id: 'card-image' });
-        }
-      }
-
-      // 3. Procesar la compra en DB
-      toast.loading('Procesando compra...', { id: 'purchase' });
       const result = await purchaseGiftCard({
         amount,
         recipientEmail: deliveryMethod === 'sige' ? (sigeUsers.find(u => u.id === recipientId)?.email || '') : recipientEmail,
+        recipientPhone: (isSave && deliveryOption === 'save') ? undefined : (deliveryMethod === 'whatsapp' ? whatsappNumber : undefined),
         recipientName: deliveryMethod === 'sige' ? (sigeUsers.find(u => u.id === recipientId)?.name || recipientName) : recipientName,
         message,
         templateId,
         occasion: selectedEvent || undefined,
         businessId: selectedProduct?.storeId || 'SIGE-GLOBAL',
         productId: selectedProduct?.id,
-        recipientId: deliveryMethod === 'sige' ? recipientId : undefined,
+        recipientId: isSave ? undefined : (deliveryMethod === 'sige' ? recipientId : undefined),
         cardImageUrl: finalCardImageUrl,
-        receiptUrl: finalReceiptUrl
+        saveToWallet: isSave,
+        scheduledAt,
       });
 
       if (result.success) {
-        toast.success('¡Compra exitosa!', { id: 'purchase' });
-        
-        // Si es WhatsApp, preparar el mensaje
-        if (deliveryMethod === 'whatsapp' && finalCardImageUrl) {
-          const senderName = session?.user?.name || "Un amigo/a"; 
-          const occasionEmoji = selectedEvent === 'cumpleaños' ? '🎂' : selectedEvent === 'boda' ? '❤️' : '🎁';
-          const text = `¡Hola ${recipientName}! ${senderName} te está regalando una Gift Card de Bs. ${amount.toFixed(2)} por ${selectedEvent || 'una ocasión especial'} ${occasionEmoji}\n\nMírala aquí: ${finalCardImageUrl}\n\n¡Disfrútalo!`;
-          
-          const waUrl = `https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
-          
-          // Usar un elemento a para mejor compatibilidad con bloqueadores de popups
+        toast.success(
+          deliveryOption === 'send' ? 'Gift Card enviada' : 
+          deliveryOption === 'schedule' ? 'Gift Card programada' : 'Gift Card guardada',
+          { id: 'purchase' }
+        );
+
+        if (deliveryOption === 'send' && deliveryMethod === 'whatsapp' && finalCardImageUrl) {
+          const senderName = session?.user?.name || 'Un amigo/a';
+          const text = 'Hola ' + recipientName + ', ' + senderName + ' te esta regalando una Gift Card de SIGE por Bs. ' + amount.toFixed(2) + '. Mirala aqui: ' + finalCardImageUrl;
+          const waUrl = 'https://wa.me/' + whatsappNumber.replace(/\D/g, '') + '?text=' + encodeURIComponent(text);
           const link = document.createElement('a');
           link.href = waUrl;
           link.target = '_blank';
@@ -338,85 +338,41 @@ export function GiftCardBuyForm() {
           document.body.removeChild(link);
         }
 
-        // Redirigir a la sección de enviados después de un breve tiempo
-        // para dar tiempo a que se abra la pestaña de WhatsApp
-        setTimeout(() => {
+        if (isSave) {
+          router.push('/gift-cards?tab=saved');
+        } else {
           router.push('/gift-cards?tab=sent');
-        }, 800);
+        }
       } else {
-        toast.error('Error al procesar la compra', { id: 'purchase' });
+        toast.error(result.error || 'Error al procesar la Gift Card', { id: 'purchase' });
       }
     } catch (error) {
-      toast.error('Algo salió mal');
+      toast.error('Algo salio mal', { id: 'purchase' });
     } finally {
       setLoading(false);
     }
   };
-
-  const handleSaveToWallet = async () => {
-    setLoading(true);
-    try {
-      const result = await purchaseGiftCard({
-        amount,
-        recipientName: 'Mi Inventario',
-        recipientEmail: 'me@sige.com', // Placeholder for "myself"
-        message,
-        templateId,
-        occasion: selectedEvent || undefined,
-        businessId: selectedProduct?.storeId || 'SIGE-GLOBAL',
-        productId: selectedProduct?.id,
-        recipientId: 'SELF' // Indicator for the action
-      });
-
-      if (result.success) {
-        toast.success('¡Guardada en tu billetera!');
-        setPurchasedId(result.id);
-        setDeliveryMethod('sige'); // Default for self
-        setRecipientName('Mi Inventario');
-        setStep(6);
-      } else {
-        toast.error('Error al guardar');
-      }
-    } catch (error) {
-      toast.error('Algo salió mal');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const nextStep = () => setStep(s => s + 1);
   const prevStep = () => setStep(s => s - 1);
 
-  const handleFinalSend = () => {
-    if (deliveryMethod === 'whatsapp') {
-      const text = `¡Hola ${recipientName}! Te he enviado una Gift Card de SIGE por Bs. ${amount.toFixed(2)}. \n\nCódigo de Canje: ${giftCardCode}\n\nMensaje: "${message || '¡Disfruta tu regalo!'}"\n\nPuedes canjearlo en: ${window.location.origin}/gift-cards/check`;
-      const cleanNumber = whatsappNumber.replace(/\D/g, '');
-      const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
-      toast.success('Abriendo WhatsApp...');
-    } else {
-      toast.success(`Re-enviando Gift Card a ${recipientEmail}...`);
-    }
-  };
-
-  const selectedTemplate = TEMPLATES.find(t => t.id === templateId) || TEMPLATES[0];
+  const selectedTemplate = getGiftCardTemplate(templateId);
 
   return (
-    <div className="w-full pb-20">
+    <div className="gift-card-buy-section w-full pb-20">
       {/* Indicador de Pasos Sticky Full Width */}
       {/* Indicador de Pasos Sticky Full Width */}
-      <div className="sticky top-[64px] z-50 bg-[#f2f4ff]/80 dark:bg-[#081623]/80 backdrop-blur-xl py-4 mb-8 border-b border-muted/10 shadow-sm w-full">
+      <div className="gift-card-steps sticky top-[64px] z-50 bg-[#f2f4ff]/80 dark:bg-[#081623]/80 backdrop-blur-xl py-4 mb-8 border-b border-muted/10 shadow-sm w-full">
         <div className="max-w-4xl mx-auto px-4 md:px-6 flex justify-between items-center">
-          {[1, 2, 3, 4, 5].map((s) => (
-            <div key={s} className={`flex items-center ${s < 5 ? 'flex-1' : ''}`}>
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} className={`flex items-center ${s < 4 ? 'flex-1' : ''}`}>
               <div className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-700 shadow-md ${
-                step >= s ? `${selectedTemplate.className} text-white scale-105` : 'bg-muted text-muted-foreground'
+                step >= s ? 'gift-card-step-active text-white scale-105' : 'bg-muted text-muted-foreground'
               }`}>
                 {step > s ? <Check className="h-4 w-4" /> : s}
               </div>
-              {s < 5 && (
+              {s < 4 && (
                 <div className={`flex-1 h-1 mx-1 rounded-full transition-all duration-1000 ${
-                  step > s ? `${selectedTemplate.className}` : 'bg-muted'
+                  step > s ? 'gift-card-step-connector-active' : 'bg-muted'
                 }`} />
               )}
             </div>
@@ -428,14 +384,14 @@ export function GiftCardBuyForm() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-12 items-start relative">
           {/* Preview Area (Sticky below the steps on mobile) */}
           {/* Preview Area (Sticky below the steps on mobile) */}
-          <div className="w-full lg:order-2 sticky top-[130px] lg:top-32 z-40 bg-[#f2f4ff] dark:bg-[#081623] lg:bg-transparent! lg:backdrop-blur-none! py-1 lg:py-0 border-b lg:border-none! shadow-sm lg:shadow-none!">
+          <div className="gift-card-preview-shell w-full lg:order-2 sticky top-[130px] lg:top-32 z-40 bg-[#f2f4ff] dark:bg-[#081623] lg:bg-transparent! lg:backdrop-blur-none! py-1 lg:py-0 border-b lg:border-none! shadow-sm lg:shadow-none!">
           <div className="space-y-4">
             <div className="hidden lg:flex items-center justify-between px-2 max-w-[420px] mx-auto">
               <h3 className="font-bold text-lg flex items-center gap-2">
                 <Check className="h-5 w-5 text-green-500" />
                 Vista Previa
               </h3>
-              <Badge variant="outline" className="bg-transparent border-blue-200/50 text-blue-700 dark:text-blue-300">
+              <Badge variant="outline" className="gift-card-themed-badge bg-transparent border-blue-200/50 text-blue-700 dark:text-blue-300">
                 Premium
               </Badge>
             </div>
@@ -524,8 +480,8 @@ export function GiftCardBuyForm() {
         <div className="w-full lg:order-1 space-y-6">
           {/* NUEVO PASO 1: PERSONALIZACIÓN */}
           {step === 1 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+            <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Sparkles className="h-6 w-6" />
                   Personaliza tu Regalo
@@ -561,7 +517,7 @@ export function GiftCardBuyForm() {
                           key={event}
                           type="button"
                           variant={selectedEvent === event ? 'default' : 'outline'} 
-                          className={`flex flex-col h-auto py-3 px-6 gap-1 shrink-0 snap-start min-w-[100px] ${selectedEvent === event ? 'bg-blue-600' : ''}`}
+                          className={`gift-card-selectable flex flex-col h-auto py-3 px-6 gap-1 shrink-0 snap-start min-w-[100px] ${selectedEvent === event ? 'gift-card-option-selected' : ''}`}
                           onClick={() => setSelectedEvent(event)}
                         >
                           {event === 'cumpleaños' && <Cake className="h-5 w-5" />}
@@ -600,8 +556,8 @@ export function GiftCardBuyForm() {
                             type="button"
                             className={`text-left text-xs p-3 rounded-xl border transition-all ${
                               message === msg 
-                                ? 'bg-blue-600 text-white border-blue-500 shadow-md' 
-                                : 'bg-muted/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-transparent text-muted-foreground hover:text-blue-700 hover:border-blue-200'
+                                ? 'gift-card-option-selected text-white shadow-md' 
+                                : 'gift-card-suggestion bg-muted/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-transparent text-muted-foreground hover:text-blue-700 hover:border-blue-200'
                             }`}
                             onClick={() => setMessage(msg)}
                           >
@@ -632,7 +588,7 @@ export function GiftCardBuyForm() {
                 </div>
 
                 <Button 
-                  className={`w-full h-12 text-lg rounded-xl transition-all duration-300 hover:brightness-110 border-none shadow-lg text-white ${selectedTemplate.className}`} 
+                  className="gift-card-primary-action w-full h-12 text-lg rounded-xl transition-all duration-300 hover:brightness-110 border-none shadow-lg text-white" 
                   onClick={nextStep}
                 >
                   Elegir Diseño
@@ -644,8 +600,8 @@ export function GiftCardBuyForm() {
 
           {/* PASO 2: DISEÑO */}
           {step === 2 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+            <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Sparkles className="h-6 w-6" />
                   Elige un Diseño
@@ -676,12 +632,12 @@ export function GiftCardBuyForm() {
                       ref={designsRef}
                       className="flex overflow-x-auto gap-4 pb-4 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth"
                     >
-                      {TEMPLATES.map((tpl) => (
+                      {GIFT_CARD_TEMPLATES.map((tpl) => (
                         <button
                           key={tpl.id}
                           type="button"
                           className={`h-24 min-w-[160px] rounded-2xl transition-all shrink-0 snap-start relative overflow-hidden flex flex-col items-center justify-center border-2 ${
-                            templateId === tpl.id ? 'border-blue-500 scale-105 shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'
+                            templateId === tpl.id ? 'gift-card-template-selected scale-105 shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'
                           } ${tpl.className}`}
                           onClick={() => setTemplateId(tpl.id)}
                         >
@@ -689,7 +645,7 @@ export function GiftCardBuyForm() {
                             {tpl.name}
                           </span>
                           {templateId === tpl.id && (
-                            <div className="absolute top-1 right-1 bg-blue-500 rounded-full p-0.5 shadow-md">
+                            <div className="gift-card-template-check absolute top-1 right-1 bg-blue-500 rounded-full p-0.5 shadow-md">
                               <Check className="h-3 w-3 text-white" />
                             </div>
                           )}
@@ -715,7 +671,7 @@ export function GiftCardBuyForm() {
                     Atrás
                   </Button>
                   <Button 
-                    className={`flex-2 h-12 text-lg rounded-xl transition-all duration-300 hover:brightness-110 border-none shadow-lg text-white ${selectedTemplate.className}`} 
+                    className="gift-card-primary-action flex-2 h-12 text-lg rounded-xl transition-all duration-300 hover:brightness-110 border-none shadow-lg text-white" 
                     onClick={nextStep}
                   >
                     Siguiente: Monto
@@ -728,8 +684,8 @@ export function GiftCardBuyForm() {
 
           {/* PASO 3: MONTO */}
           {step === 3 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+            <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <CreditCard className="h-6 w-6" />
                   Monto del Regalo
@@ -740,7 +696,12 @@ export function GiftCardBuyForm() {
               </CardHeader>
               <CardContent className="p-4 md:p-6 space-y-6 pt-6">
                 <div className="space-y-4">
-                  <Label className="text-base font-bold">Elige un monto</Label>
+                  <div className="flex items-center justify-between gap-3">
+                    <Label className="text-base font-bold">Elige un monto</Label>
+                    <span className="text-xs font-bold text-muted-foreground">
+                      Saldo global: Bs. {availableBalance.toFixed(2)}
+                    </span>
+                  </div>
                   <div className="relative group">
                     <div className="flex overflow-x-auto gap-3 pb-4 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth">
                       {PREDEFINED_AMOUNTS.map((amt) => (
@@ -750,9 +711,10 @@ export function GiftCardBuyForm() {
                           variant={amount === amt ? 'default' : 'outline'}
                           className={`h-14 min-w-[100px] text-lg font-bold rounded-2xl shrink-0 snap-start transition-all duration-300 ${
                             amount === amt 
-                              ? `${selectedTemplate.className} text-white shadow-lg border-none scale-105 ring-2 ring-white/20` 
-                              : 'bg-muted/30 hover:bg-muted/50 border-muted'
+                              ? 'gift-card-option-selected text-white shadow-lg border-none scale-105 ring-2 ring-white/20' 
+                              : amt > availableBalance ? 'bg-muted/20 border-muted opacity-45' : 'bg-muted/30 hover:bg-muted/50 border-muted'
                           }`}
+                          disabled={amt > availableBalance}
                           onClick={() => {
                             setAmount(amt);
                             setCustomAmount('');
@@ -767,7 +729,7 @@ export function GiftCardBuyForm() {
                     <Input
                       placeholder="Monto personalizado..."
                       type="number"
-                      className="h-14 text-center text-base md:text-xl font-black rounded-2xl border-2 focus:border-blue-500 bg-background"
+                      className="gift-card-themed-input h-14 text-center text-base md:text-xl font-black rounded-2xl border-2 focus:border-blue-500 bg-background"
                       value={customAmount}
                       onChange={(e) => {
                         setCustomAmount(e.target.value);
@@ -776,6 +738,9 @@ export function GiftCardBuyForm() {
                     />
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-black text-lg">Bs.</span>
                   </div>
+                  {amountError && (
+                    <p className="text-xs font-bold text-red-500">{amountError}</p>
+                  )}
                 </div>
 
                 <div className="flex gap-4">
@@ -784,11 +749,11 @@ export function GiftCardBuyForm() {
                     Atrás
                   </Button>
                   <Button 
-                    className={`flex-2 h-12 text-lg rounded-xl shadow-lg transition-all duration-300 hover:brightness-110 border-none text-white ${selectedTemplate.className}`} 
+                    className="gift-card-primary-action flex-2 h-12 text-lg rounded-xl shadow-lg transition-all duration-300 hover:brightness-110 border-none text-white" 
                     onClick={nextStep}
-                    disabled={!amount}
+                    disabled={!canContinueFromAmount}
                   >
-                    Siguiente: Pago
+                    Siguiente: Envio
                     <ChevronRight className="ml-2 h-5 w-5" />
                   </Button>
                 </div>
@@ -796,179 +761,69 @@ export function GiftCardBuyForm() {
             </Card>
           )}
 
-          {/* PASO 4: PAGO */}
           {step === 4 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
-                <CardTitle className="text-2xl flex items-center gap-2">
-                  <Wallet className="h-6 w-6" />
-                  Realiza tu Pago
-                </CardTitle>
-                <CardDescription className="text-white/80">
-                  Transfiere y sube tu comprobante para activar la tarjeta.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 md:p-6 space-y-6 pt-6">
-                  <div className="space-y-4">
-                    <Label className="text-sm font-bold uppercase tracking-widest text-muted-foreground text-center block">Selecciona Método de Pago</Label>
-                    <div className="grid grid-cols-3 gap-3">
-                      <Button 
-                        type="button"
-                        variant={paymentMethod === 'qr' ? 'default' : 'outline'}
-                        className={`h-16 flex flex-col gap-1 rounded-2xl transition-all ${paymentMethod === 'qr' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-4 ring-blue-500/20' : ''}`}
-                        onClick={() => setPaymentMethod('qr')}
-                      >
-                        <Search className="h-5 w-5" />
-                        <span className="text-[10px] font-bold">QR Simple</span>
-                      </Button>
-                      <Button 
-                        type="button"
-                        variant={paymentMethod === 'transfer' ? 'default' : 'outline'}
-                        className={`h-16 flex flex-col gap-1 rounded-2xl transition-all ${paymentMethod === 'transfer' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-4 ring-blue-500/20' : ''}`}
-                        onClick={() => setPaymentMethod('transfer')}
-                      >
-                        <Wallet className="h-5 w-5" />
-                        <span className="text-[10px] font-bold">Transf.</span>
-                      </Button>
-                      <Button 
-                        type="button"
-                        variant={paymentMethod === 'tigo' ? 'default' : 'outline'}
-                        className={`h-16 flex flex-col gap-1 rounded-2xl transition-all ${paymentMethod === 'tigo' ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 ring-4 ring-blue-500/20' : ''}`}
-                        onClick={() => setPaymentMethod('tigo')}
-                      >
-                        <MessageCircle className="h-5 w-5" />
-                        <span className="text-[10px] font-bold">Tigo Money</span>
-                      </Button>
-                    </div>
-
-                  {paymentMethod === 'qr' && (
-                    <div className="text-center space-y-3 animate-in zoom-in duration-300">
-                      <div className="w-44 h-44 mx-auto bg-white p-3 rounded-2xl shadow-xl border border-slate-100 flex items-center justify-center">
-                        <img 
-                          src={`/payment_qr_placeholder_1778424633832.png`} 
-                          alt="QR de Pago" 
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                      <p className="text-[10px] text-muted-foreground font-medium">Escanea para pagar Bs. {amount.toFixed(2)}</p>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'transfer' && (
-                    <div className="bg-card p-5 rounded-2xl border-2 border-slate-100 dark:border-slate-800 space-y-4 animate-in slide-in-from-bottom-2 duration-300">
-                      <h4 className="text-xs font-black uppercase text-blue-600 dark:text-blue-400">Datos de Transferencia</h4>
-                      <div className="space-y-3">
-                        <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Banco</span>
-                          <span className="text-xs font-black uppercase">Banco Unión</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Cuenta</span>
-                          <span className="text-xs font-black uppercase">123456789</span>
-                        </div>
-                        <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Titular</span>
-                          <span className="text-xs font-black uppercase">SIGE DIGITAL S.R.L.</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">NIT/CI</span>
-                          <span className="text-xs font-black uppercase">987654321</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {paymentMethod === 'tigo' && (
-                    <div className="bg-blue-600 dark:bg-blue-700 p-5 rounded-2xl text-white space-y-3 animate-in slide-in-from-bottom-2 duration-300 shadow-lg shadow-blue-500/20">
-                      <div className="flex items-center gap-3">
-                         <div className="h-10 w-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-                            <MessageCircle className="h-6 w-6" />
-                         </div>
-                         <div>
-                            <h4 className="text-xs font-black uppercase tracking-widest opacity-80 leading-none mb-1">Tigo Money</h4>
-                            <p className="text-sm font-bold">Transferencia Directa</p>
-                         </div>
-                      </div>
-                      <div className="pt-2 bg-black/10 p-4 rounded-xl">
-                        <p className="text-[10px] opacity-80 uppercase font-black tracking-widest mb-1">Número de destino</p>
-                        <p className="text-3xl font-black tabular-nums tracking-tight">76543210</p>
-                        <p className="text-[9px] opacity-70 mt-2 font-medium">Asegúrate de transferir el monto exacto: Bs. {amount.toFixed(2)}</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-bold flex items-center gap-2">
-                      <Upload className="h-4 w-4 text-blue-600" />
-                      Sube tu comprobante
-                    </Label>
-                    <div 
-                      className={`relative h-28 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all cursor-pointer overflow-hidden ${
-                        receiptFile ? 'border-green-500 bg-green-50/10 dark:bg-green-900/10' : 'border-slate-300 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-900/10'
-                      }`}
-                      onClick={() => document.getElementById('receipt-upload')?.click()}
-                    >
-                      {receiptPreview ? (
-                        <div className="flex items-center gap-3 p-2 w-full">
-                          <div className="w-12 h-12 rounded-lg overflow-hidden border shrink-0">
-                            <img src={receiptPreview} alt="Comprobante" className="w-full h-full object-cover" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold truncate">{receiptFile?.name}</p>
-                            <p className="text-[10px] text-green-600 flex items-center gap-1 font-bold">
-                              <Check className="h-3 w-3" /> LISTO
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <Plus className="h-6 w-6 text-slate-400 mb-1" />
-                          <p className="text-xs font-medium text-slate-500">Click para subir foto o PDF</p>
-                        </>
-                      )}
-                      <input 
-                        id="receipt-upload"
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*,.pdf"
-                        onChange={handleReceiptUpload}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-4">
-                  <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={prevStep}>
-                    <ChevronLeft className="mr-2 h-5 w-5" />
-                    Atrás
-                  </Button>
-                  <Button 
-                    className={`flex-2 h-12 text-lg rounded-xl shadow-lg transition-all duration-300 hover:brightness-110 border-none text-white ${selectedTemplate.className}`} 
-                    onClick={nextStep}
-                    disabled={!amount || !receiptFile || !paymentMethod}
-                  >
-                    Siguiente: Envío
-                    <ChevronRight className="ml-2 h-5 w-5" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* PASO 5: DESTINATARIO Y ENVÍO */}
-          {step === 5 && (
-            <Card className="border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className={`px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white ${selectedTemplate.className}`}>
+            <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <User className="h-6 w-6" />
                   Destinatario y Envío
                 </CardTitle>
                 <CardDescription className="text-white/80">
-                  Configura los detalles de entrega de tu regalo.
+                  Elige cómo quieres procesar tu regalo digital.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 md:p-6 space-y-6 pt-6">
+                
+                {/* ── SELECCIÓN DE ACCIÓN CON EL REGALO ── */}
+                <div className="space-y-3">
+                  <Label className="text-sm font-bold text-foreground">¿Qué deseas hacer con tu regalo?</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <Button
+                      type="button"
+                      variant={deliveryOption === 'send' ? 'default' : 'outline'}
+                      className={`h-16 flex flex-col gap-1 rounded-xl px-1 border transition-all ${
+                        deliveryOption === 'send' 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20' 
+                          : 'border-muted hover:bg-muted/50'
+                      }`}
+                      onClick={() => setDeliveryOption('send')}
+                    >
+                      <Send className="h-4 w-4" />
+                      <span className="text-[10px] font-bold">Enviar ahora</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={deliveryOption === 'save' ? 'default' : 'outline'}
+                      className={`h-16 flex flex-col gap-1 rounded-xl px-1 border transition-all ${
+                        deliveryOption === 'save' 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20' 
+                          : 'border-muted hover:bg-muted/50'
+                      }`}
+                      onClick={() => setDeliveryOption('save')}
+                    >
+                      <Wallet className="h-4 w-4" />
+                      <span className="text-[10px] font-bold">Guardar</span>
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant={deliveryOption === 'schedule' ? 'default' : 'outline'}
+                      className={`h-16 flex flex-col gap-1 rounded-xl px-1 border transition-all ${
+                        deliveryOption === 'schedule' 
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20' 
+                          : 'border-muted hover:bg-muted/50'
+                      }`}
+                      onClick={() => setDeliveryOption('schedule')}
+                    >
+                      <Calendar className="h-4 w-4" />
+                      <span className="text-[10px] font-bold">Programar</span>
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
+                  {/* Nombre del destinatario */}
                   <div className="space-y-2">
                     <Label htmlFor="recNameFinal">Nombre del destinatario</Label>
                     <div className="relative">
@@ -983,97 +838,128 @@ export function GiftCardBuyForm() {
                     </div>
                   </div>
 
-                  <div className="space-y-3">
-                    <Label>¿Cómo quieres enviarlo?</Label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button
-                        type="button"
-                        variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'}
-                        className={`h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-                        onClick={() => setDeliveryMethod('whatsapp')}
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        <span className="text-[10px] font-bold">WhatsApp</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={deliveryMethod === 'email' ? 'default' : 'outline'}
-                        className={`h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'email' ? 'bg-[#EA4335] hover:bg-[#D93025]' : ''}`}
-                        onClick={() => setDeliveryMethod('email')}
-                      >
-                        <Mail className="h-4 w-4" />
-                        <span className="text-[10px] font-bold">Por Email</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={deliveryMethod === 'sige' ? 'default' : 'outline'}
-                        className={`h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
-                        onClick={() => setDeliveryMethod('sige')}
-                      >
-                        <User className="h-4 w-4" />
-                        <span className="text-[10px] font-bold">Usuario SIGE</span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  {deliveryMethod === 'email' && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <Label htmlFor="recEmailFinal">Correo electrónico</Label>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  {/* Programar envío (Date y Time) */}
+                  {deliveryOption === 'schedule' && (
+                    <div className="grid grid-cols-2 gap-3 p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1">
+                        <Label htmlFor="schedDate" className="text-xs font-bold">Fecha de envío</Label>
                         <Input
-                          id="recEmailFinal"
-                          type="email"
-                          placeholder="correo@ejemplo.com"
-                          className="pl-10 h-12 rounded-xl"
-                          value={recipientEmail}
-                          onChange={(e) => setRecipientEmail(e.target.value)}
+                          id="schedDate"
+                          type="date"
+                          className="h-10 rounded-xl bg-background"
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="schedTime" className="text-xs font-bold">Hora de envío</Label>
+                        <Input
+                          id="schedTime"
+                          type="time"
+                          className="h-10 rounded-xl bg-background"
+                          value={scheduleTime}
+                          onChange={(e) => setScheduleTime(e.target.value)}
                         />
                       </div>
                     </div>
                   )}
 
-                  {deliveryMethod === 'whatsapp' && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <Label htmlFor="recWa">Número de WhatsApp</Label>
-                      <div className="relative">
-                        <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                        <Input
-                          id="recWa"
-                          type="tel"
-                          placeholder="+591 7XXXXXXX"
-                          className="pl-10 h-12 rounded-xl"
-                          value={whatsappNumber}
-                          onChange={(e) => setWhatsappNumber(e.target.value)}
-                        />
+                  {/* Métodos de envío (si es Enviar o Programar) */}
+                  {(deliveryOption === 'send' || deliveryOption === 'schedule') && (
+                    <div className="space-y-4 animate-in fade-in duration-300">
+                      <div className="space-y-3">
+                        <Label>¿Cómo quieres enviarlo?</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Button
+                            type="button"
+                            variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'}
+                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'whatsapp' ? 'gift-card-option-selected' : ''}`}
+                            onClick={() => setDeliveryMethod('whatsapp')}
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            <span className="text-[10px] font-bold">WhatsApp</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={deliveryMethod === 'email' ? 'default' : 'outline'}
+                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'email' ? 'gift-card-option-selected' : ''}`}
+                            onClick={() => setDeliveryMethod('email')}
+                          >
+                            <Mail className="h-4 w-4" />
+                            <span className="text-[10px] font-bold">Por Email</span>
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={deliveryMethod === 'sige' ? 'default' : 'outline'}
+                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'sige' ? 'gift-card-option-selected' : ''}`}
+                            onClick={() => setDeliveryMethod('sige')}
+                          >
+                            <User className="h-4 w-4" />
+                            <span className="text-[10px] font-bold">Usuario SIGE</span>
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
 
-                  {deliveryMethod === 'sige' && (
-                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <Label htmlFor="sigeUser">Seleccionar Usuario SIGE</Label>
-                      <select
-                        id="sigeUser"
-                        className="w-full h-12 rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                        value={recipientId}
-                        onChange={(e) => {
-                          const uid = e.target.value;
-                          setRecipientId(uid);
-                          const user = sigeUsers.find(u => u.id === uid);
-                          if (user) {
-                            setRecipientName(user.name);
-                            setRecipientEmail(user.email);
-                          }
-                        }}
-                      >
-                        <option value="">Selecciona un usuario...</option>
-                        {sigeUsers.map(user => (
-                          <option key={user.id} value={user.id}>
-                            {user.name} ({user.email})
-                          </option>
-                        ))}
-                      </select>
+                      {deliveryMethod === 'email' && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label htmlFor="recEmailFinal">Correo electrónico</Label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Input
+                              id="recEmailFinal"
+                              type="email"
+                              placeholder="correo@ejemplo.com"
+                              className="pl-10 h-12 rounded-xl"
+                              value={recipientEmail}
+                              onChange={(e) => setRecipientEmail(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {deliveryMethod === 'whatsapp' && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label htmlFor="recWa">Número de WhatsApp</Label>
+                          <div className="relative">
+                            <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                            <Input
+                              id="recWa"
+                              type="tel"
+                              placeholder="+591 7XXXXXXX"
+                              className="pl-10 h-12 rounded-xl"
+                              value={whatsappNumber}
+                              onChange={(e) => setWhatsappNumber(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {deliveryMethod === 'sige' && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <Label htmlFor="sigeUser">Seleccionar Usuario SIGE</Label>
+                          <select
+                            id="sigeUser"
+                            className="w-full h-12 rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            value={recipientId}
+                            onChange={(e) => {
+                              const uid = e.target.value;
+                              setRecipientId(uid);
+                              const user = sigeUsers.find(u => u.id === uid);
+                              if (user) {
+                                setRecipientName(user.name);
+                                setRecipientEmail(user.email);
+                              }
+                            }}
+                          >
+                            <option value="">Selecciona un usuario...</option>
+                            {sigeUsers.map(user => (
+                              <option key={user.id} value={user.id}>
+                                {user.name} ({user.email})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1081,157 +967,42 @@ export function GiftCardBuyForm() {
                 <div className="pt-4 border-t space-y-4">
                   <div className="grid grid-cols-1 gap-3">
                     <Button 
-                      className={`h-14 text-lg font-bold gap-2 rounded-2xl shadow-lg transition-all ${
-                        deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20' : 
-                        deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 
-                        'bg-[#EA4335] hover:bg-[#D93025] shadow-red-500/20'
-                      }`}
-                      onClick={handlePurchase}
+                      className="gift-card-primary-action h-14 text-lg font-bold gap-2 rounded-2xl shadow-lg transition-all"
+                      onClick={handlePurchaseFlow}
                       disabled={
                         loading || 
                         !recipientName || 
-                        (deliveryMethod === 'email' && !recipientEmail) || 
-                        (deliveryMethod === 'whatsapp' && !whatsappNumber) ||
-                        (deliveryMethod === 'sige' && !recipientId)
+                        (deliveryOption === 'send' && deliveryMethod === 'email' && !recipientEmail) || 
+                        (deliveryOption === 'send' && deliveryMethod === 'whatsapp' && !whatsappNumber) ||
+                        (deliveryOption === 'send' && deliveryMethod === 'sige' && !recipientId) ||
+                        (deliveryOption === 'schedule' && (!scheduleDate || !scheduleTime))
                       }
                     >
                       {loading ? (
                         'Procesando...'
-                      ) : (
+                      ) : deliveryOption === 'send' ? (
                         <>
                           <Check className="h-5 w-5" />
                           Finalizar y Enviar
                         </>
+                      ) : (
+                        <>
+                          <Wallet className="h-5 w-5" />
+                          Finalizar y Guardar
+                        </>
                       )}
-                    </Button>
-
-                    <Button 
-                      type="button"
-                      variant="secondary"
-                      className="h-12 rounded-2xl font-bold gap-2 bg-slate-100 hover:bg-slate-200 text-slate-900 border-none"
-                      onClick={handleSaveToWallet}
-                      disabled={loading}
-                    >
-                      <Wallet className="h-4 w-4" />
-                      Solo guardar en mi Billetera
                     </Button>
                   </div>
                   
                   <Button variant="ghost" className="w-full h-10 rounded-xl text-muted-foreground" onClick={prevStep} disabled={loading}>
                     <ChevronLeft className="mr-2 h-4 w-4" />
-                    Regresar al pago
+                    Regresar al monto
                   </Button>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* PASO FINAL: ÉXITO */}
-          {step === 6 && (
-            <Card className={`border-2 shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-500 ${
-              deliveryMethod === 'whatsapp' ? 'border-green-500/20' : 
-              deliveryMethod === 'sige' ? 'border-purple-500/20' : 'border-red-500/20'
-            }`}>
-              <div className={`${
-                deliveryMethod === 'whatsapp' ? 'bg-green-600' : 
-                deliveryMethod === 'sige' ? 'bg-purple-600' : 'bg-[#EA4335]'
-              } p-8 text-white text-center transition-colors duration-500`}>
-                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-white/40">
-                  <Check className="h-10 w-10 text-white" />
-                </div>
-                <h2 className="text-2xl font-black mb-1">¡Compra Exitosa!</h2>
-                <p className="opacity-90 text-sm">Tu Gift Card ya está lista para ser enviada por {
-                  deliveryMethod === 'whatsapp' ? 'WhatsApp' : 
-                  deliveryMethod === 'sige' ? 'SIGE' : 'Email'
-                }.</p>
-              </div>
-              
-              <CardContent className="p-6 md:p-8 space-y-6">
-                <div className="bg-muted/30 p-4 rounded-2xl border flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] uppercase font-bold text-muted-foreground">Código de tu tarjeta</p>
-                    <p className="text-xl font-mono font-black tracking-widest">{giftCardCode}</p>
-                  </div>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Activada</Badge>
-                </div>
-
-                <div className="space-y-4">
-                  <p className="text-center text-sm text-muted-foreground font-medium">¿Qué quieres hacer ahora?</p>
-                  
-                  <div className="grid grid-cols-1 gap-3">
-                    <Button 
-                      className={`h-14 text-lg font-bold gap-2 shadow-lg transition-all ${
-                        deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20' : 
-                        deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20' : 
-                        'bg-[#EA4335] hover:bg-[#D93025] shadow-red-500/20'
-                      }`}
-                      onClick={handleFinalSend}
-                    >
-                      {deliveryMethod === 'whatsapp' && <MessageCircle className="h-5 w-5" />}
-                      {deliveryMethod === 'email' && <Mail className="h-5 w-5" />}
-                      {deliveryMethod === 'sige' && <User className="h-5 w-5" />}
-                      {deliveryMethod === 'email' ? 'Enviar por Email' : 
-                       deliveryMethod === 'whatsapp' ? 'Enviar por WhatsApp' : 'Enviar a Usuario SIGE'}
-                    </Button>
-                    
-                    <Button 
-                      variant="outline" 
-                      className="h-14 text-lg font-bold gap-2 border-2"
-                      onClick={async () => {
-                        if (purchasedId) {
-                          await saveGiftCardToWallet(purchasedId);
-                          toast.success('Guardado en tu billetera');
-                          router.push('/gift-cards');
-                        }
-                      }}
-                    >
-                      <Wallet className="h-5 w-5" />
-                      Guardar en mi Billetera
-                    </Button>
-                  </div>
-
-                  <Separator className="my-4" />
-
-                  <div className="space-y-3">
-                    <Button 
-                      variant="ghost" 
-                      className={`w-full h-12 gap-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 ${isScheduled ? 'bg-blue-50' : ''}`}
-                      onClick={() => setIsScheduled(!isScheduled)}
-                    >
-                      <Clock className="h-5 w-5" />
-                      {isScheduled ? 'Cancelar programación' : 'Programar envío para después'}
-                    </Button>
-
-                    {isScheduled && (
-                      <div className="space-y-3 p-4 bg-blue-50/50 rounded-2xl border border-blue-100 animate-in slide-in-from-top-2 duration-300">
-                        <Label htmlFor="schedDate">Fecha y Hora de envío</Label>
-                        <div className="flex gap-2">
-                          <Input 
-                            id="schedDate"
-                            type="datetime-local" 
-                            className="h-12"
-                            value={scheduledDate}
-                            onChange={(e) => setScheduledDate(e.target.value)}
-                          />
-                          <Button 
-                            className="bg-blue-600 hover:bg-blue-700"
-                            disabled={!scheduledDate}
-                            onClick={() => {
-                              toast.success(`Envío programado para el ${new Date(scheduledDate).toLocaleString()}`);
-                              router.push('/gift-cards');
-                            }}
-                          >
-                            Programar
-                          </Button>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">La tarjeta se enviará automáticamente al destinatario en la fecha seleccionada.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

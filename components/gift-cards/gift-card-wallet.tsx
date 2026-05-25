@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
+import { RechargeDialog } from './recharge-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Gift, Plus, Search, Inbox, Send, Clock,
-  TrendingUp, ChevronRight, Wallet, Sparkles, CheckCircle, AlertCircle, ArrowRight, RotateCcw
+  TrendingUp, ChevronRight, Wallet, Sparkles, CheckCircle, AlertCircle, ArrowRight, RotateCcw,
+  RefreshCw
 } from 'lucide-react';
 
 type CardInfo = {
@@ -43,6 +45,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
   const router = useRouter();
   const initialTab = searchParams.get('tab') || 'sent';
   const [activeTab, setActiveTab] = useState(initialTab);
+  const [rechargeOpen, setRechargeOpen] = useState(false);
 
   // Sync activeTab with URL changes
   useEffect(() => {
@@ -115,13 +118,13 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
   const balancePct = checkResult ? Math.round((checkResult.balance / checkResult.amount) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="gift-card-section min-h-screen bg-background">
       {/* ── HERO MOBILE: full-width gradient card ── */}
-      <div className="bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
+      <div className="gift-card-hero bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 text-white">
         <div className="max-w-2xl mx-auto px-4 pt-8 pb-10">
           {/* Title */}
           <div className="flex items-center gap-2 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+            <div className="gift-card-hero-icon w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
               <Wallet className="h-5 w-5" />
             </div>
             <div>
@@ -137,57 +140,67 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
               Bs. {totalBalance.toFixed(2)}
             </p>
             <p className="text-xs opacity-60 mt-2">
-              En {activeReceived.length} gift card{activeReceived.length !== 1 ? 's' : ''} activas
+              En {activeReceived.length + activeSaved.length} gift card{activeReceived.length + activeSaved.length !== 1 ? 's' : ''} activas
             </p>
           </div>
 
           {/* Action buttons - thumb zone */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <Button
               asChild
-              className="h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
+              className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
               variant="ghost"
             >
               <Link href="/gift-cards/buy">
-                <Plus className="h-4 w-4 mr-2" />
+                <Plus className="h-4 w-4 mr-1.5" />
                 Regalar
               </Link>
             </Button>
             <Button
-              className="h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
+              className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
+              variant="ghost"
+              onClick={() => setRechargeOpen(true)}
+            >
+              <RefreshCw className="h-4 w-4 mr-1.5" />
+              Recargar
+            </Button>
+            <Button
+              className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
               variant="ghost"
               onClick={() => setActiveTab('check')}
             >
-              <Search className="h-4 w-4 mr-2" />
-              Consultar saldo
+              <Search className="h-4 w-4 mr-1.5" />
+              Consultar
             </Button>
           </div>
         </div>
 
-        {/* Curved bottom */}
-        <div className="h-6 bg-background rounded-t-4xl" />
       </div>
 
       {/* ── STATS ROW AS NAVIGATION TABS ── */}
-      <div className="max-w-4xl mx-auto px-4 -mt-1 mb-6 hidden md:block">
-        <div className="grid grid-cols-5 gap-2">
+      <div className="max-w-4xl mx-auto px-4 mt-5 mb-6 hidden md:block">
+        <div className="gift-card-tabs-nav flex items-center gap-1 rounded-2xl border bg-card/80 p-1.5 shadow-sm backdrop-blur-xl">
           {[
-            { id: 'sent', label: 'Enviadas', value: activeSent.length, icon: Send, color: 'text-purple-500' },
-            { id: 'received', label: 'Recibidas', value: activeReceived.length, icon: Inbox, color: 'text-blue-500' },
-            { id: 'saved', label: 'Guardadas', value: activeSaved.length, icon: Wallet, color: 'text-amber-500' },
-            { id: 'history', label: 'Historial', value: historyCards.length, icon: Clock, color: 'text-red-400' },
-            { id: 'check', label: 'Saldo', value: '?', icon: Search, color: 'text-emerald-500' },
-          ].map(({ id, label, value, icon: Icon, color }) => (
+            { id: 'sent', label: 'Enviadas', value: activeSent.length, icon: Send },
+            { id: 'received', label: 'Recibidas', value: activeReceived.length, icon: Inbox },
+            { id: 'saved', label: 'Guardadas', value: activeSaved.length, icon: Wallet },
+            { id: 'history', label: 'Historial', value: historyCards.length, icon: Clock },
+            { id: 'check', label: 'Saldo', value: '?', icon: Search },
+          ].map(({ id, label, value, icon: Icon }) => (
             <button 
               key={id} 
               onClick={() => handleTabChange(id)}
-              className={`rounded-2xl p-2.5 border transition-all text-center w-full
-                ${activeTab === id ? 'bg-primary/5 border-primary/20 shadow-md ring-1 ring-primary/20 scale-105' : 'bg-card shadow-sm hover:bg-muted/50'}
+              className={`gift-card-tabs-trigger flex h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-bold transition-all
+                ${activeTab === id ? 'gift-card-tabs-trigger-active bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'}
               `}
             >
-              <Icon className={`h-4 w-4 mx-auto mb-1 ${activeTab === id ? color : 'text-muted-foreground'}`} />
-              <p className="text-lg font-black leading-none mb-1">{value}</p>
-              <p className={`text-[9px] font-bold leading-tight ${activeTab === id ? 'text-primary' : 'text-muted-foreground'}`}>{label}</p>
+              <Icon className="h-4 w-4" />
+              <span>{label}</span>
+              <span className={`gift-card-tabs-count rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
+                activeTab === id ? 'bg-white/20 text-current' : 'bg-muted text-muted-foreground'
+              }`}>
+                {value}
+              </span>
             </button>
           ))}
         </div>
@@ -204,7 +217,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
               variant="outline" 
               size="sm" 
               onClick={() => handleTabChange('history')} 
-              className={`text-xs h-8 rounded-full ${activeTab === 'history' ? 'bg-primary/10 text-primary border-primary/30' : 'text-muted-foreground'}`}
+              className={`gift-card-mobile-history text-xs h-8 rounded-full ${activeTab === 'history' ? 'bg-primary/10 text-primary border-primary/30' : 'text-muted-foreground'}`}
             >
               <Clock className="w-3.5 h-3.5 mr-1.5" />
               Ver Historial ({historyCards.length})
@@ -281,8 +294,8 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
           </TabsContent>
 
           <TabsContent value="check" className="space-y-4 mt-0">
-            <div className="bg-card rounded-3xl p-6 md:p-8 border shadow-sm text-center mb-4">
-              <div className="w-16 h-16 rounded-3xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center mx-auto mb-4">
+            <div className="gift-card-panel bg-card rounded-3xl p-6 md:p-8 border shadow-sm text-center mb-4">
+              <div className="gift-card-panel-icon w-16 h-16 rounded-3xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center mx-auto mb-4">
                 <Search className="h-8 w-8" />
               </div>
               <h3 className="font-bold text-xl mb-2">Consultar Saldo</h3>
@@ -300,7 +313,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
                       }}
                       onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
                       placeholder="Ej. GIFT-A1B2C3"
-                      className="h-14 text-center text-lg font-mono font-bold rounded-2xl border-2 focus:border-blue-500 tracking-widest"
+                      className="gift-card-themed-input h-14 text-center text-lg font-mono font-bold rounded-2xl border-2 focus:border-blue-500 tracking-widest"
                       maxLength={12}
                     />
                   </div>
@@ -315,7 +328,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
                   <Button
                     onClick={handleCheck}
                     disabled={!code.trim() || checkLoading}
-                    className="w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-base shadow-lg shadow-blue-500/20 gap-2"
+                    className="gift-card-primary-action w-full h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-base shadow-lg shadow-blue-500/20 gap-2"
                   >
                     {checkLoading ? (
                       <span className="animate-pulse">Consultando...</span>
@@ -332,7 +345,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
                 <div className="space-y-4 text-left max-w-sm mx-auto">
                   <div className={`rounded-3xl overflow-hidden text-white shadow-2xl ${
                     isActive
-                      ? 'bg-linear-to-br from-blue-600 to-indigo-700'
+                      ? 'gift-card-primary-action'
                       : isExpired
                         ? 'bg-linear-to-br from-gray-500 to-gray-700'
                         : 'bg-linear-to-br from-gray-600 to-gray-800'
@@ -413,7 +426,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
                     </Button>
                     <Button
                       asChild
-                      className="h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2"
+                      className="gift-card-primary-action h-12 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2"
                     >
                       <Link href="/gift-cards/buy">
                         Usar Saldo
@@ -428,6 +441,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
         </Tabs>
       </div>
 
+      <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
     </div>
   );
 }
@@ -442,13 +456,13 @@ function EmptyState({
 }) {
   return (
     <div className="text-center py-16 px-6">
-      <div className="w-20 h-20 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+      <div className="gift-card-empty-icon w-20 h-20 rounded-3xl bg-muted flex items-center justify-center mx-auto mb-4 text-muted-foreground">
         {icon}
       </div>
       <h3 className="font-bold text-lg mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground mb-6 max-w-xs mx-auto">{description}</p>
       {action && (
-        <Button asChild className="rounded-2xl h-12 font-bold px-6 gap-2">
+        <Button asChild className="gift-card-primary-action rounded-2xl h-12 font-bold px-6 gap-2">
           <Link href={action.href}>
             {action.label}
             <ChevronRight className="h-4 w-4" />
