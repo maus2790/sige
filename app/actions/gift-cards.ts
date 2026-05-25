@@ -43,7 +43,12 @@ export async function getSIGEUsers() {
 
 function generateGiftCode(): string {
   const prefix = 'GIFT';
-  const random = crypto.randomBytes(6).toString('hex').toUpperCase();
+  // Generar código corto de 4 caracteres alfanuméricos
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin caracteres confusos como I, O, 0, 1
+  let random = '';
+  for (let i = 0; i < 4; i++) {
+    random += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
   return `${prefix}-${random}`;
 }
 
@@ -362,7 +367,27 @@ export async function purchaseGiftCard(data: {
     return { error: 'Saldo insuficiente para crear la Gift Card' };
   }
 
-  const code = generateGiftCode();
+  // Generar código único verificando que no exista
+  let code = generateGiftCode();
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    const existing = await db
+      .select()
+      .from(giftCards)
+      .where(eq(giftCards.code, code))
+      .get();
+    
+    if (!existing) break;
+    code = generateGiftCode();
+    attempts++;
+  }
+  
+  if (attempts >= maxAttempts) {
+    return { error: 'No se pudo generar un código único. Intenta nuevamente.' };
+  }
+
   const qrHash = generateQrHash(code);
   const id = crypto.randomUUID();
 
@@ -418,7 +443,27 @@ export async function requestGiftCardBalanceTopUp(data: {
     return { error: 'El monto maximo de carga es Bs. 10.000' };
   }
 
-  const code = generateGiftCode();
+  // Generar código único verificando que no exista
+  let code = generateGiftCode();
+  let attempts = 0;
+  const maxAttempts = 10;
+  
+  while (attempts < maxAttempts) {
+    const existing = await db
+      .select()
+      .from(giftCards)
+      .where(eq(giftCards.code, code))
+      .get();
+    
+    if (!existing) break;
+    code = generateGiftCode();
+    attempts++;
+  }
+  
+  if (attempts >= maxAttempts) {
+    return { error: 'No se pudo generar un código único. Intenta nuevamente.' };
+  }
+
   const qrHash = generateQrHash(code);
   const id = crypto.randomUUID();
   const expiresAt = new Date();
@@ -667,6 +712,61 @@ export async function deleteGiftCard(id: string) {
   } catch (error) {
     console.error('Error deleting gift card:', error);
     return { error: 'Error interno al intentar eliminar la tarjeta' };
+  }
+}
+
+export async function deleteAllHistoryCards() {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  try {
+    // Obtener todas las tarjetas del usuario que están en el historial
+    const allCards = await db
+      .select()
+      .from(giftCards)
+      .where(
+        or(
+          eq(giftCards.senderId, user.id),
+          eq(giftCards.recipientId, user.id)
+        )
+      )
+      .all();
+
+    const now = new Date();
+    const historyCards = allCards.filter(card => {
+      const isExpired = new Date(card.expiresAt) < now;
+      const isInactive = card.status !== 'active' || card.balance === 0;
+      return isExpired || isInactive;
+    });
+
+    if (historyCards.length === 0) {
+      return { error: 'No hay tarjetas en el historial para eliminar' };
+    }
+
+    // Eliminar imágenes y tarjetas
+    for (const card of historyCards) {
+      if (card.cardImageUrl) {
+        const imageKey = extractKeyFromUrl(card.cardImageUrl);
+        if (imageKey) {
+          await deleteImage(imageKey).catch(e => console.error("Error al borrar imagen de R2:", e));
+        }
+      }
+
+      if (card.receiptUrl) {
+        const receiptKey = extractKeyFromUrl(card.receiptUrl);
+        if (receiptKey) {
+          await deleteImage(receiptKey).catch(e => console.error("Error al borrar comprobante de R2:", e));
+        }
+      }
+
+      await db.delete(giftCards).where(eq(giftCards.id, card.id));
+    }
+
+    revalidatePath('/gift-cards');
+    return { success: true, deletedCount: historyCards.length };
+  } catch (error) {
+    console.error('Error deleting all history cards:', error);
+    return { error: 'Error interno al intentar eliminar las tarjetas' };
   }
 }
 

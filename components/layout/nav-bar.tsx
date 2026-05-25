@@ -24,7 +24,8 @@ import {
   Palette,
   Sparkles,
   Navigation,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 
 import { toast } from "sonner";
@@ -77,6 +78,8 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [storeTheme, setStoreTheme] = useState<PremiumTheme>("blue");
   const [isThemeGridOpen, setIsThemeGridOpen] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [loadingTheme, setLoadingTheme] = useState<string | null>(null);
   const isStoreRoute = pathname.startsWith("/tienda/");
   const storeThemeClass = isStoreRoute && storeTheme !== "blue" ? `theme-premium theme-${storeTheme}` : "";
   const globalThemeClass = premiumTheme !== "blue" ? `theme-premium theme-${premiumTheme}` : "";
@@ -160,7 +163,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
 
   return (
     <>
-      <header className={cn("app-navbar sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300", activeHeaderThemeClass)}>
+      <header suppressHydrationWarning className={cn("app-navbar sticky top-0 z-50 w-full glass border-b shadow-[0_2px_10px_rgba(0,0,0,0.05)] dark:shadow-[0_2px_15px_rgba(37,99,235,0.15)] transition-all duration-300", activeHeaderThemeClass)}>
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-2">
@@ -319,7 +322,7 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                 </Link>
 
                 {activeUser ? (
-                  <DropdownMenu>
+                  <DropdownMenu open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" className="relative h-10 w-10 rounded-full border">
                         <Avatar className="h-10 w-10">
@@ -412,30 +415,32 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                         <span>{mounted && resolvedTheme === "dark" ? "Modo Claro" : "Modo Oscuro"}</span>
                       </DropdownMenuItem>
 
-                      <div className="px-2 py-2">
-                        <div className="mb-2 flex items-center gap-2">
-                          <Palette className="h-4 w-4 text-primary" />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-black uppercase tracking-widest leading-none text-muted-foreground">
-                              Tema de Marca
-                            </p>
-                            <p className="text-sm font-bold leading-tight">
-                              {premiumThemes.find((themeOption) => themeOption.value === premiumTheme)?.label || "Blue Premium"}
-                            </p>
+                      <DropdownMenuSeparator />
+
+                      <div className="px-2 py-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsThemeGridOpen((value) => !value);
+                          }}
+                          className="w-full mb-3 flex items-center justify-between hover:bg-muted/50 rounded-lg p-2 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Palette className="h-4 w-4 text-primary" />
+                            <div className="min-w-0 flex-1 text-left">
+                              <p className="text-xs font-bold text-foreground">
+                                Tema de Marca
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {premiumThemes.find((themeOption) => themeOption.value === premiumTheme)?.label || "Blue Premium"}
+                              </p>
+                            </div>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setIsThemeGridOpen((value) => !value)}
-                            className="theme-grid-toggle h-8 rounded-lg px-2 text-xs font-bold"
-                          >
-                            <Palette className="mr-1 h-3.5 w-3.5" />
-                            Paleta
-                            <ChevronDown className={cn("ml-1 h-3.5 w-3.5 transition-transform", isThemeGridOpen && "rotate-180")} />
-                          </Button>
-                        </div>
-                        <div className={cn("grid gap-2 overflow-hidden transition-all duration-300", isThemeGridOpen ? "grid-cols-2 max-h-[360px] opacity-100" : "max-h-0 opacity-0")}>
+                          <ChevronDown className={cn("h-4 w-4 transition-transform text-muted-foreground", isThemeGridOpen && "rotate-180")} />
+                        </button>
+                        <div className={cn("grid gap-2 overflow-hidden transition-all duration-300", isThemeGridOpen ? "grid-cols-3 max-h-[400px] opacity-100" : "max-h-0 opacity-0")}>
                           {premiumThemes.map((themeOption) => {
                             const isSelected = premiumTheme === themeOption.value;
 
@@ -443,25 +448,46 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                               <button
                                 key={themeOption.value}
                                 type="button"
-                                onClick={() => setPremiumTheme(themeOption.value)}
+                                disabled={loadingTheme !== null}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setLoadingTheme(themeOption.value);
+                                  setPremiumTheme(themeOption.value);
+                                  // Cerrar el selector de temas y el menú de usuario
+                                  setTimeout(() => {
+                                    setIsThemeGridOpen(false);
+                                    setIsUserMenuOpen(false);
+                                    setLoadingTheme(null);
+                                  }, 300);
+                                }}
                                 className={cn(
-                                  "relative flex h-16 min-w-0 flex-col justify-between overflow-hidden rounded-lg border p-2 text-left transition-all duration-300",
+                                  "relative flex h-20 min-w-0 flex-col justify-between overflow-hidden rounded-xl border-2 p-3 text-left transition-all duration-300",
+                                  loadingTheme === null && "hover:scale-105",
+                                  loadingTheme !== null && "opacity-50 cursor-not-allowed",
                                   isSelected
-                                    ? "border-primary shadow-lg shadow-primary/20 ring-2 ring-primary/25"
-                                    : "border-border hover:border-primary/50"
+                                    ? "border-primary shadow-lg shadow-primary/30 ring-2 ring-primary/20 scale-105"
+                                    : "border-border hover:border-primary/50 hover:shadow-md"
                                 )}
                               >
                                 <div
-                                  className="absolute inset-0 opacity-95"
+                                  className="absolute inset-0 opacity-100"
                                   style={{ background: themeOption.swatchGradient }}
                                 />
-                                <div className="absolute inset-0 bg-black/10" />
-                                {isSelected && (
-                                  <span className="relative ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-white/90 text-primary shadow-sm">
-                                    <Check className="h-3.5 w-3.5" />
+                                <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-black/20" />
+                                
+                                {loadingTheme === themeOption.value && (
+                                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                                    <Loader2 className="h-8 w-8 text-white animate-spin" />
+                                  </div>
+                                )}
+                                
+                                {isSelected && loadingTheme !== themeOption.value && (
+                                  <span className="relative ml-auto flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-lg">
+                                    <Check className="h-4 w-4 text-primary" />
                                   </span>
                                 )}
-                                <span className="relative mt-auto text-[10px] font-black uppercase tracking-wider text-white drop-shadow">
+                                <span className="relative mt-auto text-xs font-black uppercase tracking-wide text-white drop-shadow-lg">
                                   {themeOption.shortLabel}
                                 </span>
                               </button>

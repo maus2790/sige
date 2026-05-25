@@ -84,12 +84,12 @@ export default function CheckGiftCardPage() {
                   setError('');
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleCheck()}
-                placeholder="Ej. GIFT-A1B2C3"
+                placeholder="Ej. GIFT-A1B2"
                 className="h-14 text-center text-lg font-mono font-bold rounded-2xl border-2 focus:border-blue-500 tracking-widest"
-                maxLength={12}
+                maxLength={9}
               />
               <p className="text-xs text-muted-foreground text-center">
-                El código tiene el formato GIFT-XXXXXX
+                El código tiene el formato GIFT-XXXX
               </p>
             </div>
 

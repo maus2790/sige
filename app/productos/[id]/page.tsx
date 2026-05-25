@@ -412,8 +412,8 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
         </div>
       </main>
 
-      {/* Sticky Bottom Bar for Mobile Only */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t shadow-glass z-40 md:hidden animate-in slide-in-from-bottom-full duration-500">
+      {/* Sticky Bottom Bar for Mobile Only - Above Navigation */}
+      <div className="fixed bottom-16 left-0 right-0 bg-background/90 backdrop-blur-xl border-t shadow-glass z-40 md:hidden animate-in slide-in-from-bottom-full duration-500">
         <div className="flex items-center justify-between gap-4 px-4 h-16">
           <div className="flex flex-col shrink-0">
             <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">Total</span>

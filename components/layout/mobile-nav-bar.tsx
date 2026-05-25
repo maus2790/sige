@@ -56,11 +56,14 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
     }
   }, [isStorePage]);
 
-  // Mostrar en Mercado, Tiendas y Perfil. Ocultar en Gift Cards porque tiene su propio menú inferior.
+  // Mostrar en Mercado, Tiendas, Perfil, Gift Cards y Detalle de Productos
   const isProfilePage = pathname === "/profile";
   const isCartPage = pathname === "/cart";
   const isMapPage = pathname === "/mapa";
-  if (pathname !== "/" && !isStorePage && !isProfilePage && !isCartPage && !isMapPage) return null;
+  const isGiftCardsPage = pathname.startsWith("/gift-cards");
+  const isProductDetailPage = pathname.startsWith("/productos/");
+  
+  if (pathname !== "/" && !isStorePage && !isProfilePage && !isCartPage && !isMapPage && !isGiftCardsPage && !isProductDetailPage) return null;
 
   const handleCategorySelect = (category: string) => {
     router.push(`/?category=${encodeURIComponent(category)}`);
@@ -85,10 +88,16 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
         }
       },
       badge: 0
+    }] : isGiftCardsPage ? [{ 
+      href: "/gift-cards/buy",
+      label: "Regalar", 
+      icon: Gift, 
+      isAction: true,
+      badge: 0
     }] : []),
     { 
       href: myStoreId ? `/tienda/${myStoreId}` : "/dashboard", 
-      label: "Tienda", 
+      label: "Mi Tienda", 
       icon: Store 
     },
     { 
@@ -102,7 +111,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
 
   return (
     <>
-      <nav className={cn("mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]", activeNavThemeClass)}>
+      <nav suppressHydrationWarning className={cn("mobile-bottom-nav fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-primary/10 md:hidden z-40 shadow-[0_-8px_20px_-6px_rgba(0,0,0,0.1),0_-4px_10px_-2px_rgba(37,99,235,0.05)]", activeNavThemeClass)}>
         <div className="flex justify-around items-center h-16 px-2 pb-[env(safe-area-inset-bottom,0px)]">
           {navItems.map((item, index) => {
             const Icon = item.icon;
