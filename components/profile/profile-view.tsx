@@ -198,15 +198,10 @@ export function ProfileView({ data }: ProfileViewProps) {
   };
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-24 bg-background">
       {/* ─── HERO HEADER ─── */}
-      <div className="bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900 text-white relative overflow-hidden rounded-b-[3rem] shadow-xl">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full bg-white/20" />
-          <div className="absolute -bottom-10 -left-10 w-60 h-60 rounded-full bg-white/10" />
-        </div>
-
-        <div className="relative max-w-2xl mx-auto px-4 pt-4 pb-12 sm:pt-6 sm:pb-16">
+      <div className="profile-hero text-white" style={{ background: 'var(--premium-hero-gradient, linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #312E81 100%))' }}>
+        <div className="max-w-2xl mx-auto px-4 pt-8 pb-10">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2 text-white/70 hover:text-white text-sm mb-6 transition-colors"
@@ -219,12 +214,13 @@ export function ProfileView({ data }: ProfileViewProps) {
             {/* Avatar */}
             <div className="relative shrink-0">
               <Avatar 
-                className="w-24 h-24 border-4 border-white/30 shadow-2xl cursor-pointer hover:opacity-90 transition-opacity"
+                className="profile-avatar w-24 h-24 border-4 border-white/30 shadow-2xl cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => setShowImageOptions(true)}
               >
                 <AvatarImage src={data.user.image || undefined} alt={data.user.name} className="object-cover" />
                 <AvatarFallback
-                  className={`text-3xl font-black text-white bg-linear-to-br ${roleInfo.color}`}
+                  className="text-3xl font-black text-white"
+                  style={{ background: 'var(--premium-accent, #2563EB)' }}
                 >
                   {getInitials(data.user.name)}
                 </AvatarFallback>
@@ -239,9 +235,10 @@ export function ProfileView({ data }: ProfileViewProps) {
                 <Camera className="w-4 h-4" />
               </button>
 
-              {/* Role badge (moved to top left of avatar or next to name) */}
+              {/* Role badge */}
               <div
-                className={`absolute -top-1 -left-1 w-7 h-7 rounded-full bg-linear-to-br ${roleInfo.color} flex items-center justify-center shadow-lg border-2 border-white`}
+                className="absolute -top-1 -left-1 w-7 h-7 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
+                style={{ background: 'var(--premium-accent, #2563EB)' }}
               >
                 <RoleIcon className="w-3.5 h-3.5 text-white" />
               </div>
@@ -266,11 +263,11 @@ export function ProfileView({ data }: ProfileViewProps) {
               </div>
               <p className="text-white/70 text-sm truncate">{data.user.email}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
-                <Badge className={`bg-white/20 text-white border-0 text-[10px] font-bold uppercase tracking-wider`}>
+                <Badge className={`profile-badge bg-white/20 text-white border-0 text-[10px] font-bold uppercase tracking-wider`}>
                   {roleInfo.label}
                 </Badge>
                 {data.user.provider === 'google' && (
-                  <Badge className="bg-white/15 text-white border-0 text-[10px]">
+                  <Badge className="profile-badge bg-white/15 text-white border-0 text-[10px]">
                     Google
                   </Badge>
                 )}
@@ -282,13 +279,12 @@ export function ProfileView({ data }: ProfileViewProps) {
             </div>
           </div>
         </div>
-
       </div>
 
       <div className="max-w-2xl mx-auto px-4 mt-6 space-y-3 sm:space-y-4">
 
         {/* ─── QUICK STATS ─── */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="profile-stats grid grid-cols-3 gap-3">
           {[
             { label: 'Órdenes', value: data.stats.orders.total, icon: Package, color: 'text-blue-500' },
             { label: 'GC Enviadas', value: data.stats.giftCardsSent, icon: Gift, color: 'text-indigo-500' },
@@ -296,7 +292,7 @@ export function ProfileView({ data }: ProfileViewProps) {
           ].map((stat) => {
             const Icon = stat.icon;
             return (
-              <div key={stat.label} className="bg-card rounded-2xl p-3 border shadow-sm text-center">
+              <div key={stat.label} className="profile-stat-card bg-card rounded-2xl p-3 border shadow-sm text-center">
                 <Icon className={`w-5 h-5 mx-auto mb-1 ${stat.color}`} />
                 <p className="text-2xl font-black leading-none">{stat.value}</p>
                 <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{stat.label}</p>
@@ -306,7 +302,7 @@ export function ProfileView({ data }: ProfileViewProps) {
         </div>
 
         {/* ─── EDIT PROFILE CARD ─── */}
-        <div className="bg-card rounded-3xl border shadow-sm overflow-hidden">
+        <div className="profile-card bg-card rounded-3xl border shadow-sm overflow-hidden">
           <div className="flex items-center justify-between px-5 pt-5 pb-3">
             <h2 className="font-bold text-base flex items-center gap-2">
               <User className="w-4 h-4 text-primary" />
@@ -316,7 +312,7 @@ export function ProfileView({ data }: ProfileViewProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 rounded-full text-primary gap-1.5"
+                className="profile-edit-button h-8 rounded-full text-primary gap-1.5"
                 onClick={() => setIsEditing(true)}
               >
                 <Edit2 className="w-3.5 h-3.5" />
@@ -326,7 +322,7 @@ export function ProfileView({ data }: ProfileViewProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 rounded-full text-muted-foreground gap-1.5"
+                className="profile-cancel-button h-8 rounded-full text-muted-foreground gap-1.5"
                 onClick={() => {
                   setIsEditing(false);
                   setEditName(data.user.name);
@@ -387,7 +383,8 @@ export function ProfileView({ data }: ProfileViewProps) {
                 <div className="flex gap-3">
                   <Button
                     type="submit"
-                    className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold gap-2"
+                    className="flex-1 h-11 rounded-xl text-white font-bold gap-2"
+                    style={{ background: 'var(--premium-accent, #2563EB)' }}
                     disabled={isPending}
                   >
                     <Save className="w-4 h-4" />
@@ -401,14 +398,14 @@ export function ProfileView({ data }: ProfileViewProps) {
 
         {/* ─── STORE CARD (for sellers) ─── */}
         {data.store && (
-          <div className="bg-card rounded-3xl border shadow-sm overflow-hidden">
+          <div className="profile-store-card bg-card rounded-3xl border shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h2 className="font-bold text-base flex items-center gap-2">
                 <Store className="w-4 h-4 text-primary" />
                 Mi Tienda
               </h2>
               {data.store.verified && (
-                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-[10px] gap-1">
+                <Badge className="profile-verified-badge bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800 text-[10px] gap-1">
                   <CheckCircle className="w-3 h-3" />
                   Verificada
                 </Badge>
@@ -417,7 +414,7 @@ export function ProfileView({ data }: ProfileViewProps) {
 
             <div className="px-5 pb-5 space-y-3">
               <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl">
-                <div className="w-12 h-12 rounded-xl bg-linear-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-black text-lg shrink-0">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-black text-lg shrink-0" style={{ background: 'var(--premium-accent, #2563EB)' }}>
                   {data.store.name[0]}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -460,7 +457,7 @@ export function ProfileView({ data }: ProfileViewProps) {
 
         {/* ─── SECURITY CARD ─── */}
         {data.user.provider !== 'google' && (
-          <div className="bg-card rounded-3xl border shadow-sm overflow-hidden">
+          <div className="profile-security-card bg-card rounded-3xl border shadow-sm overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h2 className="font-bold text-base flex items-center gap-2">
                 <Lock className="w-4 h-4 text-primary" />
@@ -545,7 +542,8 @@ export function ProfileView({ data }: ProfileViewProps) {
                     </Button>
                     <Button
                       type="submit"
-                      className="flex-1 h-11 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold"
+                      className="flex-1 h-11 rounded-xl text-white font-bold"
+                      style={{ background: 'var(--premium-accent, #2563EB)' }}
                       disabled={isPending}
                     >
                       {isPending ? 'Guardando...' : 'Actualizar'}
@@ -558,7 +556,7 @@ export function ProfileView({ data }: ProfileViewProps) {
         )}
 
         {/* ─── QUICK LINKS ─── */}
-        <div className="bg-card rounded-3xl border shadow-sm overflow-hidden">
+        <div className="profile-quick-links bg-card rounded-3xl border shadow-sm overflow-hidden">
           <div className="px-5 pt-5 pb-3">
             <h2 className="font-bold text-base flex items-center gap-2">
               <Settings className="w-4 h-4 text-primary" />
@@ -576,11 +574,11 @@ export function ProfileView({ data }: ProfileViewProps) {
         </div>
 
         {/* ─── LOGOUT ─── */}
-        <div className="bg-card rounded-3xl border border-red-200 dark:border-red-900/50 shadow-sm overflow-hidden">
+        <div className="profile-logout bg-card rounded-3xl border border-red-200 dark:border-red-900/50 shadow-sm overflow-hidden">
           <div className="p-5">
             <button
               onClick={handleLogoutAll}
-              className="w-full flex items-center gap-3 p-3 rounded-2xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors group"
+              className="profile-logout-button w-full flex items-center gap-3 p-3 rounded-2xl text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors group"
             >
               <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
                 <LogOut className="w-4 h-4" />

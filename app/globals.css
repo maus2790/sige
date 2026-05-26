@@ -99,6 +99,28 @@
   --brand-gradient: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
   --brand-gradient-hover: linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%);
   --blue-gradient: linear-gradient(135deg, #2563EB 0%, #1D4ED8 50%, #312E81 100%);
+
+  /* Premium theme variables for base theme */
+  --premium-bg-start: #dbeafe;
+  --premium-bg-end: #f6fbff;
+  --premium-bg-dark-start: #071a33;
+  --premium-bg-dark-mid: #041124;
+  --premium-bg-dark-end: #07152b;
+  --premium-accent: #2563eb;
+  --premium-accent-strong: #1d4ed8;
+  --premium-accent-soft: #dbeafe;
+  --premium-contrast: #f6fbff;
+  --premium-dark-contrast: #041124;
+  --premium-surface: rgba(246, 251, 255, .74);
+  --premium-surface-strong: rgba(239, 246, 255, .94);
+  --premium-dark-surface: rgba(7, 21, 43, .74);
+  --premium-dark-surface-strong: rgba(7, 26, 51, .94);
+  --premium-hero-gradient: linear-gradient(135deg, rgba(30, 58, 138, .16) 0%, rgba(56, 189, 248, .14) 42%, rgba(255, 255, 255, 0) 100%), linear-gradient(135deg, #2563eb 0%, #1d4ed8 45%, #312e81 100%);
+  --premium-hero-gradient-dark: linear-gradient(135deg, rgba(125, 211, 252, .12) 0%, rgba(29, 78, 216, .18) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #172554 0%, #1d4ed8 44%, #041124 100%);
+  --premium-button-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --premium-button-gradient-dark: linear-gradient(135deg, #3b82f6 0%, #2563eb 48%, #1e3a8a 100%);
+  --premium-shadow-rgb: 30 58 138;
+  --premium-glow-rgb: 56 189 248;
 }
 
 .dark {
@@ -141,6 +163,28 @@
   --sidebar-accent-foreground: oklch(0.97 0.01 250);
   --sidebar-border: oklch(0.28 0.02 260);
   --sidebar-ring: oklch(0.68 0.15 250);
+
+  /* Premium theme variables for dark mode */
+  --premium-bg-start: #071a33;
+  --premium-bg-end: #041124;
+  --premium-bg-dark-start: #071a33;
+  --premium-bg-dark-mid: #041124;
+  --premium-bg-dark-end: #07152b;
+  --premium-accent: #3b82f6;
+  --premium-accent-strong: #2563eb;
+  --premium-accent-soft: #1e3a8a;
+  --premium-contrast: #f6fbff;
+  --premium-dark-contrast: #041124;
+  --premium-surface: rgba(7, 21, 43, .74);
+  --premium-surface-strong: rgba(7, 26, 51, .94);
+  --premium-dark-surface: rgba(7, 21, 43, .74);
+  --premium-dark-surface-strong: rgba(7, 26, 51, .94);
+  --premium-hero-gradient: linear-gradient(135deg, rgba(125, 211, 252, .12) 0%, rgba(29, 78, 216, .18) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #172554 0%, #1d4ed8 44%, #041124 100%);
+  --premium-hero-gradient-dark: linear-gradient(135deg, rgba(125, 211, 252, .12) 0%, rgba(29, 78, 216, .18) 50%, rgba(0, 0, 0, 0) 100%), linear-gradient(135deg, #172554 0%, #1d4ed8 44%, #041124 100%);
+  --premium-button-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --premium-button-gradient-dark: linear-gradient(135deg, #3b82f6 0%, #2563eb 48%, #1e3a8a 100%);
+  --premium-shadow-rgb: 30 58 138;
+  --premium-glow-rgb: 56 189 248;
 }
 
 .theme-gold {
