@@ -55,7 +55,6 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
   // State for Check Balance feature
   const [code, setCode] = useState('');
   const [checkLoading, setCheckLoading] = useState(false);
-  const [checkResult, setCheckResult] = useState<CardInfo | null>(null);
   const [checkError, setCheckError] = useState('');
 
   const now = Date.now();
