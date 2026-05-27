@@ -40,3 +40,13 @@ export const giftCardRecharges = sqliteTable('gift_card_recharges', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
+
+export const giftCardHistory = sqliteTable('gift_card_history', {
+  id: text('id').primaryKey(),
+  giftCardId: text('gift_card_id').notNull(),
+  userId: text('user_id').notNull(),
+  action: text('action').notNull(), // 'sent', 'received', 'saved', 'transferred', 'redeemed', 'recharge'
+  description: text('description'),
+  amount: real('amount'), // Para acciones de recarga
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
+});

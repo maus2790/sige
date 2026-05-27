@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { giftCards, products, stores, comercialConfig, users, giftCardRecharges, systemConfig } from '@/db/schema';
+import { giftCards, products, stores, comercialConfig, users, giftCardRecharges, giftCardHistory, systemConfig } from '@/db/schema';
 import { eq, or, desc, asc, and, sql, gt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -54,6 +54,28 @@ function generateGiftCode(): string {
 
 function generateQrHash(code: string): string {
   return crypto.createHash('sha256').update(code).digest('hex');
+}
+
+async function addHistoryRecord(
+  giftCardId: string,
+  userId: string,
+  action: 'sent' | 'received' | 'saved' | 'transferred' | 'redeemed' | 'recharge',
+  description?: string,
+  amount?: number
+) {
+  try {
+    await db.insert(giftCardHistory).values({
+      id: crypto.randomUUID(),
+      giftCardId,
+      userId,
+      action,
+      description: description || null,
+      amount: amount || null,
+      createdAt: new Date(),
+    });
+  } catch (error) {
+    console.error('Error al registrar historial de gift card:', error);
+  }
 }
 
 export async function getUserGiftCards() {
@@ -294,6 +316,9 @@ export async function transferGiftCard(giftCardId: string, recipientEmail: strin
       updatedAt: new Date(),
     })
     .where(eq(giftCards.id, giftCardId));
+
+  // Registrar transferencia en historial
+  await addHistoryRecord(giftCardId, user.id, 'transferred', `Gift card transferida a ${recipientEmail}`, giftCard.balance);
   
   revalidatePath('/gift-cards');
   revalidatePath(`/gift-cards/${giftCardId}`);
@@ -424,6 +449,16 @@ export async function purchaseGiftCard(data: {
     });
   });
 
+  // Registrar en historial
+  if (data.saveToWallet) {
+    await addHistoryRecord(id, user.id, 'saved', `Gift card guardada en billetera`, data.amount);
+  } else {
+    await addHistoryRecord(id, user.id, 'sent', `Gift card enviada a ${data.recipientName || data.recipientEmail || 'usuario'}`, data.amount);
+    if (data.recipientId) {
+      await addHistoryRecord(id, data.recipientId, 'received', `Gift card recibida de ${user.name || 'usuario'}`, data.amount);
+    }
+  }
+
   revalidatePath('/gift-cards');
   return { success: true, id };
 }
@@ -487,6 +522,9 @@ export async function requestGiftCardBalanceTopUp(data: {
     createdAt: new Date(),
     updatedAt: new Date(),
   });
+
+  // Registrar solicitud de recarga en historial
+  await addHistoryRecord(id, user.id, 'recharge', `Solicitud de recarga de crédito global`, data.amount);
 
   revalidatePath('/gift-cards');
   revalidatePath('/assistant/pagos-pendientes');
@@ -584,6 +622,9 @@ export async function saveGiftCardToWallet(giftCardId: string) {
   const user = await getCurrentUser();
   if (!user) return { error: 'No autorizado' };
 
+  const giftCard = await getGiftCardById(giftCardId);
+  if (!giftCard) return { error: 'Gift card no encontrada' };
+
   await db
     .update(giftCards)
     .set({
@@ -591,6 +632,9 @@ export async function saveGiftCardToWallet(giftCardId: string) {
       updatedAt: new Date(),
     })
     .where(eq(giftCards.id, giftCardId));
+
+  // Registrar guardado en historial
+  await addHistoryRecord(giftCardId, user.id, 'saved', `Gift card guardada en billetera`, giftCard.balance);
 
   revalidatePath('/gift-cards');
   return { success: true };
@@ -1155,5 +1199,86 @@ export async function updatePaymentSettings(data: {
   }
 
   return { success: true };
+}
+
+// ============================================
+// HISTORIAL DE GIFT CARDS
+// ============================================
+
+export async function getGiftCardHistory(giftCardId?: string) {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  if (giftCardId) {
+    // Si se especifica una gift card, filtrar por esa
+    const history = await db
+      .select({
+        id: giftCardHistory.id,
+        giftCardId: giftCardHistory.giftCardId,
+        action: giftCardHistory.action,
+        description: giftCardHistory.description,
+        amount: giftCardHistory.amount,
+        createdAt: giftCardHistory.createdAt,
+        giftCard: giftCards,
+      })
+      .from(giftCardHistory)
+      .leftJoin(giftCards, eq(giftCardHistory.giftCardId, giftCards.id))
+      .where(eq(giftCardHistory.giftCardId, giftCardId))
+      .orderBy(desc(giftCardHistory.createdAt))
+      .all();
+    
+    return history;
+  } else {
+    // Si no, traer el historial del usuario
+    const history = await db
+      .select({
+        id: giftCardHistory.id,
+        giftCardId: giftCardHistory.giftCardId,
+        action: giftCardHistory.action,
+        description: giftCardHistory.description,
+        amount: giftCardHistory.amount,
+        createdAt: giftCardHistory.createdAt,
+        giftCard: giftCards,
+      })
+      .from(giftCardHistory)
+      .leftJoin(giftCards, eq(giftCardHistory.giftCardId, giftCards.id))
+      .where(eq(giftCardHistory.userId, user.id))
+      .orderBy(desc(giftCardHistory.createdAt))
+      .all();
+
+    return history;
+  }
+}
+
+export async function getGiftCardHistoryByAction(action: 'sent' | 'received' | 'saved' | 'transferred' | 'redeemed' | 'recharge') {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const history = await db
+    .select({
+      id: giftCardHistory.id,
+      giftCardId: giftCardHistory.giftCardId,
+      action: giftCardHistory.action,
+      description: giftCardHistory.description,
+      amount: giftCardHistory.amount,
+      createdAt: giftCardHistory.createdAt,
+      giftCard: giftCards,
+    })
+    .from(giftCardHistory)
+    .leftJoin(giftCards, eq(giftCardHistory.giftCardId, giftCards.id))
+    .where(
+      and(
+        eq(giftCardHistory.userId, user.id),
+        eq(giftCardHistory.action, action)
+      )
+    )
+    .orderBy(desc(giftCardHistory.createdAt))
+    .all();
+
+  return history;
 }
 

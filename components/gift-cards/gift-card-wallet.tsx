@@ -6,11 +6,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
 import { RechargeDialog } from './recharge-dialog';
+import { CheckBalanceDialog } from './check-balance-dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Gift, Send, Clock,
-  TrendingUp, ChevronRight, Wallet, Sparkles, Inbox
+  TrendingUp, ChevronRight, Wallet, Sparkles, Inbox, Search
 } from 'lucide-react';
 
 interface GiftCardWalletProps {
@@ -35,22 +36,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
   const initialTab = searchParams.get('tab') || 'sent';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [rechargeOpen, setRechargeOpen] = useState(false);
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    // Optional: update URL without full reload
-    const params = new URLSearchParams(searchParams.toString());
-    params.set('tab', tab);
-    router.replace(`/gift-cards?${params.toString()}`, { scroll: false });
-  };
-
-  // Sync activeTab with URL changes
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab && tab !== activeTab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams, activeTab]);
+  const [checkBalanceOpen, setCheckBalanceOpen] = useState(false);
 
   // State for Check Balance feature
   const [code, setCode] = useState('');
@@ -72,6 +58,22 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
     const tB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt || 0).getTime();
     return tB - tA;
   });
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    // Update URL without full reload
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    router.replace(`/gift-cards?${params.toString()}`, { scroll: false });
+  };
+
+  // Sync activeTab with URL changes
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams, activeTab]);
 
   return (
     <div className="gift-card-section min-h-screen bg-background">
@@ -101,7 +103,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
           </div>
 
           {/* Action buttons - thumb zone */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <Button
               asChild
               className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
@@ -111,6 +113,14 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
                 <Gift className="h-4 w-4 mr-1.5" />
                 Regalar
               </Link>
+            </Button>
+            <Button
+              className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm gap-2"
+              variant="ghost"
+              onClick={() => setCheckBalanceOpen(true)}
+            >
+              <Search className="h-4 w-4" />
+              Consultar
             </Button>
             <Button
               className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
@@ -292,6 +302,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
       </div>
 
       <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
+      <CheckBalanceDialog open={checkBalanceOpen} onOpenChange={setCheckBalanceOpen} />
     </div>
   );
 }

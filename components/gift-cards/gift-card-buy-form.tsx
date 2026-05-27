@@ -213,6 +213,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
     }
   };
 
+  const remainingBalance = Number((availableBalance - amount).toFixed(2));
   const amountError = amount > MAX_GIFT_CARD_AMOUNT
     ? `El monto maximo por Gift Card es Bs. ${MAX_GIFT_CARD_AMOUNT.toLocaleString('es-BO')}`
     : amount > availableBalance
@@ -361,18 +362,18 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
     <div className="gift-card-buy-section w-full pb-20">
       {/* Indicador de Pasos Sticky Full Width */}
       {/* Indicador de Pasos Sticky Full Width */}
-      <div className="gift-card-steps sticky top-[64px] z-50 bg-[#f2f4ff]/80 dark:bg-[#081623]/80 backdrop-blur-xl py-4 mb-8 border-b border-muted/10 shadow-sm w-full">
+          <div className="gift-card-steps sticky top-[64px] z-50 bg-[#f2f4ff]/80 dark:bg-[#081623]/80 backdrop-blur-xl py-4 mb-8 border-b border-muted/10 shadow-sm w-full">
         <div className="max-w-4xl mx-auto px-4 md:px-6 flex justify-between items-center">
-          {[1, 2, 3, 4].map((s) => (
+              {[1, 2, 3, 4].map((s) => (
             <div key={s} className={`flex items-center ${s < 4 ? 'flex-1' : ''}`}>
               <div className={`w-8 h-8 md:w-9 md:h-9 shrink-0 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-700 shadow-md ${
-                step >= s ? 'gift-card-step-active text-white scale-105' : 'bg-muted text-muted-foreground'
+                step >= s ? 'gift-card-step-active text-white scale-105 bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800' : 'bg-muted text-muted-foreground'
               }`}>
                 {step > s ? <Check className="h-4 w-4" /> : s}
               </div>
               {s < 4 && (
                 <div className={`flex-1 h-1 mx-1 rounded-full transition-all duration-1000 ${
-                  step > s ? 'gift-card-step-connector-active' : 'bg-muted'
+                  step > s ? 'gift-card-step-connector-active bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800' : 'bg-muted'
                 }`} />
               )}
             </div>
@@ -481,7 +482,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
           {/* NUEVO PASO 1: PERSONALIZACIÓN */}
           {step === 1 && (
             <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Sparkles className="h-6 w-6" />
                   Personaliza tu Regalo
@@ -512,12 +513,12 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                       ref={occasionsRef}
                       className="flex overflow-x-auto gap-3 pb-2 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth"
                     >
-                      {Object.keys(EVENT_MESSAGES).map((event) => (
+                        {Object.keys(EVENT_MESSAGES).map((event) => (
                         <Button 
                           key={event}
                           type="button"
                           variant={selectedEvent === event ? 'default' : 'outline'} 
-                          className={`gift-card-selectable flex flex-col h-auto py-3 px-6 gap-1 shrink-0 snap-start min-w-[100px] ${selectedEvent === event ? 'gift-card-option-selected' : ''}`}
+                          className={`gift-card-selectable flex flex-col h-auto py-3 px-6 gap-1 shrink-0 snap-start min-w-[100px] ${selectedEvent === event ? 'gift-card-option-selected bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-md border-transparent' : ''}`}
                           onClick={() => setSelectedEvent(event)}
                         >
                           {event === 'cumpleaños' && <Cake className="h-5 w-5" />}
@@ -556,7 +557,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                             type="button"
                             className={`text-left text-xs p-3 rounded-xl border transition-all ${
                               message === msg 
-                                ? 'gift-card-option-selected text-white shadow-md' 
+                                ? 'gift-card-option-selected text-white shadow-md bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 border-transparent' 
                                 : 'gift-card-suggestion bg-muted/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-transparent text-muted-foreground hover:text-blue-700 hover:border-blue-200'
                             }`}
                             onClick={() => setMessage(msg)}
@@ -601,7 +602,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
           {/* PASO 2: DISEÑO */}
           {step === 2 && (
             <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <Sparkles className="h-6 w-6" />
                   Elige un Diseño
@@ -636,8 +637,8 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                         <button
                           key={tpl.id}
                           type="button"
-                          className={`h-24 min-w-[160px] rounded-2xl transition-all shrink-0 snap-start relative overflow-hidden flex flex-col items-center justify-center border-2 ${
-                            templateId === tpl.id ? 'gift-card-template-selected scale-105 shadow-lg' : 'border-transparent opacity-80 hover:opacity-100'
+                          className={`h-24 min-w-[160px] rounded-2xl transition-all shrink-0 snap-start relative overflow-hidden flex flex-col items-center justify-center ${
+                            templateId === tpl.id ? 'scale-105 shadow-xl' : 'opacity-80 hover:opacity-100'
                           } ${tpl.className}`}
                           onClick={() => setTemplateId(tpl.id)}
                         >
@@ -645,8 +646,8 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                             {tpl.name}
                           </span>
                           {templateId === tpl.id && (
-                            <div className="gift-card-template-check absolute top-1 right-1 bg-blue-500 rounded-full p-0.5 shadow-md">
-                              <Check className="h-3 w-3 text-white" />
+                            <div className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-2xl border-4" style={{ borderColor: 'var(--primary)' }}>
+                              <Check className="h-5 w-5" style={{ color: 'var(--primary)' }} />
                             </div>
                           )}
                         </button>
@@ -685,7 +686,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
           {/* PASO 3: MONTO */}
           {step === 3 && (
             <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <CreditCard className="h-6 w-6" />
                   Monto del Regalo
@@ -698,9 +699,16 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                 <div className="space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <Label className="text-base font-bold">Elige un monto</Label>
-                    <span className="text-xs font-bold text-muted-foreground">
-                      Saldo global: Bs. {availableBalance.toFixed(2)}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-xs font-bold text-muted-foreground">
+                        Saldo global: Bs. {availableBalance.toFixed(2)}
+                      </span>
+                      {amount > 0 && (
+                        <div className="text-xs font-bold text-green-600 dark:text-green-400">
+                          Restante: Bs. {remainingBalance.toFixed(2)}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="relative group">
                     <div className="flex overflow-x-auto gap-3 pb-4 -mx-1 px-1 scrollbar-hide snap-x scroll-smooth">
@@ -711,7 +719,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                           variant={amount === amt ? 'default' : 'outline'}
                           className={`h-14 min-w-[100px] text-lg font-bold rounded-2xl shrink-0 snap-start transition-all duration-300 ${
                             amount === amt 
-                              ? 'gift-card-option-selected text-white shadow-lg border-none scale-105 ring-2 ring-white/20' 
+                              ? 'gift-card-option-selected text-white shadow-lg border-none scale-105 ring-2 ring-white/20 bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800' 
                               : amt > availableBalance ? 'bg-muted/20 border-muted opacity-45' : 'bg-muted/30 hover:bg-muted/50 border-muted'
                           }`}
                           disabled={amt > availableBalance}
@@ -763,7 +771,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
 
           {step === 4 && (
             <Card className="gift-card-form-card border-2 border-blue-500/10 shadow-xl overflow-hidden pt-0">
-              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white">
+              <CardHeader className="gift-card-form-header px-4 md:px-6 pt-7 pb-5 transition-all duration-700 text-white bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800">
                 <CardTitle className="text-2xl flex items-center gap-2">
                   <User className="h-6 w-6" />
                   Destinatario y Envío
@@ -873,7 +881,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                           <Button
                             type="button"
                             variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'}
-                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'whatsapp' ? 'gift-card-option-selected' : ''}`}
+                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'whatsapp' ? 'gift-card-option-selected bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-md border-transparent' : ''}`}
                             onClick={() => setDeliveryMethod('whatsapp')}
                           >
                             <MessageCircle className="h-4 w-4" />
@@ -882,7 +890,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                           <Button
                             type="button"
                             variant={deliveryMethod === 'email' ? 'default' : 'outline'}
-                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'email' ? 'gift-card-option-selected' : ''}`}
+                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'email' ? 'gift-card-option-selected bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-md border-transparent' : ''}`}
                             onClick={() => setDeliveryMethod('email')}
                           >
                             <Mail className="h-4 w-4" />
@@ -891,7 +899,7 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
                           <Button
                             type="button"
                             variant={deliveryMethod === 'sige' ? 'default' : 'outline'}
-                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'sige' ? 'gift-card-option-selected' : ''}`}
+                            className={`gift-card-selectable h-14 flex flex-col gap-1 rounded-xl px-1 ${deliveryMethod === 'sige' ? 'gift-card-option-selected bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-md border-transparent' : ''}`}
                             onClick={() => setDeliveryMethod('sige')}
                           >
                             <User className="h-4 w-4" />

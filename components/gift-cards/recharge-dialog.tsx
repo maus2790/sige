@@ -16,6 +16,7 @@ import {
   Upload, X, AlertCircle, Clock, ExternalLink, MessageSquare,
   Building2, Smartphone, CreditCard, Users, ChevronRight,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import {
@@ -48,6 +49,7 @@ const METHODS: { id: PaymentMethod; label: string; icon: React.ElementType; desc
 ];
 
 export function RechargeDialog({ open, onOpenChange, themeClassName }: RechargeDialogProps) {
+  const [isDesktop, setIsDesktop] = React.useState(false);
   const [step, setStep] = React.useState(1);
   const [selectedMethod, setSelectedMethod] = React.useState<PaymentMethod | null>(null);
   const [paymentSettings, setPaymentSettings] = React.useState<PaymentSettings | null>(null);
@@ -68,6 +70,20 @@ export function RechargeDialog({ open, onOpenChange, themeClassName }: RechargeD
       loadPaymentSettings();
     }
   }, [open]);
+
+  // Detect desktop breakpoint to switch modal style
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktop(mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else mq.removeListener(update);
+    };
+  }, []);
 
   async function checkExistingRecharge() {
     setCheckingRecharge(true);
@@ -350,7 +366,7 @@ export function RechargeDialog({ open, onOpenChange, themeClassName }: RechargeD
               <Label className="font-bold text-sm">Comprobante de Pago</Label>
               {receiptPreview ? (
                 <div className="relative rounded-2xl overflow-hidden border-2 border-primary/30">
-                  <div className="relative w-full aspect-[4/3]">
+                  <div className="relative w-full aspect-4/3">
                     <Image src={receiptPreview} alt="Comprobante" fill className="object-contain bg-muted" />
                   </div>
                   <button
@@ -359,7 +375,7 @@ export function RechargeDialog({ open, onOpenChange, themeClassName }: RechargeD
                   >
                     <X className="w-4 h-4" />
                   </button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                  <div className="absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/60 to-transparent p-3">
                     <p className="text-white text-xs font-semibold">✓ Comprobante cargado</p>
                   </div>
                 </div>
@@ -516,6 +532,18 @@ export function RechargeDialog({ open, onOpenChange, themeClassName }: RechargeD
       )}
     </div>
   );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className={cn("p-0 overflow-hidden border-none rounded-xl max-w-3xl w-full max-h-[90vh]", themeClassName)}>
+          <DialogTitle className="sr-only">Recargar Crédito</DialogTitle>
+          <DialogDescription className="sr-only">Carga saldo a tu billetera de Gift Cards paso a paso.</DialogDescription>
+          {content}
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
