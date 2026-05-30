@@ -8,7 +8,8 @@ import {
   TrendingUp,
   Eye,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  Hash
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,15 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Resumen</h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold">Resumen</h1>
+          {stats.storeSku && (
+            <div className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2.5 py-1 font-mono text-sm font-semibold text-primary">
+              <Hash className="h-4 w-4" />
+              {stats.storeSku}
+            </div>
+          )}
+        </div>
         <p className="text-muted-foreground mt-1">
           Bienvenido a tu panel de control. Aquí puedes ver el rendimiento de tu tienda.
         </p>

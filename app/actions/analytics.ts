@@ -53,6 +53,7 @@ export async function getSellerStats() {
       topProducts: [],
       salesByDay: [],
       salesByCategory: [],
+      storeSku: null,
     };
   }
 
@@ -178,6 +179,7 @@ export async function getSellerStats() {
       sales: c.sales || 0,
       revenue: c.revenue || 0,
     })),
+    storeSku: store.sku,
   };
 }
 

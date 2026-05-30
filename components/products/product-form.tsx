@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { createProduct } from "@/app/actions/products";
+import { createProduct, getSellerStoreSku } from "@/app/actions/products";
 import { ImageUpload } from "@/components/upload/image-upload";
 
 interface Category {
@@ -30,21 +30,24 @@ interface ProductFormProps {
   categories: Category[];
   onSuccess?: () => void;
   onCancel?: () => void;
-  hideFooter?: boolean;
-  formId?: string;
 }
 
-export function ProductForm({ categories, onSuccess, onCancel, hideFooter, formId }: ProductFormProps) {
+export function ProductForm({ categories, onSuccess, onCancel }: ProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [storeSku, setStoreSku] = useState<string>("");
   const [fields, setFields] = useState({
     name: "",
     description: "",
     category: "",
     status: "Nuevo",
   });
+
+  useEffect(() => {
+    getSellerStoreSku().then((sku) => setStoreSku(sku || "")).catch(console.error);
+  }, []);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +78,7 @@ export function ProductForm({ categories, onSuccess, onCancel, hideFooter, formI
   }
 
   return (
-    <form id={formId} onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       {error && (
         <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
           {error}
@@ -85,13 +88,25 @@ export function ProductForm({ categories, onSuccess, onCancel, hideFooter, formI
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="space-y-2">
-            <Label htmlFor="sku">Identificador / SKU</Label>
-            <Input
-              id="sku"
-              name="sku"
-              placeholder="Se generará automáticamente si se deja vacío"
-              disabled={isLoading}
-            />
+            <Label htmlFor="sku">SKU del producto</Label>
+            <div className="flex">
+              <div className="flex h-9 items-center rounded-l-md border border-r-0 bg-muted px-3 font-mono text-sm text-muted-foreground">
+                {storeSku || "----"}-
+              </div>
+              <Input
+                id="sku"
+                name="sku"
+                maxLength={4}
+                pattern="[A-Za-z0-9]{4}"
+                placeholder="Auto"
+                disabled={isLoading}
+                className="rounded-l-none font-mono uppercase"
+                onInput={(event) => {
+                  event.currentTarget.value = event.currentTarget.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 4);
+                }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">Dejalo vacio para generarlo automaticamente.</p>
           </div>
 
           <div className="space-y-2">
@@ -168,24 +183,22 @@ export function ProductForm({ categories, onSuccess, onCancel, hideFooter, formI
         </div>
       </div>
 
-          {!hideFooter && (
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              {onCancel ? (
-                <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
+          <div className="flex justify-end gap-4 pt-4 border-t">
+            {onCancel ? (
+              <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
+                Cancelar
+              </Button>
+            ) : (
+              <Link href="/dashboard/productos">
+                <Button type="button" variant="outline" disabled={isLoading}>
                   Cancelar
                 </Button>
-              ) : (
-                <Link href="/dashboard/productos">
-                  <Button type="button" variant="outline" disabled={isLoading}>
-                    Cancelar
-                  </Button>
-                </Link>
-              )}
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Creando..." : "Crear Producto"}
-              </Button>
-            </div>
-          )}
+              </Link>
+            )}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Creando..." : "Crear Producto"}
+            </Button>
+          </div>
         </form>
   );
 }

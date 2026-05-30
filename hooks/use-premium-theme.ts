@@ -101,7 +101,7 @@ const PREMIUM_THEME_COLORS: Record<PremiumTheme, string> = {
 };
 
 export function getPremiumThemeColor(theme: PremiumTheme) {
-  return PREMIUM_THEME_COLORS[theme] || PREMIUM_THEME_COLORS.blue;
+  return PREMIUM_THEME_COLORS[theme] || PREMIUM_THEME_COLORS.sunset;
 }
 
 function applyThemeColor(theme: PremiumTheme) {
@@ -126,9 +126,9 @@ function readPremiumTheme(): PremiumTheme {
     const saved = localStorage.getItem(STORAGE_KEY);
     return PREMIUM_THEMES.some((theme) => theme.value === saved)
       ? (saved as PremiumTheme)
-      : "blue";
+      : "sunset";
   } catch {
-    return "blue";
+    return "sunset";
   }
 }
 
@@ -138,7 +138,7 @@ export function isPremiumTheme(value: unknown): value is PremiumTheme {
 
 export function usePremiumTheme() {
   const [premiumTheme, setPremiumTheme] = useState<PremiumTheme>(() => {
-    if (typeof window === "undefined") return "blue";
+    if (typeof window === "undefined") return "sunset";
     return readPremiumTheme();
   });
 
@@ -156,7 +156,7 @@ export function usePremiumTheme() {
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === STORAGE_KEY) {
-        const nextTheme = isPremiumTheme(event.newValue) ? event.newValue : "blue";
+        const nextTheme = isPremiumTheme(event.newValue) ? event.newValue : "sunset";
         setPremiumTheme(nextTheme);
         applyPremiumTheme(nextTheme);
       }
@@ -188,7 +188,7 @@ export function usePremiumTheme() {
 
   const toggleTheme = useCallback(() => {
     const currentIndex = PREMIUM_THEMES.findIndex((theme) => theme.value === premiumTheme);
-    const nextTheme = PREMIUM_THEMES[(currentIndex + 1) % PREMIUM_THEMES.length]?.value || "blue";
+    const nextTheme = PREMIUM_THEMES[(currentIndex + 1) % PREMIUM_THEMES.length]?.value || "sunset";
     setTheme(nextTheme);
   }, [premiumTheme, setTheme]);
 

@@ -1,30 +1,36 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { CardContent } from "@/components/ui/card";
 
 export function ProductCardSkeleton() {
   return (
-    <Card className="overflow-hidden h-full border border-white/10 dark:border-white/5 rounded-2xl bg-card shadow-premium">
-      <div className="aspect-square">
-        <Skeleton className="h-full w-full rounded-none" />
-      </div>
-      <CardContent className="p-4 space-y-3">
-        <Skeleton className="h-5 w-3/4" />
-        <div className="space-y-2">
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-5/6" />
+    <div className="product-card-premium relative flex flex-col overflow-hidden h-full border border-white/20 dark:border-white/10 rounded-3xl bg-card/50 backdrop-blur-md shadow-xl">
+      {/* Contenedor de Imagen */}
+      <div className="aspect-4/3 relative overflow-hidden bg-muted block">
+        <Skeleton className="h-full w-full rounded-none animate-pulse" />
+        
+        {/* Botón Ver en el Mapa (Inferior Izquierda) */}
+        <div className="absolute bottom-2 left-2 w-9 h-9 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-white/20 flex items-center justify-center shadow-md">
+          <Skeleton className="w-4 h-4 rounded-full" />
         </div>
-        <div className="flex justify-between items-center pt-2">
-          <Skeleton className="h-7 w-20" />
-          <Skeleton className="h-4 w-8" />
+        
+        {/* Botón Añadir al Carrito (Inferior Derecha) */}
+        <div className="absolute bottom-2 right-2 w-9 h-9 rounded-full bg-white/90 dark:bg-zinc-900/90 border border-white/20 flex items-center justify-center shadow-md">
+          <Skeleton className="w-4 h-4 rounded-full" />
+        </div>
+      </div>
+
+      {/* Cuerpo de la tarjeta */}
+      <CardContent className="product-card-body p-2 pb-1.5 flex flex-col justify-between flex-1">
+        {/* Título del producto */}
+        <div className="mb-1.5 mt-0.5">
+          <Skeleton className="h-4 w-5/6 rounded-md" />
+        </div>
+        {/* Precio */}
+        <div className="flex flex-col gap-0.5 mt-auto">
+          <Skeleton className="h-6 w-24 rounded-md" />
         </div>
       </CardContent>
-      <CardFooter className="p-4 pt-0 border-t mt-2">
-        <div className="flex justify-between w-full pt-2">
-          <Skeleton className="h-2.5 w-16" />
-          <Skeleton className="h-2.5 w-12" />
-        </div>
-      </CardFooter>
-    </Card>
+    </div>
   );
 }
 
@@ -37,3 +43,4 @@ export function ProductGridSkeleton({ count = 8 }: { count?: number }) {
     </div>
   );
 }
+

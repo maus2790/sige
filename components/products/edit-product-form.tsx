@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { updateProduct } from "@/app/actions/products";
 import { ImageUpload } from "@/components/upload/image-upload";
+import { getProductSkuSegment, getStoreSkuSegment } from "@/lib/sku";
 
 type ProductData = Record<string, unknown> & {
   id: string;
@@ -41,15 +42,15 @@ interface EditProductFormProps {
   categories: Category[];
   onSuccess?: () => void;
   onCancel?: () => void;
-  hideFooter?: boolean;
-  formId?: string;
 }
 
-export function EditProductForm({ product, categories, onSuccess, onCancel, hideFooter, formId }: EditProductFormProps) {
+export function EditProductForm({ product, categories, onSuccess, onCancel }: EditProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>(product.imageUrls || []);
+  const storeSku = getStoreSkuSegment(product.sku);
+  const productSku = getProductSkuSegment(product.sku);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,7 +78,7 @@ export function EditProductForm({ product, categories, onSuccess, onCancel, hide
   }
 
   return (
-    <form id={formId} onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       {error && (
         <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
           {error}
@@ -87,14 +88,25 @@ export function EditProductForm({ product, categories, onSuccess, onCancel, hide
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div className="space-y-2">
-            <Label htmlFor="sku">Identificador / SKU</Label>
-            <Input
-              id="sku"
-              name="sku"
-              defaultValue={product.sku}
-              placeholder="Ej: PROD-001"
-              disabled={isLoading}
-            />
+            <Label htmlFor="sku">SKU del producto</Label>
+            <div className="flex">
+              <div className="flex h-9 items-center rounded-l-md border border-r-0 bg-muted px-3 font-mono text-sm text-muted-foreground">
+                {storeSku || "----"}-
+              </div>
+              <Input
+                id="sku"
+                name="sku"
+                defaultValue={productSku}
+                maxLength={4}
+                pattern="[A-Za-z0-9]{4}"
+                placeholder="Ej: 21FG"
+                disabled={isLoading}
+                className="rounded-l-none font-mono uppercase"
+                onInput={(event) => {
+                  event.currentTarget.value = event.currentTarget.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 4);
+                }}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -170,24 +182,22 @@ export function EditProductForm({ product, categories, onSuccess, onCancel, hide
         </div>
       </div>
 
-      {!hideFooter && (
-        <div className="flex justify-end gap-4 pt-4 border-t">
-          {onCancel ? (
-            <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
+      <div className="flex justify-end gap-4 pt-4 border-t">
+        {onCancel ? (
+          <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
+            Cancelar
+          </Button>
+        ) : (
+          <Link href="/dashboard/productos">
+            <Button type="button" variant="outline" disabled={isLoading}>
               Cancelar
             </Button>
-          ) : (
-            <Link href="/dashboard/productos">
-              <Button type="button" variant="outline" disabled={isLoading}>
-                Cancelar
-              </Button>
-            </Link>
-          )}
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? "Guardando..." : "Guardar Cambios"}
-          </Button>
-        </div>
-      )}
+          </Link>
+        )}
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? "Guardando..." : "Guardar Cambios"}
+        </Button>
+      </div>
     </form>
   );
 }

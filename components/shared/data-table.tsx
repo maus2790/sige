@@ -165,7 +165,7 @@ export function DataTable<TData, TValue>({
           <div className="relative w-full">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar productos..."
+              placeholder="Buscar por nombre o SKU..."
               value={globalFilter}
               onChange={(event) => {
                 setGlobalFilter(event.target.value);

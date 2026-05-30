@@ -55,7 +55,7 @@ export default async function RootLayout({
         <Script id="sige-premium-theme-init" strategy="beforeInteractive">
           {`
             try {
-              var premiumTheme = localStorage.getItem('sige-premium-theme') || 'blue';
+              var premiumTheme = localStorage.getItem('sige-premium-theme') || 'sunset';
               var allowedThemes = ['blue', 'black', 'gold', 'rose', 'emerald', 'purple', 'ocean', 'sunset', 'cyan', 'ruby'];
               document.documentElement.classList.remove(
                 'theme-premium',
@@ -71,7 +71,7 @@ export default async function RootLayout({
                 'theme-ruby'
               );
               if (allowedThemes.indexOf(premiumTheme) === -1) {
-                premiumTheme = 'blue';
+                premiumTheme = 'sunset';
               }
               if (premiumTheme !== 'blue') {
                 document.documentElement.classList.add('theme-premium', 'theme-' + premiumTheme);

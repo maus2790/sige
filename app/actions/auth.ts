@@ -4,7 +4,7 @@
 
 import { db } from "@/db";
 import { users, stores } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
@@ -13,6 +13,7 @@ import { z } from "zod";
 import { sendResetEmail } from "@/lib/send-reset-email";
 import { getServerSession } from "next-auth/next";
 import { nextauthConfig } from "@/lib/nextauth.config";
+import { numberToSkuSegment } from "@/lib/sku";
 
 // ============================================
 // ESQUEMAS DE VALIDACIÓN CORREGIDOS
@@ -108,10 +109,15 @@ export async function handleRegister(formData: FormData, callbackUrl?: string) {
   // Crear tienda automáticamente para el vendedor
   const storeId = generateId();
   const storeName = `Tienda de ${name}`;
+  const storeCount = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(stores)
+    .get();
 
   await db.insert(stores).values({
     id: storeId,
     userId: userId,
+    sku: numberToSkuSegment((storeCount?.count ?? 0) + 1),
     name: storeName,
     description: "Bienvenido a tu nueva tienda. Completa los datos para personalizarla.",
     verified: false,

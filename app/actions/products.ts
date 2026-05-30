@@ -4,13 +4,21 @@
 
 import { db } from "@/db";
 import { products, stores, inventory, comercialConfig, users } from "@/db/schema";
-import { eq, and, desc, sql, lte } from "drizzle-orm";
+import { eq, and, desc, sql, lte, like } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireRole, getCurrentUser } from "./auth";
 import { getSystemConfig } from "./config";
+import {
+  composeProductSku,
+  getProductSkuSegment,
+  isValidSkuSegment,
+  normalizeSkuSegment,
+  numberToSkuSegment,
+  skuSegmentToNumber,
+} from "@/lib/sku";
 
 // ============================================
 // TIPOS
@@ -67,6 +75,68 @@ const updateProductSchema = z.object({
 
 function generateId(): string {
   return randomUUID();
+}
+
+async function generateNextStoreSku(tx: typeof db = db) {
+  const rows = await tx.select({ sku: stores.sku }).from(stores).all();
+  const maxValue = rows.reduce((max, row) => Math.max(max, skuSegmentToNumber(row.sku || "")), 0);
+  return numberToSkuSegment(maxValue + 1);
+}
+
+async function ensureStoreSku(store: typeof stores.$inferSelect, tx: typeof db = db) {
+  if (store.sku && isValidSkuSegment(store.sku)) {
+    return store.sku;
+  }
+
+  const nextSku = await generateNextStoreSku(tx);
+  await tx.update(stores).set({ sku: nextSku }).where(eq(stores.id, store.id));
+  return nextSku;
+}
+
+async function resolveProductSku({
+  storeId,
+  storeSku,
+  requestedSku,
+  currentProductId,
+}: {
+  storeId: string;
+  storeSku: string;
+  requestedSku?: string;
+  currentProductId?: string;
+}) {
+  const requestedSegment = normalizeSkuSegment(requestedSku || "");
+  let productSegment = requestedSegment;
+
+  if (requestedSku && requestedSegment.length > 0 && !isValidSkuSegment(requestedSegment)) {
+    return { error: "El SKU del producto debe tener exactamente 4 caracteres alfanumericos." };
+  }
+
+  if (!productSegment) {
+    const rows = await db
+      .select({ sku: products.sku })
+      .from(products)
+      .where(and(eq(products.storeId, storeId), like(products.sku, `${storeSku}-%`)))
+      .all();
+
+    const maxValue = rows.reduce(
+      (max, row) => Math.max(max, skuSegmentToNumber(getProductSkuSegment(row.sku))),
+      0
+    );
+    productSegment = numberToSkuSegment(maxValue + 1);
+  }
+
+  const fullSku = composeProductSku(storeSku, productSegment);
+  const existing = await db
+    .select({ id: products.id })
+    .from(products)
+    .where(eq(products.sku, fullSku))
+    .get();
+
+  if (existing && existing.id !== currentProductId) {
+    return { error: `El SKU ${fullSku} ya esta asignado a otro producto.` };
+  }
+
+  return { sku: fullSku };
 }
 
 // Helper para sanear arreglos de imágenes desincronizados
@@ -178,9 +248,11 @@ export async function getSellerProductsPaginated({
   }
 
   if (search && search.trim()) {
-    const searchTerm = `%${search.trim()}%`;
+    const cleanSearch = search.trim();
+    const searchTerm = `%${cleanSearch}%`;
+    const skuTerm = `%${normalizeSkuSegment(cleanSearch)}%`;
     conditions.push(
-      sql`(${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm})`
+      sql`(${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm} OR upper(${products.sku}) LIKE ${skuTerm})`
     );
   }
 
@@ -394,19 +466,19 @@ export async function createProduct(data: any) {
     };
   }
 
-  // Generar SKU automáticamente si no se proporciona o está vacío
-  let autoSku = (rawData.sku as string) || "";
-  if (!autoSku || autoSku.trim() === "") {
-    const cleanCategory = rawData.category 
-      ? rawData.category.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z]/gi, "").substring(0, 3).toUpperCase() 
-      : "PRD";
-    const prefix = cleanCategory.padEnd(3, "X");
-    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-    autoSku = `${prefix}-${randomSuffix}`;
+  const storeSku = await ensureStoreSku(store);
+  const skuResult = await resolveProductSku({
+    storeId: store.id,
+    storeSku,
+    requestedSku: rawData.sku as string | undefined,
+  });
+
+  if (skuResult.error || !skuResult.sku) {
+    return { error: skuResult.error || "No se pudo generar el SKU del producto." };
   }
 
   const validatedFields = createProductSchema.safeParse({
-    sku: autoSku,
+    sku: skuResult.sku,
     name: rawData.name,
     description: rawData.description,
     price: typeof rawData.price === 'string' && rawData.price !== "" ? parseFloat(rawData.price) : (rawData.price === null || rawData.price === undefined || rawData.price === "" ? undefined : rawData.price),
@@ -549,6 +621,8 @@ export async function publishProductToMarket(productId: string) {
     throw new Error("Producto no encontrado");
   }
 
+  let ownerStore: typeof stores.$inferSelect | undefined;
+
   // Si no es superadmin ni assistant, verificar que es el dueño de la tienda
   if (user.role !== "superadmin" && user.role !== "assistant") {
     const store = await db
@@ -681,6 +755,8 @@ export async function deleteProduct(productId: string) {
 
 export async function updateProduct(productId: string, data: any) {
   const user = await getCurrentUser();
+  let ownerStore: typeof stores.$inferSelect | undefined;
+
   if (!user || (user.role !== "seller" && user.role !== "assistant" && user.role !== "superadmin")) {
     return { error: "No autorizado. Debes iniciar sesión como vendedor o asistente." };
   }
@@ -706,6 +782,14 @@ export async function updateProduct(productId: string, data: any) {
     if (!store) {
       return { error: "No tienes permiso para editar este producto" };
     }
+
+    ownerStore = store;
+  } else {
+    ownerStore = await db
+      .select()
+      .from(stores)
+      .where(eq(stores.id, existingProduct.storeId))
+      .get();
   }
 
   // Si recibimos FormData, convertirlo a objeto
@@ -729,8 +813,22 @@ export async function updateProduct(productId: string, data: any) {
     };
   }
 
+  const storeSku = ownerStore ? await ensureStoreSku(ownerStore) : "";
+  const skuResult = rawData.sku !== undefined
+    ? await resolveProductSku({
+        storeId: existingProduct.storeId,
+        storeSku,
+        requestedSku: rawData.sku as string,
+        currentProductId: productId,
+      })
+    : { sku: existingProduct.sku || undefined };
+
+  if ("error" in skuResult && skuResult.error) {
+    return { error: skuResult.error };
+  }
+
   const validatedFields = updateProductSchema.safeParse({
-    sku: rawData.sku as string || undefined,
+    sku: skuResult.sku,
     name: rawData.name || undefined,
     description: rawData.description || undefined,
     price: typeof rawData.price === 'string' && rawData.price !== "" ? parseFloat(rawData.price) : (rawData.price === null || rawData.price === undefined || rawData.price === "" ? undefined : rawData.price),
@@ -882,9 +980,11 @@ export async function getProductsCursorDirect(
   }
 
   if (search && search.trim()) {
-    const searchTerm = `%${search.trim()}%`;
+    const cleanSearch = search.trim();
+    const searchTerm = `%${cleanSearch}%`;
+    const skuTerm = `%${normalizeSkuSegment(cleanSearch)}%`;
     conditions.push(
-      sql`${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm}`
+      sql`${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm} OR upper(${products.sku}) LIKE ${skuTerm}`
     );
   }
 
@@ -998,4 +1098,20 @@ async function deleteProductImagesFromR2(urls: string[]) {
   } catch (error) {
     console.error("Error en deleteProductImagesFromR2:", error);
   }
+}
+
+export async function getSellerStoreSku() {
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
+
+  const store = await db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, user.id))
+    .get();
+
+  if (!store) {
+    return null;
+  }
+
+  return ensureStoreSku(store);
 }

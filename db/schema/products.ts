@@ -5,7 +5,7 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 export const products = sqliteTable("products", {
     id: text("id").primaryKey(),
     storeId: text("store_id").notNull(),
-    sku: text("sku"), // Identificador único para la tienda (SKU)
+    sku: text("sku").unique(), // Codigo completo: SKU_TIENDA-SKU_PRODUCTO
     name: text("name").notNull(),
     description: text("description"),
     category: text("category"),

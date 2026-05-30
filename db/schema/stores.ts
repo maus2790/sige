@@ -3,6 +3,7 @@ import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
 export const stores = sqliteTable("stores", {
     id: text("id").primaryKey(),
     userId: text("user_id").notNull().unique(),
+    sku: text("sku").unique(),
     name: text("name").notNull(),
     description: text("description"),
     address: text("address"),
