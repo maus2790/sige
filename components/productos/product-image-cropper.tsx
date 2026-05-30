@@ -53,49 +53,63 @@ function createImageEl(url: string): Promise<HTMLImageElement> {
 
 /**
  * Recorta la imagen fuente con los pixelCrop dados y la redimensiona al
- * ancho/alto de salida indicados. Devuelve un Blob JPEG con la calidad
- * especificada.
+ * ancho/alto de salida indicados. Devuelve un Blob JPEG/PNG.
+ *
+ * Estrategia: dibujamos la imagen completa desplazada por (-x, -y) en un
+ * canvas del tamaño del crop. Esto maneja correctamente coordenadas
+ * negativas (zoom < 1) sin distorsión, ya que react-easy-crop ya incorpora
+ * el zoom en las coordenadas pixel que devuelve en croppedAreaPixels.
  */
 async function buildVariantBlob(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
   outW: number,
   outH: number,
-  quality: number
+  quality: number,
+  backgroundColor: 'white' | 'transparent' = 'white',
 ): Promise<Blob> {
   const img = await createImageEl(imageSrc);
 
-  // Canvas intermedio con el crop exacto
+  // ── 1) Canvas intermedio: tamaño exacto del área de recorte ──────────────
+  // Al dibujar la imagen desplazada por (-x, -y) cualquier área fuera del
+  // lienzo queda en blanco — perfecto para zoom < 1 donde parte del
+  // área de recorte cae fuera de la imagen original.
   const cropCanvas = document.createElement("canvas");
-  cropCanvas.width = pixelCrop.width;
-  cropCanvas.height = pixelCrop.height;
+  cropCanvas.width  = Math.round(pixelCrop.width);
+  cropCanvas.height = Math.round(pixelCrop.height);
   const cropCtx = cropCanvas.getContext("2d")!;
-  cropCtx.drawImage(
-    img,
-    pixelCrop.x,
-    pixelCrop.y,
-    pixelCrop.width,
-    pixelCrop.height,
-    0,
-    0,
-    pixelCrop.width,
-    pixelCrop.height
-  );
 
-  // Canvas de salida con el tamaño final
+  if (backgroundColor === 'white') {
+    cropCtx.fillStyle = "#FFFFFF";
+    cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+  }
+
+  // Desplazamos la imagen entera para que la esquina del crop quede en (0,0)
+  cropCtx.drawImage(img, -Math.round(pixelCrop.x), -Math.round(pixelCrop.y));
+
+  // ── 2) Canvas de salida: escala al tamaño final requerido ─────────────────
   const outCanvas = document.createElement("canvas");
-  outCanvas.width = outW;
+  outCanvas.width  = outW;
   outCanvas.height = outH;
   const outCtx = outCanvas.getContext("2d")!;
+
+  if (backgroundColor === 'white') {
+    outCtx.fillStyle = "#FFFFFF";
+    outCtx.fillRect(0, 0, outW, outH);
+  } else {
+    outCtx.clearRect(0, 0, outW, outH);
+  }
+
   outCtx.drawImage(cropCanvas, 0, 0, outW, outH);
 
   return new Promise<Blob>((resolve, reject) => {
+    const mimeType = backgroundColor === 'transparent' ? 'image/png' : 'image/jpeg';
     outCanvas.toBlob(
       (blob) => {
         if (blob) resolve(blob);
         else reject(new Error("No se pudo generar el blob de la imagen"));
       },
-      "image/jpeg",
+      mimeType,
       quality
     );
   });
@@ -130,6 +144,7 @@ export function ProductImageCropper({
 }: ProductImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [backgroundColor, setBackgroundColor] = useState<'white' | 'transparent'>('transparent');
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -145,12 +160,14 @@ export function ProductImageCropper({
 
     try {
       // 1) Generar los 3 blobs en el cliente (canvas)
+      // croppedAreaPixels ya incorpora el zoom aplicado por react-easy-crop;
+      // buildVariantBlob se encarga de mapear esas coordenadas al canvas.
       const ogCrop = deriveOgCrop(croppedAreaPixels);
 
       const [feedBlob, thumbBlob, ogBlob] = await Promise.all([
-        buildVariantBlob(image, croppedAreaPixels, 1200, 900, 0.90),
-        buildVariantBlob(image, croppedAreaPixels, 400, 300, 0.40),
-        buildVariantBlob(image, ogCrop, 1200, 630, 0.70),
+        buildVariantBlob(image, croppedAreaPixels, 1200, 900, 0.90, backgroundColor),
+        buildVariantBlob(image, croppedAreaPixels, 400,  300, 0.40, backgroundColor),
+        buildVariantBlob(image, ogCrop,            1200, 630, 0.70, backgroundColor),
       ]);
 
       // 2) Subir al endpoint multi-resolución
@@ -187,7 +204,7 @@ export function ProductImageCropper({
 
   return (
     <Dialog open onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="sm:max-w-[700px] sm:h-[92vh] p-0 overflow-hidden bg-background border-none shadow-2xl rounded-3xl flex flex-col">
+      <DialogContent className="max-w-full sm:max-w-175 h-[95svh] sm:h-[92vh] max-h-[95svh] sm:max-h-[92vh] p-0 overflow-hidden bg-background border-none shadow-2xl rounded-3xl flex flex-col">
         <DialogHeader className="p-3 pb-1 flex-none border-b bg-muted/20">
           <DialogTitle className="text-base font-bold flex items-center gap-2">
             <Crop className="w-4 h-4 text-primary" />
@@ -198,25 +215,33 @@ export function ProductImageCropper({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col">
           {/* ── Crop area ── */}
-          <div className="relative w-full h-[300px] sm:h-[40vh] bg-black/90 flex-none">
+          <div
+            className="relative w-full h-56 sm:h-[40vh] flex-none transition-colors duration-200"
+            style={{
+              background: backgroundColor === 'white' ? '#ffffff' : 'repeating-conic-gradient(#d1d5db 0% 25%, #f9fafb 0% 50%) 0 0 / 16px 16px',
+            }}
+          >
             <Cropper
               image={image}
               crop={crop}
               zoom={zoom}
+              minZoom={0.3}
+              maxZoom={3}
               aspect={4 / 3}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
               cropShape="rect"
               showGrid
+              restrictPosition={false}
             />
           </div>
 
           {/* ── Controls section ── */}
           <div className="p-4 space-y-4 flex-1">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               {/* ── Zoom slider ── */}
               <div className="space-y-2 p-3 rounded-xl bg-muted/30 border border-border/50">
                 <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase">
@@ -228,20 +253,52 @@ export function ProductImageCropper({
                 </div>
                 <Slider
                   value={[zoom]}
-                  min={1}
+                  min={0.3}
                   max={3}
                   step={0.05}
                   onValueChange={(v) => setZoom(v[0])}
                   className="py-1"
                 />
+                <p className="text-[8px] text-muted-foreground">Si el zoom es menor a 100%, se rellenará con el fondo elegido.</p>
               </div>
+            </div>
 
-              {/* ── Variants labels ── */}
-              <div className="space-y-2 sm:text-right">
+            {/* ── Background color selector ── */}
+            <div className="space-y-2 p-3 rounded-xl bg-muted/30 border border-border/50">
+              <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                Relleno de fondo:
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setBackgroundColor('white')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all border-2 ${
+                    backgroundColor === 'white'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  Blanco
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBackgroundColor('transparent')}
+                  className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all border-2 ${
+                    backgroundColor === 'transparent'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-muted/50 text-muted-foreground hover:bg-muted'
+                  }`}
+                >
+                  Transparente
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
                   Formatos Optimizados:
                 </span>
-                <div className="flex flex-wrap gap-1.5 sm:justify-end">
+                <div className="flex flex-wrap gap-1.5">
                   {[
                     { label: "Thumb", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30" },
                     { label: "Feed", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30" },
@@ -257,11 +314,10 @@ export function ProductImageCropper({
                   ))}
                 </div>
               </div>
-            </div>
 
             <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30">
               <p className="text-[10px] text-blue-700 dark:text-blue-400 leading-tight">
-                <strong>Tip:</strong> Usa el mouse o gestos para centrar el producto. Se generarán 3 tamaños automáticamente para asegurar rapidez en el Market y previsualización en WhatsApp.
+                <strong>Tip:</strong> Usa el zoom para centrar el producto. Reduce el tamaño y elige el relleno de fondo. Se generarán 3 tamaños automáticamente para asegurar rapidez en el Market.
               </p>
             </div>
           </div>
@@ -269,7 +325,7 @@ export function ProductImageCropper({
 
         {/* ── Footer ── */}
         <div className="flex-none p-3 bg-background border-t">
-          <DialogFooter className="flex gap-2 justify-stretch! flex-row! max-w-[400px] mx-auto">
+          <DialogFooter className="flex gap-2 justify-stretch! flex-row! max-w-100 mx-auto">
             <Button
               variant="outline"
               onClick={onCancel}

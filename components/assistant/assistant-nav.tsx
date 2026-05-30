@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { handleLogout } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
+import { DashboardSwitcher } from "@/components/shared/dashboard-switcher";
 
 const navItems = [
   { href: "/assistant", label: "Panel Principal", icon: LayoutDashboard },
@@ -61,7 +62,8 @@ export function AssistantNav() {
         })}
       </nav>
 
-      <div className="mt-auto pt-4 border-t">
+      <div className="mt-auto pt-4 border-t space-y-3">
+        <DashboardSwitcher />
         <form action={async () => { await handleLogout(); }}>
           <Button variant="ghost" className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10">
             <LogOut className="w-4 h-4" />

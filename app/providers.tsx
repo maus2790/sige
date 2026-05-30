@@ -33,7 +33,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <>
       <ThemeColorUpdater />
-      <SessionProvider>
+      {/*
+       * SessionProvider con configuración mínima y sin polling:
+       * - refetchOnWindowFocus: al volver a la pestaña se re-sincroniza la sesión (1 request puntual)
+       * - refetchWhenOffline: false → no genera errores cuando no hay conexión
+       * - Sin refetchInterval: el cold-start se maneja en el route handler de NextAuth,
+       *   no con polling constante al servidor.
+       */}
+      <SessionProvider
+        refetchOnWindowFocus={true}
+        refetchWhenOffline={false}
+      >
         <QueryProvider>
           <NextTopLoader showSpinner={false} color="#2563EB" shadow="0 0 10px #2563EB,0 0 5px #2563EB" />
           {children}
@@ -42,3 +52,5 @@ export function Providers({ children }: { children: React.ReactNode }) {
     </>
   );
 }
+
+

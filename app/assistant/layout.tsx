@@ -7,9 +7,8 @@ export default async function AssistantLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Protección de ruta: solo asistentes pueden acceder
-  // Si un superadmin entra aquí, requireRole lo redirigirá a /admin automáticamente
-  await requireRole("assistant");
+  // Protección de ruta: asistentes y superadmin pueden acceder
+  await requireRole(["assistant", "superadmin"]);
 
   return (
     <div className="min-h-screen bg-muted/40">

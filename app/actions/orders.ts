@@ -44,7 +44,7 @@ const verifyPaymentSchema = z.object({
 // ============================================
 
 export async function getAssistantStats() {
-  await requireRole("assistant");
+  await requireRole(["assistant", "superadmin"]);
 
   const pendingCount = await db
     .select({ count: sql<number>`count(*)` })
@@ -261,7 +261,7 @@ export async function getOrderForCheckout(orderId: string) {
 // ============================================
 
 export async function verifyPayment(orderId: string, formData: FormData) {
-  const user = await requireRole("assistant");
+  const user = await requireRole(["assistant", "superadmin"]);
 
   const verifiedFields = verifyPaymentSchema.safeParse({
     orderId,
@@ -321,7 +321,7 @@ export async function getTransactionHistory(
   limit: number = 20,
   status?: string
 ) {
-  await requireRole("assistant");
+  await requireRole(["assistant", "superadmin"]);
 
   const offset = (page - 1) * limit;
   const conditions = [];
@@ -384,7 +384,7 @@ export async function getTransactionHistory(
 // ============================================
 
 export async function getPendingPayments() {
-  await requireRole("assistant");
+  await requireRole(["assistant", "superadmin"]);
 
   const pendingOrders = await db
     .select()
@@ -423,7 +423,7 @@ export async function getPendingPayments() {
 // ============================================
 
 export async function updateOrderStatus(orderId: string, newStatus: string) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const order = await db
     .select()
@@ -504,7 +504,7 @@ export async function uploadPaymentProof(formData: FormData) {
 // ============================================
 
 export async function getSellerOrders(page: number = 1, limit: number = 10, status?: string) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()

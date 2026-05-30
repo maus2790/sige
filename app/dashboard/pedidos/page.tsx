@@ -23,6 +23,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -114,6 +123,7 @@ const statusConfig: Record<string, { label: string; variant: "default" | "second
 export default function PedidosPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -382,43 +392,92 @@ export default function PedidosPage() {
                           </Dialog>
 
                           {config.nextStatus && config.nextAction && (
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button size="sm" className="gap-2">
-                                  <Send className="w-4 h-4" />
-                                  {config.nextAction}
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>Actualizar estado del pedido</DialogTitle>
-                                  <DialogDescription>
-                                    {order.status === "shipped" 
-                                      ? "Ingresa el código de seguimiento para el cliente."
-                                      : `¿Estás seguro de que deseas marcar este pedido como "${config.nextAction?.toLowerCase()}"?`}
-                                  </DialogDescription>
-                                </DialogHeader>
-                                {order.status === "shipped" && (
-                                  <div className="space-y-2">
-                                    <Label htmlFor="tracking">Código de seguimiento</Label>
-                                    <Input
-                                      id="tracking"
-                                      placeholder="Ej: SIGE-123456"
-                                      value={trackingCode}
-                                      onChange={(e) => setTrackingCode(e.target.value)}
-                                    />
+                            isDesktop ? (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button size="sm" className="gap-2">
+                                    <Send className="w-4 h-4" />
+                                    {config.nextAction}
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[500px]">
+                                  <DialogHeader>
+                                    <DialogTitle>Actualizar estado del pedido</DialogTitle>
+                                    <DialogDescription>
+                                      {order.status === "shipped" 
+                                        ? "Ingresa el código de seguimiento para el cliente."
+                                        : `¿Estás seguro de que deseas marcar este pedido como "${config.nextAction?.toLowerCase()}"?`}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  {order.status === "shipped" && (
+                                    <div className="space-y-2">
+                                      <Label htmlFor="tracking">Código de seguimiento</Label>
+                                      <Input
+                                        id="tracking"
+                                        placeholder="Ej: SIGE-123456"
+                                        value={trackingCode}
+                                        onChange={(e) => setTrackingCode(e.target.value)}
+                                      />
+                                    </div>
+                                  )}
+                                  <DialogFooter className="sticky bottom-0 bg-background p-4 border-t">
+                                    <Button variant="outline">
+                                      Cancelar
+                                    </Button>
+                                    <Button onClick={() => handleStatusUpdate(order.id, config.nextStatus!)}>
+                                      Confirmar
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            ) : (
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <Button size="sm" className="gap-2">
+                                    <Send className="w-4 h-4" />
+                                    {config.nextAction}
+                                  </Button>
+                                </SheetTrigger>
+                                <SheetContent 
+                                  side="bottom"
+                                  className="rounded-t-[2.5rem] p-0 overflow-hidden border-none shadow-premium bg-background max-h-[90vh] h-auto"
+                                >
+                                  <div className="border-b border-border/70 p-5">
+                                    <SheetHeader>
+                                      <SheetTitle>Actualizar estado del pedido</SheetTitle>
+                                      <SheetDescription>
+                                        {order.status === "shipped" 
+                                          ? "Ingresa el código de seguimiento para el cliente."
+                                          : `¿Estás seguro de que deseas marcar este pedido como "${config.nextAction?.toLowerCase()}"?`}
+                                      </SheetDescription>
+                                    </SheetHeader>
                                   </div>
-                                )}
-                                <DialogFooter>
-                                  <Button variant="outline" onClick={() => setSelectedOrder(null)}>
-                                    Cancelar
-                                  </Button>
-                                  <Button onClick={() => handleStatusUpdate(order.id, config.nextStatus!)}>
-                                    Confirmar
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
+                                  <div className="p-4 pt-3 overflow-y-auto max-h-[calc(90vh-5.5rem)]">
+                                    {order.status === "shipped" && (
+                                      <div className="space-y-2">
+                                        <Label htmlFor="tracking">Código de seguimiento</Label>
+                                        <Input
+                                          id="tracking"
+                                          placeholder="Ej: SIGE-123456"
+                                          value={trackingCode}
+                                          onChange={(e) => setTrackingCode(e.target.value)}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="border-t p-4 bg-background">
+                                    <div className="flex gap-2">
+                                      <Button variant="outline" className="flex-1">
+                                        Cancelar
+                                      </Button>
+                                      <Button onClick={() => handleStatusUpdate(order.id, config.nextStatus!)} className="flex-1">
+                                        Confirmar
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </SheetContent>
+                              </Sheet>
+                            )
                           )}
                         </div>
                       </div>
@@ -457,160 +516,331 @@ export default function PedidosPage() {
       )}
 
       {/* Modal de detalles del pedido */}
-      <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalles del Pedido</DialogTitle>
-            <DialogDescription>
-              Información completa del pedido #{selectedOrder?.id.slice(0, 8)}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedOrder && (
-            <div className="space-y-6">
-              {/* Producto */}
-              <div className="flex gap-4 p-4 bg-muted/50 rounded-lg border border-border">
-                <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
-                  {selectedOrder.productImage ? (
-                    <Image
-                      src={selectedOrder.productImage}
-                      alt={selectedOrder.productName}
-                      width={80}
-                      height={80}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-3xl">
-                      📦
-                    </div>
-                  )}
+      {isDesktop ? (
+        <Dialog open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-6">
+            <DialogHeader>
+              <DialogTitle>Detalles del Pedido</DialogTitle>
+              <DialogDescription>
+                Información completa del pedido #{selectedOrder?.id.slice(0, 8)}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="p-0 overflow-y-auto max-h-[calc(90vh-5.5rem)]">
+              {selectedOrder && (
+                <div className="space-y-6">
+                {/* Producto */}
+                <div className="flex gap-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
+                    {selectedOrder.productImage ? (
+                      <Image
+                        src={selectedOrder.productImage}
+                        alt={selectedOrder.productName}
+                        width={80}
+                        height={80}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl">
+                        📦
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg">{selectedOrder.productName}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Cantidad: {selectedOrder.quantity} unidad(es)
+                    </p>
+                    <p className="text-sm font-medium mt-1">
+                      Precio unitario: Bs. {(selectedOrder.unitPrice || selectedOrder.totalAmount / selectedOrder.quantity).toFixed(2)}
+                    </p>
+                    {selectedOrder.discountApplied > 0 && (
+                      <p className="text-xs text-green-600 font-bold mt-0.5">
+                        Oferta aplicada: {selectedOrder.discountApplied}% de descuento
+                      </p>
+                    )}
+                  </div>
                 </div>
+
+                {/* Estado actual */}
+                <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                  <p className="text-sm font-medium mb-2">Estado actual</p>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(selectedOrder.status)}
+                  </div>
+                </div>
+
+                {/* Datos del comprador */}
                 <div>
-                  <h3 className="font-semibold text-lg">{selectedOrder.productName}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Cantidad: {selectedOrder.quantity} unidad(es)
-                  </p>
-                  <p className="text-sm font-medium mt-1">
-                    Precio unitario: Bs. {(selectedOrder.unitPrice || selectedOrder.totalAmount / selectedOrder.quantity).toFixed(2)}
-                  </p>
-                  {selectedOrder.discountApplied > 0 && (
-                    <p className="text-xs text-green-600 font-bold mt-0.5">
-                      Oferta aplicada: {selectedOrder.discountApplied}% de descuento
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Estado actual */}
-              <div className="p-4 rounded-lg bg-muted/50 border border-border">
-                <p className="text-sm font-medium mb-2">Estado actual</p>
-                <div className="flex items-center gap-2">
-                  {getStatusBadge(selectedOrder.status)}
-                </div>
-              </div>
-
-              {/* Datos del comprador */}
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Package className="w-4 h-4" />
-                  Datos del comprador
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Nombre</p>
-                    <p className="font-medium">{selectedOrder.buyerName}</p>
-                  </div>
-                  <div>
-                    <p className="text-muted-foreground">Teléfono</p>
-                    <p className="font-medium flex items-center gap-1">
-                      <Phone className="w-3 h-3" />
-                      {selectedOrder.buyerPhone}
-                    </p>
-                  </div>
-                  {selectedOrder.buyerEmail && (
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Package className="w-4 h-4" />
+                    Datos del comprador
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-muted-foreground">Email</p>
+                      <p className="text-muted-foreground">Nombre</p>
+                      <p className="font-medium">{selectedOrder.buyerName}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Teléfono</p>
                       <p className="font-medium flex items-center gap-1">
-                        <Mail className="w-3 h-3" />
-                        {selectedOrder.buyerEmail}
+                        <Phone className="w-3 h-3" />
+                        {selectedOrder.buyerPhone}
                       </p>
                     </div>
-                  )}
-                  {selectedOrder.buyerCi && (
+                    {selectedOrder.buyerEmail && (
+                      <div>
+                        <p className="text-muted-foreground">Email</p>
+                        <p className="font-medium flex items-center gap-1">
+                          <Mail className="w-3 h-3" />
+                          {selectedOrder.buyerEmail}
+                        </p>
+                      </div>
+                    )}
+                    {selectedOrder.buyerCi && (
+                      <div>
+                        <p className="text-muted-foreground">CI / NIT</p>
+                        <p className="font-medium">{selectedOrder.buyerCi}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Dirección de envío */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <MapPin className="w-4 h-4" />
+                    Dirección de envío
+                  </h4>
+                  <p className="text-sm p-3 bg-muted/50 rounded-lg border border-border">
+                    {selectedOrder.shippingAddress}
+                  </p>
+                </div>
+
+                {/* Método de pago */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Información de pago
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className="text-muted-foreground">CI / NIT</p>
-                      <p className="font-medium">{selectedOrder.buyerCi}</p>
+                      <p className="text-muted-foreground">Método</p>
+                      <p className="font-medium capitalize">{selectedOrder.paymentMethod}</p>
                     </div>
+                    <div>
+                      <p className="text-muted-foreground">Total pagado</p>
+                      <p className="font-medium text-primary">Bs. {selectedOrder.totalAmount.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fechas */}
+                <div>
+                  <h4 className="font-semibold mb-3 flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Fechas importantes
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Fecha del pedido</p>
+                      <p className="font-medium">
+                        {new Date(selectedOrder.createdAt).toLocaleString("es-BO")}
+                      </p>
+                    </div>
+                    {selectedOrder.deliveredAt && (
+                      <div>
+                        <p className="text-muted-foreground">Fecha de entrega</p>
+                        <p className="font-medium">
+                          {new Date(selectedOrder.deliveredAt).toLocaleString("es-BO")}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <DialogFooter className="sticky bottom-0 bg-background p-4 border-t gap-2">
+                  <Button variant="outline" onClick={() => setSelectedOrder(null)}>
+                    Cerrar
+                  </Button>
+                  {statusConfig[selectedOrder.status]?.nextStatus && (
+                    <Button onClick={() => handleStatusUpdate(selectedOrder.id, statusConfig[selectedOrder.status].nextStatus!)}>
+                      {statusConfig[selectedOrder.status].nextAction}
+                    </Button>
                   )}
-                </div>
+                </DialogFooter>
               </div>
-
-              {/* Dirección de envío */}
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <MapPin className="w-4 h-4" />
-                  Dirección de envío
-                </h4>
-                <p className="text-sm p-3 bg-muted/50 rounded-lg border border-border">
-                  {selectedOrder.shippingAddress}
-                </p>
-              </div>
-
-              {/* Método de pago */}
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <CreditCard className="w-4 h-4" />
-                  Información de pago
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-muted-foreground">Método</p>
-                    <p className="font-medium capitalize">{selectedOrder.paymentMethod}</p>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <Sheet open={!!selectedOrder} onOpenChange={() => setSelectedOrder(null)}>
+          <SheetContent
+            side="bottom"
+            className="rounded-t-[2.5rem] p-0 overflow-hidden border-none shadow-premium bg-background max-h-[90vh] h-auto"
+          >
+            <div className="border-b border-border/70 p-5">
+              <SheetHeader>
+                <SheetTitle>Detalles del Pedido</SheetTitle>
+                <SheetDescription>
+                  Información completa del pedido #{selectedOrder?.id.slice(0, 8)}
+                </SheetDescription>
+              </SheetHeader>
+            </div>
+            <div className="p-4 pt-3 overflow-y-auto max-h-[calc(90vh-5.5rem)]">
+              {selectedOrder && (
+                <div className="space-y-6">
+                  {/* Producto */}
+                  <div className="flex gap-4 p-4 bg-muted/50 rounded-lg border border-border">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted shrink-0">
+                      {selectedOrder.productImage ? (
+                        <Image
+                          src={selectedOrder.productImage}
+                          alt={selectedOrder.productName}
+                          width={80}
+                          height={80}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-3xl">
+                          📦
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">{selectedOrder.productName}</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Cantidad: {selectedOrder.quantity} unidad(es)
+                      </p>
+                      <p className="text-sm font-medium mt-1">
+                        Precio unitario: Bs. {(selectedOrder.unitPrice || selectedOrder.totalAmount / selectedOrder.quantity).toFixed(2)}
+                      </p>
+                      {selectedOrder.discountApplied > 0 && (
+                        <p className="text-xs text-green-600 font-bold mt-0.5">
+                          Oferta aplicada: {selectedOrder.discountApplied}% de descuento
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-muted-foreground">Total pagado</p>
-                    <p className="font-medium text-primary">Bs. {selectedOrder.totalAmount.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Fechas */}
-              <div>
-                <h4 className="font-semibold mb-3 flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Fechas importantes
-                </h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {/* Estado actual */}
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
+                    <p className="text-sm font-medium mb-2">Estado actual</p>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(selectedOrder.status)}
+                    </div>
+                  </div>
+
+                  {/* Datos del comprador */}
                   <div>
-                    <p className="text-muted-foreground">Fecha del pedido</p>
-                    <p className="font-medium">
-                      {new Date(selectedOrder.createdAt).toLocaleString("es-BO")}
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Package className="w-4 h-4" />
+                      Datos del comprador
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Nombre</p>
+                        <p className="font-medium">{selectedOrder.buyerName}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Teléfono</p>
+                        <p className="font-medium flex items-center gap-1">
+                          <Phone className="w-3 h-3" />
+                          {selectedOrder.buyerPhone}
+                        </p>
+                      </div>
+                      {selectedOrder.buyerEmail && (
+                        <div>
+                          <p className="text-muted-foreground">Email</p>
+                          <p className="font-medium flex items-center gap-1">
+                            <Mail className="w-3 h-3" />
+                            {selectedOrder.buyerEmail}
+                          </p>
+                        </div>
+                      )}
+                      {selectedOrder.buyerCi && (
+                        <div>
+                          <p className="text-muted-foreground">CI / NIT</p>
+                          <p className="font-medium">{selectedOrder.buyerCi}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Dirección de envío */}
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      Dirección de envío
+                    </h4>
+                    <p className="text-sm p-3 bg-muted/50 rounded-lg border border-border">
+                      {selectedOrder.shippingAddress}
                     </p>
                   </div>
-                  {selectedOrder.deliveredAt && (
-                    <div>
-                      <p className="text-muted-foreground">Fecha de entrega</p>
-                      <p className="font-medium">
-                        {new Date(selectedOrder.deliveredAt).toLocaleString("es-BO")}
-                      </p>
+
+                  {/* Método de pago */}
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Información de pago
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Método</p>
+                        <p className="font-medium capitalize">{selectedOrder.paymentMethod}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total pagado</p>
+                        <p className="font-medium text-primary">Bs. {selectedOrder.totalAmount.toFixed(2)}</p>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Fechas */}
+                  <div>
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Fechas importantes
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Fecha del pedido</p>
+                        <p className="font-medium">
+                          {new Date(selectedOrder.createdAt).toLocaleString("es-BO")}
+                        </p>
+                      </div>
+                      {selectedOrder.deliveredAt && (
+                        <div>
+                          <p className="text-muted-foreground">Fecha de entrega</p>
+                          <p className="font-medium">
+                            {new Date(selectedOrder.deliveredAt).toLocaleString("es-BO")}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+            </div>
+            {selectedOrder && (
+              <div className="border-t p-4 bg-background">
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setSelectedOrder(null)} className="flex-1">
+                    Cerrar
+                  </Button>
+                  {statusConfig[selectedOrder.status]?.nextStatus && (
+                    <Button onClick={() => handleStatusUpdate(selectedOrder.id, statusConfig[selectedOrder.status].nextStatus!)} className="flex-1">
+                      {statusConfig[selectedOrder.status].nextAction}
+                    </Button>
                   )}
                 </div>
               </div>
+            )}
+          </SheetContent>
+        </Sheet>
+      )}
 
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setSelectedOrder(null)}>
-                  Cerrar
-                </Button>
-                {statusConfig[selectedOrder.status]?.nextStatus && (
-                  <Button onClick={() => handleStatusUpdate(selectedOrder.id, statusConfig[selectedOrder.status].nextStatus!)}>
-                    {statusConfig[selectedOrder.status].nextAction}
-                  </Button>
-                )}
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

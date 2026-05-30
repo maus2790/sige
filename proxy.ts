@@ -33,6 +33,7 @@ const publicPatterns = [
   '/tienda/',
   '/categories/',
   '/mapa/',
+  '/icons/',
 ];
 
 // ============================================
@@ -221,9 +222,9 @@ export default async function proxy(request: NextRequest) {
   // 5. Verificar roles según la ruta solicitada
   const unauthorizedUrl = new URL('/unauthorized', request.url);
 
-  // Rutas de vendedor
+  // Rutas de vendedor (accesibles también por asistentes)
   if (isSellerRoute(pathname)) {
-    if (userRole !== 'seller' && userRole !== 'superadmin') {
+    if (userRole !== 'seller' && userRole !== 'assistant' && userRole !== 'superadmin') {
       console.log(`[Proxy] User ${userId} (role: ${userRole}) not authorized for seller route ${pathname}`);
       return NextResponse.redirect(unauthorizedUrl);
     }
@@ -255,15 +256,14 @@ export default async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public directory (public assets)
-     * - api routes (API endpoints)
-     * - productos (public product pages)
-     * - tienda (public store pages)
+     * Match all request paths EXCEPT:
+     * - _next/static, _next/image  → archivos estáticos de Next.js
+     * - favicon.ico, manifest.json → assets públicos
+     * - api/*                      → rutas de API (incluyendo /api/auth/*)
+     * - sw.js, OneSignalSDKWorker  → service workers
+     * - productos, tienda          → páginas de catálogo públicas
+     * - icons                      → íconos de la PWA
      */
-    '/((?!_next/static|_next/image|favicon.ico|public|api|sw.js|OneSignalSDKWorker.js|manifest.json|productos|tienda).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public|api|sw.js|OneSignalSDKWorker.js|manifest.json|productos|tienda|icons).*)',
   ],
 };

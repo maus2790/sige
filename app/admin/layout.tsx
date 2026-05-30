@@ -8,7 +8,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Protección de ruta: solo superadmin puede acceder
+  // Protección de ruta: solo superadmin puede acceder al panel de administración
   await requireRole("superadmin");
 
   return (

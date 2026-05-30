@@ -7,9 +7,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Protección de ruta: solo vendedores pueden acceder
-  // Si un superadmin entra aquí, requireRole lo redirigirá a /admin automáticamente
-  await requireRole("seller");
+  // Protección de ruta: vendedores, asistentes y superadmin pueden acceder al dashboard de productos
+  await requireRole(["seller", "assistant", "superadmin"]);
 
   return (
     <div className="min-h-screen bg-muted/40">

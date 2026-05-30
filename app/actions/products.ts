@@ -37,13 +37,13 @@ const createProductSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
   description: z.string().min(5, "La descripción debe tener al menos 5 caracteres"),
-  price: z.number().positive("El precio debe ser mayor a 0"),
+  price: z.number().min(0, "El precio debe ser mayor o igual a 0").optional().default(0),
   category: z.string().min(1, "Selecciona una categoría"),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
   oferta: z.number().int().min(0).max(100).optional().default(0),
   precioOferta: z.number().min(0).optional().nullable(),
   diasPromocion: z.number().int().min(1).optional().nullable(),
-  stock: z.number().int().min(0).default(0),
+  stock: z.number().int().min(0).optional().default(0),
   isPublished: z.boolean().default(true),
 });
 
@@ -51,7 +51,7 @@ const updateProductSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres").optional(),
   description: z.string().min(10, "La descripción debe tener al menos 10 caracteres").optional(),
-  price: z.number().positive("El precio debe ser mayor a 0").optional(),
+  price: z.number().min(0, "El precio debe ser mayor o igual a 0").optional(),
   category: z.string().min(1, "Selecciona una categoría").optional(),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).optional(),
   oferta: z.number().int().min(0).max(100).optional(),
@@ -102,7 +102,7 @@ function sanitizeProductImages(product: any) {
 // ============================================
 
 export async function getSellerProducts() {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()
@@ -158,7 +158,7 @@ export async function getSellerProductsPaginated({
   category?: string;
   lowStock?: boolean;
 }) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()
@@ -358,8 +358,8 @@ export async function getProductsByStore(storeId: string, limit: number = 10, of
 
 export async function createProduct(data: any) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
-    return { error: "No autorizado. Debes iniciar sesión como vendedor." };
+  if (!user || (user.role !== "seller" && user.role !== "assistant" && user.role !== "superadmin")) {
+    return { error: "No autorizado. Debes iniciar sesión como vendedor o asistente." };
   }
 
   const store = await db
@@ -394,17 +394,28 @@ export async function createProduct(data: any) {
     };
   }
 
+  // Generar SKU automáticamente si no se proporciona o está vacío
+  let autoSku = (rawData.sku as string) || "";
+  if (!autoSku || autoSku.trim() === "") {
+    const cleanCategory = rawData.category 
+      ? rawData.category.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z]/gi, "").substring(0, 3).toUpperCase() 
+      : "PRD";
+    const prefix = cleanCategory.padEnd(3, "X");
+    const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
+    autoSku = `${prefix}-${randomSuffix}`;
+  }
+
   const validatedFields = createProductSchema.safeParse({
-    sku: (rawData.sku as string) || undefined,
+    sku: autoSku,
     name: rawData.name,
     description: rawData.description,
-    price: typeof rawData.price === 'string' ? parseFloat(rawData.price) : rawData.price,
+    price: typeof rawData.price === 'string' && rawData.price !== "" ? parseFloat(rawData.price) : (rawData.price === null || rawData.price === undefined || rawData.price === "" ? undefined : rawData.price),
     category: rawData.category,
     status: (rawData.status as any) || "Nuevo",
     oferta: typeof rawData.oferta === 'string' ? parseInt(rawData.oferta) : (rawData.oferta || 0),
     precioOferta: typeof rawData.precioOferta === 'string' && rawData.precioOferta !== "" ? parseFloat(rawData.precioOferta) : (rawData.precioOferta || null),
     diasPromocion: typeof rawData.diasPromocion === 'string' && rawData.diasPromocion !== "" ? parseInt(rawData.diasPromocion) : (rawData.diasPromocion || null),
-    stock: typeof rawData.stock === 'string' ? parseInt(rawData.stock) : (rawData.stock || 0),
+    stock: typeof rawData.stock === 'string' && rawData.stock !== "" ? parseInt(rawData.stock) : (rawData.stock === null || rawData.stock === undefined || rawData.stock === "" ? undefined : rawData.stock),
     isPublished: rawData.isPublished !== undefined ? rawData.isPublished : true,
   });
 
@@ -524,7 +535,7 @@ export async function createProduct(data: any) {
 
 export async function publishProductToMarket(productId: string) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+  if (!user || (user.role !== "seller" && user.role !== "assistant" && user.role !== "superadmin")) {
     throw new Error("No autorizado");
   }
 
@@ -538,8 +549,8 @@ export async function publishProductToMarket(productId: string) {
     throw new Error("Producto no encontrado");
   }
 
-  // Si no es superadmin, verificar que es el dueño de la tienda
-  if (user.role !== "superadmin") {
+  // Si no es superadmin ni assistant, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin" && user.role !== "assistant") {
     const store = await db
       .select()
       .from(stores)
@@ -572,7 +583,7 @@ export async function publishProductToMarket(productId: string) {
 
 export async function unpublishProduct(productId: string) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+  if (!user || (user.role !== "seller" && user.role !== "assistant" && user.role !== "superadmin")) {
     throw new Error("No autorizado");
   }
 
@@ -584,8 +595,8 @@ export async function unpublishProduct(productId: string) {
 
   if (!existingProduct) throw new Error("Producto no encontrado");
 
-  // Si no es superadmin, verificar que es el dueño de la tienda
-  if (user.role !== "superadmin") {
+  // Si no es superadmin ni assistant, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin" && user.role !== "assistant") {
     const store = await db
       .select()
       .from(stores)
@@ -618,7 +629,7 @@ export async function unpublishProduct(productId: string) {
 
 export async function deleteProduct(productId: string) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
+  if (!user || (user.role !== "seller" && user.role !== "assistant" && user.role !== "superadmin")) {
     throw new Error("No autorizado");
   }
 
@@ -630,8 +641,8 @@ export async function deleteProduct(productId: string) {
 
   if (!existingProduct) throw new Error("Producto no encontrado");
 
-  // Si no es superadmin, verificar que es el dueño de la tienda
-  if (user.role !== "superadmin") {
+  // Si no es superadmin ni assistant, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin" && user.role !== "assistant") {
     const store = await db
       .select()
       .from(stores)
@@ -670,8 +681,8 @@ export async function deleteProduct(productId: string) {
 
 export async function updateProduct(productId: string, data: any) {
   const user = await getCurrentUser();
-  if (!user || (user.role !== "seller" && user.role !== "superadmin")) {
-    return { error: "No autorizado. Debes iniciar sesión como vendedor." };
+  if (!user || (user.role !== "seller" && user.role !== "assistant" && user.role !== "superadmin")) {
+    return { error: "No autorizado. Debes iniciar sesión como vendedor o asistente." };
   }
 
   const existingProduct = await db
@@ -684,8 +695,8 @@ export async function updateProduct(productId: string, data: any) {
     throw new Error("Producto no encontrado");
   }
 
-  // Si no es superadmin, verificar que es el dueño de la tienda
-  if (user.role !== "superadmin") {
+  // Si no es superadmin ni assistant, verificar que es el dueño de la tienda
+  if (user.role !== "superadmin" && user.role !== "assistant") {
     const store = await db
       .select()
       .from(stores)
@@ -722,14 +733,14 @@ export async function updateProduct(productId: string, data: any) {
     sku: rawData.sku as string || undefined,
     name: rawData.name || undefined,
     description: rawData.description || undefined,
-    price: typeof rawData.price === 'string' ? parseFloat(rawData.price) : rawData.price,
+    price: typeof rawData.price === 'string' && rawData.price !== "" ? parseFloat(rawData.price) : (rawData.price === null || rawData.price === undefined || rawData.price === "" ? undefined : rawData.price),
     category: rawData.category,
     status: (rawData.status as any) || undefined,
     oferta: typeof rawData.oferta === 'string' ? parseInt(rawData.oferta) : (rawData.oferta || 0),
     precioOferta: typeof rawData.precioOferta === 'string' && rawData.precioOferta !== "" ? parseFloat(rawData.precioOferta) : (rawData.precioOferta || null),
     diasPromocion: typeof rawData.diasPromocion === 'string' && rawData.diasPromocion !== "" ? parseInt(rawData.diasPromocion) : (rawData.diasPromocion || null),
     isPublished: rawData.isPublished !== undefined ? rawData.isPublished : undefined,
-    stock: typeof rawData.stock === 'string' ? parseInt(rawData.stock) : rawData.stock,
+    stock: typeof rawData.stock === 'string' && rawData.stock !== "" ? parseInt(rawData.stock) : (rawData.stock === null || rawData.stock === undefined || rawData.stock === "" ? undefined : rawData.stock),
   });
 
   if (!validatedFields.success) {

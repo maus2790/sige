@@ -20,7 +20,7 @@ export async function updateInventoryItem(
     ubicacion?: string;
   }
 ) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()
@@ -92,7 +92,7 @@ export async function updateProductStock(productId: string, newStock: number) {
  * Actualización masiva de stock
  */
 export async function bulkUpdateStock(updates: { productId: string; stock: number }[]) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()

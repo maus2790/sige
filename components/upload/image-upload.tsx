@@ -200,7 +200,7 @@ export function ImageUpload({
       <div className="space-y-4">
         <Label>{label}</Label>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {imageItems.map((item, index) => (
             <div key={index} className="relative group">
               <div className="aspect-4/3 relative rounded-xl overflow-hidden border bg-muted shadow-sm">

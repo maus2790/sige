@@ -34,7 +34,7 @@ interface CategoryStat {
 // ============================================
 
 export async function getSellerStats() {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()
@@ -186,7 +186,7 @@ export async function getSellerStats() {
 // ============================================
 
 export async function getSalesByMonth(year?: number) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()
@@ -241,7 +241,7 @@ export async function getSalesByMonth(year?: number) {
 // ============================================
 
 export async function getLowStockProducts() {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
     .select()
@@ -285,7 +285,7 @@ export async function getLowStockProducts() {
 // ============================================
 
 export async function updateProductStats(productId: string) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   // Verificar que el producto pertenece al vendedor
   const product = await db

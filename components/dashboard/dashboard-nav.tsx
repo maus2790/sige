@@ -16,6 +16,7 @@ import {
 import { signOut } from "next-auth/react";
 import { handleLogout } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
+import { DashboardSwitcher } from "@/components/shared/dashboard-switcher";
 
 const navItems = [
   { href: "/dashboard", label: "Resumen", icon: LayoutDashboard },
@@ -65,7 +66,8 @@ export function DashboardNav() {
         })}
       </nav>
 
-      <div className="mt-auto pt-4 border-t">
+      <div className="mt-auto pt-4 border-t space-y-3">
+        <DashboardSwitcher />
         <Button 
           variant="ghost" 
           className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10"

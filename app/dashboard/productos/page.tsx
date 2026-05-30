@@ -2,12 +2,8 @@
 
 import { getSellerProductsPaginated } from "@/app/actions/products";
 import { getCategories } from "@/app/actions/categories";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus } from "lucide-react";
 import { ProductToastHandler } from "@/components/products/product-toast-handler";
-import { ProductsTableClient } from "@/components/products/products-table-client";
+import DashboardProductosPageClient from "@/components/products/dashboard-products-page";
 
 interface ProductosPageProps {
   searchParams: Promise<{
@@ -23,7 +19,6 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
   const search = params.search || "";
   const category = params.category || "todos";
 
-
   const { products, total, pageCount } = await getSellerProductsPaginated({
     page,
     limit: 10,
@@ -32,45 +27,21 @@ export default async function ProductosPage({ searchParams }: ProductosPageProps
   });
 
   const dbCategories = await getCategories();
-  const categoriesList = dbCategories.map(c => c.name);
+  const categoriesList = dbCategories.map((c) => c.name);
 
   return (
     <div className="space-y-6">
       <ProductToastHandler />
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Productos</h1>
-          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Gestiona el inventario y visibilidad de tus productos
-          </p>
-        </div>
-        <Link href="/dashboard/productos/nuevo" className="w-full sm:w-auto">
-          <Button className="gap-2 w-full sm:w-auto">
-            <Plus className="w-4 h-4" />
-            Nuevo Producto
-          </Button>
-        </Link>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Listado de Productos</CardTitle>
-          <CardDescription>
-            Mostrando {products.length} de {total} productos en total
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProductsTableClient
-            initialData={products}
-            total={total}
-            pageCount={pageCount}
-            initialPage={page}
-            initialSearch={search}
-            initialCategory={category}
-            categories={categoriesList}
-          />
-        </CardContent>
-      </Card>
+      <DashboardProductosPageClient
+        initialData={products}
+        total={total}
+        pageCount={pageCount}
+        initialPage={page}
+        initialSearch={search}
+        initialCategory={category}
+        categories={dbCategories}
+        categoryOptions={categoriesList}
+      />
     </div>
   );
 }

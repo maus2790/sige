@@ -1,13 +1,18 @@
-// app/dashboard/productos/nuevo/page.tsx
+"use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { ProductForm } from "@/components/products/product-form";
 import { getCategories } from "@/app/actions/categories";
 
-export default async function NuevoProductoPage() {
-  const categories = await getCategories();
+export default function NuevoProductoPage() {
+  const [categories, setCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    getCategories().then(setCategories).catch(console.error);
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -25,7 +30,12 @@ export default async function NuevoProductoPage() {
         </div>
       </div>
 
-      <ProductForm categories={categories} />
+      <ProductForm
+        categories={categories}
+        onSuccess={() => {
+          window.location.href = "/dashboard/productos";
+        }}
+      />
     </div>
   );
 }

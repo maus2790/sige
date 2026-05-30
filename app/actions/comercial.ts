@@ -20,7 +20,7 @@ const comercialConfigSchema = z.object({
 });
 
 export async function updateComercialConfig(productId: string, data: any) {
-  const user = await requireRole("seller");
+  const user = await requireRole(["seller", "assistant", "superadmin"]);
   
   // Validar que el producto pertenezca al vendedor (esto se podría hacer con un join más complejo o checkeando el producto primero)
   // Por ahora asumimos confianza o validamos el producto
