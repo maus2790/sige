@@ -273,6 +273,8 @@ export function ComercialTableClient({
       onPaginationChange={handlePaginationChange}
       onSearchChange={handleSearchChange}
       onCategoryChange={handleCategoryChange}
+      initialSearch={initialSearch}
+      initialCategory={initialCategory}
       categories={categories}
       isLoading={isPending}
       renderMobileCard={renderMobileCard}

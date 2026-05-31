@@ -16,6 +16,7 @@ export default function OptimizacionesPage() {
     isrEnabled: false,
     middlewareOptimized: false,
     marketCacheTtl: 3600,
+    baseCacheTtl: 20,
     marketScrollLimit: 12,
     storeScrollLimit: 12,
   });
@@ -281,7 +282,7 @@ export default function OptimizacionesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-500/5 dark:bg-amber-500/2 p-3.5 rounded-2xl border border-amber-500/10">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400/80">Caché — Mercado y Tiendas</span>
-                    <p className="text-xs font-bold text-foreground">30 segundos (Micro-Caché)</p>
+                    <p className="text-xs font-bold text-foreground">{config.baseCacheTtl} segundos (Micro-Caché)</p>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400/80">Tarjetas por Carga</span>
@@ -289,12 +290,34 @@ export default function OptimizacionesPage() {
                   </div>
                   <div className="space-y-0.5 sm:col-span-2 pt-1 border-t border-amber-500/10">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400/80">Caché — Detalle del Producto</span>
-                    <p className="text-xs font-bold text-foreground">30 segundos de Micro-Caché · Invalidable con botón "Actualizar"</p>
+                    <p className="text-xs font-bold text-foreground">{config.baseCacheTtl} segundos de Micro-Caché · Invalidable con botón "Actualizar"</p>
                   </div>
                   <div className="space-y-0.5 sm:col-span-2 pt-1 border-t border-amber-500/10">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700/80 dark:text-amber-400/80">Detalles de la Tienda</span>
-                    <p className="text-xs font-bold text-foreground">30 segundos de Micro-Caché · Banner, nombre y descripción</p>
+                    <p className="text-xs font-bold text-foreground">{config.baseCacheTtl} segundos de Micro-Caché · Banner, nombre y descripción</p>
                   </div>
+                </div>
+
+                <div className="space-y-2 bg-background/60 p-3.5 rounded-2xl border border-amber-500/10">
+                  <Label>TTL del Micro-Caché Base (Segundos)</Label>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      min={10}
+                      max={60}
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      value={config.baseCacheTtl}
+                      onChange={(e) => setConfig({ ...config, baseCacheTtl: Number(e.target.value) })}
+                    />
+                    <button
+                      onClick={() => handleSaveNumeric("base_cache_ttl", "baseCacheTtl", config.baseCacheTtl)}
+                      disabled={updating !== null}
+                      className="bg-amber-600 hover:bg-amber-700 disabled:bg-amber-400 text-white px-3 py-1 text-xs rounded-md font-bold transition-colors flex items-center gap-1 shrink-0"
+                    >
+                      {updating === "baseCacheTtl" ? <><Loader2 className="w-3 h-3 animate-spin"/> Guardando...</> : "Guardar"}
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">Mín. 10s · Máx. 60s. Aplica cuando el switch de Nivel 1 está apagado.</p>
                 </div>
                 
                 <p className="text-[11px] text-muted-foreground italic">
@@ -440,7 +463,7 @@ export default function OptimizacionesPage() {
                   <strong className="text-foreground">Sincronización Automática:</strong> En cuanto un vendedor edita un producto, publica, despublica o elimina uno, el servidor invalida automáticamente el caché de ese producto específico y el catálogo de su tienda mediante <code className="bg-muted px-1 rounded text-[10px] font-mono">revalidateTag</code>.
                 </li>
                 <li>
-                  <strong className="text-foreground">Plan Básico (OFF):</strong> Si el Nivel 1 está desactivado, todos los datos tienen un micro-caché automático de <strong>30 segundos</strong> que protege Turso de picos de tráfico, manteniendo los datos prácticamente actualizados.
+                  <strong className="text-foreground">Plan Básico (OFF):</strong> Si el Nivel 1 está desactivado, todos los datos usan el micro-caché base configurable desde este panel, con valor inicial de <strong>20 segundos</strong>. Esto protege Turso de picos de tráfico, manteniendo los datos prácticamente actualizados.
                 </li>
               </ul>
             </div>

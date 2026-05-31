@@ -27,6 +27,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -47,6 +54,8 @@ interface DataTableProps<TData, TValue> {
   onCategoryChange?: (value: string) => void;
   onLowStockChange?: (value: boolean) => void;
   initialLowStock?: boolean;
+  initialCategory?: string;
+  initialSearch?: string;
   categories?: string[];
   isLoading?: boolean;
   renderMobileCard?: (row: TData) => React.ReactNode;
@@ -64,6 +73,8 @@ export function DataTable<TData, TValue>({
   onCategoryChange,
   onLowStockChange,
   initialLowStock = false,
+  initialCategory,
+  initialSearch = "",
   categories = [],
   isLoading = false,
   renderMobileCard,
@@ -76,7 +87,16 @@ export function DataTable<TData, TValue>({
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
-  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [globalFilter, setGlobalFilter] = React.useState(initialSearch);
+  const [selectedCategory, setSelectedCategory] = React.useState(initialCategory ?? "todos");
+
+  React.useEffect(() => {
+    setSelectedCategory(initialCategory ?? "todos");
+  }, [initialCategory]);
+
+  React.useEffect(() => {
+    setGlobalFilter(initialSearch);
+  }, [initialSearch]);
 
   const table = useReactTable({
     data,
@@ -86,7 +106,6 @@ export function DataTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     state: {
@@ -97,6 +116,7 @@ export function DataTable<TData, TValue>({
       globalFilter,
     },
     manualPagination: true,
+    manualFiltering: true,
     pageCount: pageCount,
   });
 
@@ -175,17 +195,25 @@ export function DataTable<TData, TValue>({
             />
           </div>
           {onCategoryChange && categories.length > 0 && (
-            <select
-              className="h-9 w-full sm:w-[180px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              onChange={(e) => onCategoryChange(e.target.value)}
+            <Select
+              value={selectedCategory}
+              onValueChange={(value) => {
+                setSelectedCategory(value);
+                onCategoryChange(value);
+              }}
             >
-              <option value="todos">Todas las categorías</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="h-9 w-full sm:w-45">
+                <SelectValue placeholder="Todas las categorías" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todas las categorías</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           {onLowStockChange && (
             <Button

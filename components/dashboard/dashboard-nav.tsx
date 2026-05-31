@@ -14,7 +14,6 @@ import {
   ReceiptText
 } from "lucide-react";
 import { signOut } from "next-auth/react";
-import { handleLogout } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
 import { DashboardSwitcher } from "@/components/shared/dashboard-switcher";
 
@@ -69,11 +68,15 @@ export function DashboardNav() {
 
       <div className="mt-auto pt-4 border-t space-y-3">
         <DashboardSwitcher />
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           className="w-full justify-start gap-2 text-red-600 hover:text-red-700 hover:bg-destructive/10"
           onClick={async () => {
-            await handleLogout();
+            try {
+              await fetch('/api/auth/logout', { method: 'POST' });
+            } catch (e) {
+              // ignore
+            }
             signOut({ callbackUrl: "/" });
           }}
         >

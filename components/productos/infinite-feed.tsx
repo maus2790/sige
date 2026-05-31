@@ -194,7 +194,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
                 value={category} 
                 onValueChange={updateCategory}
               >
-                <SelectTrigger className="h-9 w-[120px] rounded-xl text-[10px] font-black uppercase bg-muted/50 border-0 focus:ring-0">
+                <SelectTrigger className="h-9 w-30 rounded-xl text-[10px] font-black uppercase bg-transparent border border-border focus:ring-0">
                   <SelectValue placeholder="TODO" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-border/50 shadow-glass">

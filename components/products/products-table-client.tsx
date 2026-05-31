@@ -39,6 +39,8 @@ export function ProductsTableClient({
   initialData,
   pageCount,
   initialPage,
+  initialSearch,
+  initialCategory,
   categories,
   onEdit,
 }: ProductsTableClientProps) {
@@ -221,6 +223,8 @@ export function ProductsTableClient({
       onPaginationChange={handlePaginationChange}
       onSearchChange={handleSearchChange}
       onCategoryChange={handleCategoryChange}
+      initialSearch={initialSearch}
+      initialCategory={initialCategory}
       categories={categories}
       isLoading={isPending}
       renderMobileCard={renderMobileCard}

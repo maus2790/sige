@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useTransition } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,7 @@ import {
   CreditCard,
   Calendar,
   Send,
+  Search,
 } from "lucide-react";
 import { getSellerOrders, updateOrderStatus } from "@/app/actions/orders";
 
@@ -124,27 +125,86 @@ export default function PedidosPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const pathname = usePathname();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPending, startTransition] = useTransition();
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(1);
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "todos");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("search") || "");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [trackingCode, setTrackingCode] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const createQueryString = (params: Record<string, string | number | null>) => {
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    for (const [key, value] of Object.entries(params)) {
+      if (value === null || value === "") {
+        newSearchParams.delete(key);
+      } else {
+        newSearchParams.set(key, String(value));
+      }
+    }
+    return newSearchParams.toString();
+  };
+
   async function loadOrders() {
     setIsLoading(true);
-    const data = await getSellerOrders(page, 10, statusFilter);
+    const data = await getSellerOrders(page, 10, statusFilter, searchTerm);
     setOrders(data.orders as Order[]);
     setPageCount(data.pageCount);
     setIsLoading(false);
   }
 
+  const handleStatusChange = (value: string) => {
+    setStatusFilter(value);
+    setPage(1);
+    const queryString = createQueryString({
+      status: value !== "todos" ? value : null,
+      page: 1,
+      search: searchTerm || null,
+    });
+    startTransition(() => {
+      router.push(`${pathname}?${queryString}`);
+    });
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setPage(1);
+    const queryString = createQueryString({
+      status: statusFilter !== "todos" ? statusFilter : null,
+      page: 1,
+      search: value || null,
+    });
+    startTransition(() => {
+      router.push(`${pathname}?${queryString}`);
+    });
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+    const queryString = createQueryString({
+      status: statusFilter !== "todos" ? statusFilter : null,
+      page: newPage,
+      search: searchTerm || null,
+    });
+    startTransition(() => {
+      router.push(`${pathname}?${queryString}`);
+    });
+  };
+
   useEffect(() => {
     loadOrders();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    setStatusFilter(searchParams.get("status") || "todos");
+    setSearchTerm(searchParams.get("search") || "");
+    setPage(searchParams.get("page") ? parseInt(searchParams.get("page") || "1", 10) : 1);
+  }, [searchParams]);
 
   async function handleStatusUpdate(orderId: string, newStatus: string) {
     setIsUpdating(true);
@@ -252,11 +312,22 @@ export default function PedidosPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Pedidos</h1>
-        <p className="text-muted-foreground mt-1">
-          Gestiona los pedidos de tus clientes
-        </p>
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-3xl font-bold">Pedidos</h1>
+          <p className="text-muted-foreground mt-1">
+            Gestiona los pedidos de tus clientes
+          </p>
+        </div>
+        <div className="relative max-w-xl">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Buscar por cliente, producto o SKU..."
+            className="pl-10"
+          />
+        </div>
       </div>
 
       {/* Tarjetas de resumen */}
@@ -294,7 +365,7 @@ export default function PedidosPage() {
       </div>
 
       {/* Tabs de filtros */}
-      <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full">
+      <Tabs value={statusFilter} onValueChange={handleStatusChange} className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1">
           {tabs.map((tab) => (
             <TabsTrigger key={tab.value} value={tab.value} className="data-[state=active]:bg-primary data-[state=active]:text-white">
@@ -400,7 +471,7 @@ export default function PedidosPage() {
                                     {config.nextAction}
                                   </Button>
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-[500px]">
+                                <DialogContent className="sm:max-w-125">
                                   <DialogHeader>
                                     <DialogTitle>Actualizar estado del pedido</DialogTitle>
                                     <DialogDescription>
@@ -496,7 +567,7 @@ export default function PedidosPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            onClick={() => handlePageChange(Math.max(1, page - 1))}
             disabled={page === 1}
           >
             Anterior
@@ -507,7 +578,7 @@ export default function PedidosPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            onClick={() => handlePageChange(Math.min(pageCount, page + 1))}
             disabled={page === pageCount}
           >
             Siguiente

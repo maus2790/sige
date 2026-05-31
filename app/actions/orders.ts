@@ -503,7 +503,7 @@ export async function uploadPaymentProof(formData: FormData) {
 // OBTENER ÓRDENES DEL VENDEDOR
 // ============================================
 
-export async function getSellerOrders(page: number = 1, limit: number = 10, status?: string) {
+export async function getSellerOrders(page: number = 1, limit: number = 10, status?: string, search?: string) {
   const user = await requireRole(["seller", "assistant", "superadmin"]);
 
   const store = await db
@@ -523,9 +523,20 @@ export async function getSellerOrders(page: number = 1, limit: number = 10, stat
     conditions.push(eq(orders.status, status as any));
   }
 
+  if (search && search.trim()) {
+    const cleanSearch = search.trim();
+    const searchTerm = `%${cleanSearch}%`;
+    conditions.push(sql`(
+      upper(${orders.buyerName}) LIKE upper(${searchTerm}) OR
+      upper(${products.name}) LIKE upper(${searchTerm}) OR
+      upper(${products.sku}) LIKE upper(${searchTerm})
+    )`);
+  }
+
   const sellerOrders = await db
-    .select()
+    .select({ order: orders, product: products })
     .from(orders)
+    .leftJoin(products, eq(orders.productId, products.id))
     .where(and(...conditions))
     .orderBy(desc(orders.createdAt))
     .limit(limit)
@@ -535,18 +546,25 @@ export async function getSellerOrders(page: number = 1, limit: number = 10, stat
   const totalResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(orders)
+    .leftJoin(products, eq(orders.productId, products.id))
     .where(and(...conditions))
     .get();
 
   const total = totalResult?.count ?? 0;
 
   const ordersWithDetails = await Promise.all(
-    sellerOrders.map(async (order) => {
-      const product = await db
+    sellerOrders.map(async ({ order, product }) => {
+      const relatedProduct = product || await db
         .select()
         .from(products)
         .where(eq(products.id, order.productId))
         .get();
+
+      return {
+        ...order,
+        productName: relatedProduct?.name,
+        productImage: relatedProduct?.imageUrls?.[0],
+      };
 
       return {
         ...order,

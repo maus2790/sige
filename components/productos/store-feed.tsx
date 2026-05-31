@@ -221,7 +221,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
         <div className={cn(
           "store-hero relative overflow-hidden rounded-b-[3rem] shadow-xl text-white",
           customBannerUrl
-            ? "h-[280px] md:h-[350px]"
+            ? "h-70 md:h-87.5"
             : "bg-linear-to-br from-blue-600 via-blue-700 to-indigo-900 pb-20 pt-16 md:pb-24 md:pt-20"
         )}>
           
@@ -267,7 +267,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
 
             {/* Logo */}
             <div className="relative group">
-              <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border-4 border-white/30 shadow-2xl mb-6 bg-white/10 backdrop-blur-md transition-transform group-hover:scale-105">
+              <Avatar className="w-24 h-24 md:w-32 md:h-32 rounded-4xl border-4 border-white/30 shadow-2xl mb-6 bg-white/10 backdrop-blur-md transition-transform group-hover:scale-105">
                 <AvatarImage src={store.logoUrl || ""} alt={store.name} className="object-cover" />
                 <AvatarFallback className="store-default-logo text-3xl font-black text-blue-600 bg-white">
                   {store.name.substring(0, 2).toUpperCase()}
@@ -345,7 +345,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                 value={category} 
                 onValueChange={setCategory}
               >
-                <SelectTrigger className="h-9 w-[120px] rounded-xl text-[10px] font-black uppercase bg-muted/50 border-0 focus:ring-0">
+                <SelectTrigger className="h-9 w-30 rounded-xl text-[10px] font-black uppercase bg-transparent border border-border focus:ring-0">
                   <SelectValue placeholder="TODO" />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-border/50 shadow-glass">
@@ -479,7 +479,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           <ProductGridSkeleton count={10} />
         ) : products.length === 0 && !isOwner ? (
           <div className="text-center py-24 bg-card rounded-4xl border border-dashed border-muted-foreground/20">
-            <div className="w-20 h-20 bg-muted rounded-3xl flex items-center justify-center mx-auto mb-4">
+            <div className="w-20 h-20 bg-muted rounded-4xl flex items-center justify-center mx-auto mb-4">
               <Package className="w-10 h-10 text-muted-foreground" />
             </div>
             <h3 className="text-xl font-bold">
@@ -514,7 +514,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                   <button
                     key={`cta-slot-${i}`}
                     onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
-                    className="store-add-placeholder group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
+                    className="store-add-placeholder group relative rounded-4xl border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-60 animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
                     style={{ animationDelay: `${(products.length + i) * 80}ms` }}
                   >
                     <div className="store-add-placeholder-icon w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
@@ -524,7 +524,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                       <p className="font-black text-sm text-muted-foreground group-hover:text-blue-600 transition-colors uppercase tracking-wide">Publicar</p>
                       <p className="font-bold text-xs text-muted-foreground/70 group-hover:text-blue-500 transition-colors">{labels[i]}</p>
                     </div>
-                    <div className="absolute inset-0 rounded-3xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
+                    <div className="absolute inset-0 rounded-4xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
                   </button>
                 );
               })}
@@ -543,7 +543,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                     storeName={store.name} 
                     storeAddress={store.address || undefined} 
                     logoUrl={store.logoUrl}
-                    className="h-[300px] md:h-[350px] lg:h-[400px]"
+                    className="h-75 md:h-87.5 lg:h-100"
                   />
                 </div>
               )}
@@ -563,13 +563,13 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
               {isOwner && products.length >= 2 && (
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
-                  className="store-add-placeholder group relative rounded-[32px] border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-[240px] animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
+                  className="store-add-placeholder group relative rounded-4xl border-2 border-dashed border-muted-foreground/20 hover:border-blue-500/50 hover:bg-blue-50/30 dark:hover:bg-blue-950/20 transition-all duration-500 cursor-pointer flex flex-col items-center justify-center gap-4 p-6 min-h-60 animate-in fade-in shadow-lg hover:shadow-2xl dark:shadow-[0_0_20px_rgba(37,99,235,0.05)] dark:hover:shadow-[0_0_35px_rgba(37,99,235,0.15)]"
                 >
                   <div className="store-add-placeholder-icon w-14 h-14 rounded-2xl bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/40 flex items-center justify-center transition-colors shadow-inner">
                     <Plus className="store-add-placeholder-symbol w-7 h-7 text-muted-foreground group-hover:text-blue-600 transition-colors" />
                   </div>
                   <p className="font-black text-sm text-muted-foreground group-hover:text-blue-600 transition-colors uppercase tracking-wide">Publicar producto</p>
-                  <div className="absolute inset-0 rounded-3xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
+                  <div className="absolute inset-0 rounded-4xl ring-2 ring-inset ring-transparent group-hover:ring-blue-500/20 transition-all" />
                 </button>
               )}
             </div>

@@ -18,6 +18,7 @@ import {
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ProductForm } from "./product-form";
 import { EditProductForm } from "./edit-product-form";
+import { Button } from "@/components/ui/button";
 
 interface Category {
   id: string;
@@ -56,36 +57,96 @@ export function ProductModal({
     ? `Actualiza los datos de ${product?.name || "tu producto"}`
     : "Completa la información para publicar un producto nuevo.";
 
-  const modalContent = isEdit ? (
+  // Siempre mostrar dialog (desktop) para debug
+  const formId = isEdit ? `edit-product-form-${product?.id}` : "create-product-form";
+  const [childLoading, setChildLoading] = React.useState(false);
+
+  const childProps = {
+    formId,
+    onLoadingChange: (v: boolean) => setChildLoading(v),
+  };
+
+  const submitForm = () => {
+    const form = document.getElementById(formId) as HTMLFormElement | null;
+    if (!form) return;
+
+    if (typeof form.requestSubmit === "function") {
+      form.requestSubmit();
+    } else {
+      form.submit();
+    }
+  };
+
+  const content = isEdit ? (
     <EditProductForm
       product={product}
       categories={categories}
       onSuccess={() => onOpenChange(false)}
       onCancel={() => onOpenChange(false)}
+      {...childProps}
     />
   ) : (
     <ProductForm
       categories={categories}
       onSuccess={() => onOpenChange(false)}
       onCancel={() => onOpenChange(false)}
+      {...childProps}
     />
   );
 
-  // Siempre mostrar dialog (desktop) para debug
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        className="max-h-[90vh] overflow-y-auto rounded-3xl p-0"
-        style={{ width: "min(90vw, 1100px)" }}
-      >
-        <div className="border-b border-border/70 p-5">
+    <>
+      {isDesktop ? (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+          <DialogContent
+            className="max-h-[90vh] rounded-[2.5rem] overflow-hidden p-0 flex flex-col"
+            style={{ width: "min(90vw, 1100px)" }}
+          >
+        <div className="shrink-0 border-b border-white/20 p-5 bg-brand-gradient text-white shadow-premium dark:bg-slate-950 dark:border-slate-800 dark:text-slate-50">
           <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            <DialogTitle className="text-white">{title}</DialogTitle>
+            <DialogDescription className="text-white/80">{description}</DialogDescription>
           </DialogHeader>
         </div>
-        <div className="p-4 pt-3">{modalContent}</div>
-      </DialogContent>
-    </Dialog>
+          <div className="flex-1 overflow-y-auto p-4">{content}</div>
+
+          <div className="shrink-0 border-t border-white/20 p-4 bg-brand-gradient text-white shadow-premium dark:bg-slate-950 dark:border-slate-800 dark:text-slate-50">
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={childLoading}>
+                Cancelar
+              </Button>
+              <Button onClick={submitForm} disabled={childLoading}>
+                {childLoading ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear producto"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      ) : (
+        <Sheet open={open} onOpenChange={onOpenChange}>
+          <SheetContent side="bottom" className="rounded-t-[2.5rem] overflow-hidden p-0 max-h-[90vh] flex flex-col">
+            <div className="shrink-0 border-b border-white/20 p-4 bg-brand-gradient text-white shadow-premium dark:bg-slate-950 dark:border-slate-800 dark:text-slate-50">
+              <SheetHeader>
+                <SheetTitle className="text-white">{title}</SheetTitle>
+                <SheetDescription className="text-white/80">{description}</SheetDescription>
+              </SheetHeader>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">{content}</div>
+
+            <div className="shrink-0 border-t border-white/20 p-4 bg-brand-gradient text-white shadow-premium dark:bg-slate-950 dark:border-slate-800 dark:text-slate-50">
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => onOpenChange(false)} disabled={childLoading}>
+                  Cancelar
+                </Button>
+                <Button onClick={submitForm} disabled={childLoading}>
+                  {childLoading ? "Guardando..." : isEdit ? "Guardar cambios" : "Crear producto"}
+                </Button>
+              </div>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+    </>
   );
 }

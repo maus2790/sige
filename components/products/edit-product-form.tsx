@@ -13,7 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { updateProduct } from "@/app/actions/products";
 import { ImageUpload } from "@/components/upload/image-upload";
-import { getProductSkuSegment, getStoreSkuSegment } from "@/lib/sku";
 
 type ProductData = Record<string, unknown> & {
   id: string;
@@ -42,19 +41,21 @@ interface EditProductFormProps {
   categories: Category[];
   onSuccess?: () => void;
   onCancel?: () => void;
+  formId?: string;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
-export function EditProductForm({ product, categories, onSuccess, onCancel }: EditProductFormProps) {
+export function EditProductForm({ product, categories, onSuccess, onCancel, formId, onLoadingChange }: EditProductFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [imageUrls, setImageUrls] = useState<string[]>(product.imageUrls || []);
-  const storeSku = getStoreSkuSegment(product.sku);
-  const productSku = getProductSkuSegment(product.sku);
+  const [showExtras, setShowExtras] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsLoading(true);
+    onLoadingChange?.(true);
     setError(null);
 
     const formData = new FormData(event.currentTarget);
@@ -66,19 +67,21 @@ export function EditProductForm({ product, categories, onSuccess, onCancel }: Ed
       setError(result.error);
       toast.error(result.error);
       setIsLoading(false);
+      onLoadingChange?.(false);
       return;
     }
 
     toast.success("Producto actualizado con éxito.");
     router.refresh();
     setIsLoading(false);
+    onLoadingChange?.(false);
     if (onSuccess) {
       onSuccess();
     }
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form id={formId} onSubmit={onSubmit} className="space-y-6">
       {error && (
         <div className="p-3 rounded-md bg-red-50 text-red-600 text-sm">
           {error}
@@ -87,57 +90,51 @@ export function EditProductForm({ product, categories, onSuccess, onCancel }: Ed
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="space-y-2">
-            <Label htmlFor="sku">SKU del producto</Label>
-            <div className="flex">
-              <div className="flex h-9 items-center rounded-l-md border border-r-0 bg-muted px-3 font-mono text-sm text-muted-foreground">
-                {storeSku || "----"}-
-              </div>
-              <Input
-                id="sku"
-                name="sku"
-                defaultValue={productSku}
-                maxLength={4}
-                pattern="[A-Za-z0-9]{4}"
-                placeholder="Ej: 21FG"
-                disabled={isLoading}
-                className="rounded-l-none font-mono uppercase"
-                onInput={(event) => {
-                  event.currentTarget.value = event.currentTarget.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 4);
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
+          <div className="space-y-2 w-full">
             <Label htmlFor="name">Nombre del producto *</Label>
             <Input
               id="name"
               name="name"
+              className="w-full"
               defaultValue={product.name}
               required
               disabled={isLoading}
             />
           </div>
+
+          <div className="space-y-2 w-full">
+            <Label htmlFor="status">Estado del producto *</Label>
+            <Select name="status" required defaultValue={product.status || "Nuevo"}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Selecciona el estado" />
+              </SelectTrigger>
+              <SelectContent className="w-full">
+                {estados.map((est) => (
+                  <SelectItem key={est.value} value={est.value}>
+                    {est.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description">Descripción *</Label>
+          <Label htmlFor="description">Descripción (opcional)</Label>
           <Textarea
             id="description"
             name="description"
             rows={5}
             defaultValue={product.description}
-            required
             disabled={isLoading}
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-          <div className="space-y-2 w-4/5">
+          <div className="space-y-2 w-full">
             <Label htmlFor="category">Categoría *</Label>
             <Select name="category" required defaultValue={product.category}>
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Selecciona una categoría" />
               </SelectTrigger>
               <SelectContent>
@@ -157,47 +154,60 @@ export function EditProductForm({ product, categories, onSuccess, onCancel }: Ed
           </div>
 
           <div className="space-y-2 justify-self-start w-full">
-            <Label htmlFor="status">Estado del producto *</Label>
-            <Select name="status" required defaultValue={product.status || "Nuevo"}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecciona el estado" />
-              </SelectTrigger>
-              <SelectContent>
-                {estados.map((est) => (
-                  <SelectItem key={est.value} value={est.value}>
-                    {est.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="pt-4">
+            <Label>Imágenes</Label>
             <ImageUpload
+              label=""
               onImagesChange={setImageUrls}
               initialImages={imageUrls}
               maxImages={5}
             />
           </div>
+
+        </div>
+        
+
+        <div className="pt-3">
+          <button
+            type="button"
+            className="text-sm text-primary underline underline-offset-2"
+            onClick={() => setShowExtras((s) => !s)}
+          >
+            Configuraciones extras
+          </button>
+
+          {showExtras && (
+            <div className="mt-3 space-y-2">
+              <Label htmlFor="sku">Identificador / SKU</Label>
+              <Input
+                id="sku"
+                name="sku"
+                placeholder="Se generará automáticamente si se deja vacío"
+                defaultValue={product.sku || ""}
+                disabled={isLoading}
+              />
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="flex justify-end gap-4 pt-4 border-t">
-        {onCancel ? (
-          <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
-            Cancelar
-          </Button>
-        ) : (
-          <Link href="/dashboard/productos">
-            <Button type="button" variant="outline" disabled={isLoading}>
+      {!formId && (
+        <div className="flex justify-end gap-4 pt-4 border-t">
+          {onCancel ? (
+            <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
               Cancelar
             </Button>
-          </Link>
-        )}
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? "Guardando..." : "Guardar Cambios"}
-        </Button>
-      </div>
+          ) : (
+            <Link href="/dashboard/productos">
+              <Button type="button" variant="outline" disabled={isLoading}>
+                Cancelar
+              </Button>
+            </Link>
+          )}
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? "Guardando..." : "Guardar Cambios"}
+          </Button>
+        </div>
+      )}
     </form>
   );
 }

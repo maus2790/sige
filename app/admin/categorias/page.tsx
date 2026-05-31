@@ -72,7 +72,7 @@ export default async function CategoriasPage({ searchParams }: CategoriasPagePro
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Top categoría</p>
-                <p className="text-2xl font-bold text-primary truncate max-w-[150px]">
+                <p className="text-2xl font-bold text-primary truncate max-w-37.5">
                   {stats.topCategories[0]?.name || "—"}
                 </p>
               </div>

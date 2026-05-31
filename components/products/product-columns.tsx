@@ -41,7 +41,7 @@ export const columns: ColumnDef<any>[] = [
     accessorKey: "name",
     header: "Nombre",
     cell: ({ row }) => (
-      <div className="font-medium max-w-[200px] truncate">
+      <div className="font-medium max-w-50 truncate">
         {row.getValue("name")}
       </div>
     ),

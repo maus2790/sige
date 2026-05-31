@@ -78,7 +78,7 @@ export function AdjustStockDialog({
               Editar Valores
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] p-6 max-h-[calc(100vh-4rem)] overflow-hidden rounded-xl">
+          <DialogContent className="sm:max-w-106.25 p-6 max-h-[calc(100vh-4rem)] overflow-hidden rounded-xl">
             <DialogHeader>
               <DialogTitle>Editar Inventario</DialogTitle>
               <DialogDescription>

@@ -198,7 +198,7 @@ export function ImageUpload({
   return (
     <>
       <div className="space-y-4">
-        <Label>{label}</Label>
+        {label ? <Label>{label}</Label> : null}
 
         <div className="grid grid-cols-2 gap-3">
           {imageItems.map((item, index) => (

@@ -197,6 +197,8 @@ export function InventoryTableClient({
       onPaginationChange={handlePaginationChange}
       onSearchChange={handleSearchChange}
       onCategoryChange={handleCategoryChange}
+      initialSearch={initialSearch}
+      initialCategory={initialCategory}
       onLowStockChange={handleLowStockChange}
       initialLowStock={initialLowStock}
       categories={categories}

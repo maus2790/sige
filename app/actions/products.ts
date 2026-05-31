@@ -44,7 +44,7 @@ type ProductUpdateData = {
 const createProductSchema = z.object({
   sku: z.string().optional(),
   name: z.string().min(3, "El nombre debe tener al menos 3 caracteres"),
-  description: z.string().min(5, "La descripción debe tener al menos 5 caracteres"),
+  description: z.string().min(5, "La descripción debe tener al menos 5 caracteres").optional(),
   price: z.number().min(0, "El precio debe ser mayor o igual a 0").optional().default(0),
   category: z.string().min(1, "Selecciona una categoría"),
   status: z.enum(["Nuevo", "Usado", "Refabricado"]).default("Nuevo"),
@@ -250,9 +250,12 @@ export async function getSellerProductsPaginated({
   if (search && search.trim()) {
     const cleanSearch = search.trim();
     const searchTerm = `%${cleanSearch}%`;
-    const skuTerm = `%${normalizeSkuSegment(cleanSearch)}%`;
     conditions.push(
-      sql`(${products.name} LIKE ${searchTerm} OR ${products.description} LIKE ${searchTerm} OR upper(${products.sku}) LIKE ${skuTerm})`
+      sql`(
+        lower(${products.name}) LIKE lower(${searchTerm}) OR
+        lower(${products.description}) LIKE lower(${searchTerm}) OR
+        lower(${products.sku}) LIKE lower(${searchTerm})
+      )`
     );
   }
 
@@ -360,8 +363,8 @@ export async function getProductById(id: string) {
   
   // Always use unstable_cache so revalidateTag("all-products") / revalidateTag(`product-${id}`)
   // can purge this entry on demand regardless of whether Nivel 1 is active.
-  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 30;
-  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-30s";
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : config.baseCacheTtl;
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : `OFF 📁 Micro-${ttl}s`;
   
   console.log(`[Product Cache: ${label}] TTL=${ttl}s | ID: ${id}`);
 
@@ -480,7 +483,7 @@ export async function createProduct(data: any) {
   const validatedFields = createProductSchema.safeParse({
     sku: skuResult.sku,
     name: rawData.name,
-    description: rawData.description,
+    description: typeof rawData.description === "string" && rawData.description.trim() !== "" ? rawData.description : undefined,
     price: typeof rawData.price === 'string' && rawData.price !== "" ? parseFloat(rawData.price) : (rawData.price === null || rawData.price === undefined || rawData.price === "" ? undefined : rawData.price),
     category: rawData.category,
     status: (rawData.status as any) || "Nuevo",
@@ -1034,9 +1037,9 @@ export async function getProductsCursor(
   
   // Always use the same cache key so revalidateTag("market-feed") reliably invalidates it.
   // TTL adjusts based on Nivel 1 toggle.
-  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 30;
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : config.baseCacheTtl;
   const pageLimit = config.cacheScrollEnabled ? config.marketScrollLimit : 15;
-  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-30s";
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : `OFF 📁 Micro-${ttl}s`;
   
   console.log(`[Market Cache: ${label}] TTL=${ttl}s | Page: ${page}`);
 

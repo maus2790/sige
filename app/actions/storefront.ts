@@ -10,8 +10,8 @@ import { getSystemConfig } from "./config";
 export async function getStoreDetails(storeId: string) {
   const config = await getSystemConfig();
 
-  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 15;
-  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-15s";
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : config.baseCacheTtl;
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : `OFF 📁 Micro-${ttl}s`;
 
   console.log(`[Store Details Cache: ${label}] TTL=${ttl}s | Store: ${storeId}`);
 
@@ -137,9 +137,9 @@ export async function getStoreProducts(storeId: string, page: number = 1, limit:
 
   // Always use the same cache key so revalidateTag("all-store-feeds") reliably invalidates it.
   // TTL adjusts based on Nivel 1 toggle.
-  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : 30;
+  const ttl = config.cacheScrollEnabled ? config.marketCacheTtl : config.baseCacheTtl;
   const pageLimit = config.cacheScrollEnabled ? config.storeScrollLimit : 15;
-  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : "OFF 📁 Micro-30s";
+  const label = config.cacheScrollEnabled ? "ON ⚡ Nivel 1" : `OFF 📁 Micro-${ttl}s`;
 
   console.log(`[Store Cache: ${label}] TTL=${ttl}s | Store: ${storeId}, Page: ${page}`);
 

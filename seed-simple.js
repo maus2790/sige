@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 
 const client = createClient({
   url: "libsql://sige-db-maus2790.aws-eu-west-1.turso.io",
-  authToken: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzcwNjcwNTUsImlkIjoiMDE5ZGMxNmQtNGYwMS03ODI4LTkzNTEtZjE2YzE5OTkzZTg3IiwicmlkIjoiMjBjMzcwYzMtNTFkNi00NjQ2LWI2NmMtZDZjYjdjMDdkNzBhIn0.3ofXhakcSZ7U0cwcGV2loLgUa4XMa_nFUgjlxB9GSTriZJ5Q4ouG3oqHaK8FYdE-udpyu0Q94wN9FNsqKyUHAg"
+  authToken: "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzcwNjcwNTUsImlkIjoiMDE5ZGMxNmQtNGYwMS03ODI4LTkzNTEtZjE2YzE5OTkzZTg3IiwicmlkIjoiMjBjMzcwYzMtNTFkNi00NjQ2LWI2NmMtZDZjYjdjMDdkNzBhIn0.3ofXhakcSZ7U0cwcGV2loLgUa4XMa_nFUgjlxB9GSTriZJ5Q4ouG3oqHaK8FYdE-udpyu0Q94wN9FNsqKyUHAg",
 });
 
 async function seed() {

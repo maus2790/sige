@@ -13,6 +13,7 @@ async function ensureConfigExists() {
     { key: "isr_enabled", value: "false" },
     { key: "middleware_optimized", value: "false" },
     { key: "market_cache_ttl", value: "3600" },
+    { key: "base_cache_ttl", value: "20" },
     { key: "market_scroll_limit", value: "12" },
     { key: "store_scroll_limit", value: "12" },
     { key: "base_scroll_limit", value: "20" }
@@ -42,6 +43,7 @@ export async function getSystemConfig() {
     isrEnabled: configs.find(c => c.key === 'isr_enabled')?.value === 'true',
     middlewareOptimized: configs.find(c => c.key === 'middleware_optimized')?.value === 'true',
     marketCacheTtl: parseInt(configs.find(c => c.key === 'market_cache_ttl')?.value || '3600', 10),
+    baseCacheTtl: parseInt(configs.find(c => c.key === 'base_cache_ttl')?.value || '20', 10),
     marketScrollLimit: parseInt(configs.find(c => c.key === 'market_scroll_limit')?.value || '12', 10),
     storeScrollLimit: parseInt(configs.find(c => c.key === 'store_scroll_limit')?.value || '12', 10),
     baseScrollLimit: parseInt(configs.find(c => c.key === 'base_scroll_limit')?.value || '20', 10),
