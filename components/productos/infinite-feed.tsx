@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useInView } from "react-intersection-observer";
 import { useEffect, useState } from "react";
@@ -54,7 +54,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
   const { isInstallable, isInstalled, installApp } = usePWAInstall();
 
   const categoriesList = [
-    { value: "todos", label: "Todos", icon: "✨" },
+    { value: "todos", label: "Todos", icon: "âœ¨" },
     ...initialCategories.map(c => ({ value: c.name, label: c.name, icon: c.icon }))
   ];
 
@@ -121,7 +121,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       <div className="market-hero relative overflow-hidden bg-brand-gradient text-white pb-16 pt-12 px-4 sm:px-6 lg:px-8 shadow-premium rounded-b-[2.5rem] md:rounded-b-[4rem] mb-0">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
 
-        {/* Botón Instalar App (Arriba Izquierda) */}
+        {/* BotÃ³n Instalar App (Arriba Izquierda) */}
         {isInstallable && !isInstalled && (
           <button
             onClick={installApp}
@@ -132,7 +132,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </button>
         )}
 
-        {/* Botón Gift Card (Arriba Derecha) */}
+        {/* BotÃ³n Gift Card (Arriba Derecha) */}
         <Link
           href="/gift-cards"
           className="market-hero-pill absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500"
@@ -167,7 +167,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
       <div className={`sticky top-16 z-40 transition-all duration-300 px-4 w-full max-w-6xl mx-auto -mt-6 mb-8 ${isScrolled ? 'drop-shadow-2xl' : ''}`}>
         <div className="flex items-center gap-3">
           
-          {/* Botón VENDER (Pill llamativa con animación de brillo y bordes más coloridos) */}
+          {/* BotÃ³n VENDER (Pill llamativa con animaciÃ³n de brillo y bordes mÃ¡s coloridos) */}
           <button
             onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
             className="market-action market-action-sell hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
@@ -175,14 +175,23 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
             <Plus className="h-5 w-5" />
             Vender
           </button>
+          <div className="hidden lg:flex">
+            <RefreshButton
+              onRefresh={() => refetch()}
+              className="market-action market-action-gift h-12 px-6 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all uppercase tracking-wider btn-shine"
+              iconClassName="h-5 w-5 text-purple-600 dark:text-purple-400"
+              labelClassName="font-black"
+            />
+          </div>
 
-          {/* Buscador Central (Bordes más definidos) */}
+
+          {/* Buscador Central (Bordes mÃ¡s definidos) */}
           <div className="market-search-shell glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
             <div className="relative flex-1">
               <input
                 id="mobile-search"
                 type="text"
-                placeholder="¿Qué estás buscando?"
+                placeholder="Â¿QuÃ© estÃ¡s buscando?"
                 onChange={(e) => handleSearch(e.target.value)}
                 className="w-full h-10 pl-11 pr-4 rounded-xl bg-transparent border-none focus:ring-0 focus:outline-none text-foreground placeholder:text-zinc-500 dark:placeholder:text-zinc-400 font-bold text-sm"
               />
@@ -211,11 +220,8 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
             </div>
           </div>
 
-          <div className="hidden lg:flex">
-            <RefreshButton onRefresh={() => refetch()} />
-          </div>
 
-          {/* Botón GIFT CARDS (Pill llamativa con animación de brillo y bordes más coloridos) */}
+          {/* BotÃ³n GIFT CARDS (Pill llamativa con animaciÃ³n de brillo y bordes mÃ¡s coloridos) */}
           <Link
             href="/gift-cards"
             className="market-action market-action-gift hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
@@ -257,7 +263,7 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
             </div>
             <h3 className="text-2xl font-bold mb-3 text-foreground tracking-tight">No hay resultados</h3>
             <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              No encontramos productos que coincidan con tu búsqueda. Intenta con otros términos o categorías.
+              No encontramos productos que coincidan con tu bÃºsqueda. Intenta con otros tÃ©rminos o categorÃ­as.
             </p>
             <Button 
               variant="outline" 
@@ -289,14 +295,14 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
               {isFetchingNextPage && (
                 <div className="flex items-center gap-3 px-6 py-3 bg-card border border-border/50 shadow-sm rounded-full animate-in fade-in zoom-in-95 duration-300">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  <span className="text-sm font-semibold text-muted-foreground">Cargando más...</span>
+                  <span className="text-sm font-semibold text-muted-foreground">Cargando mÃ¡s...</span>
                 </div>
               )}
               {!hasNextPage && products.length > 0 && (
                 <div className="text-center animate-in fade-in duration-500">
                   <div className="w-16 h-1.5 bg-muted rounded-full mx-auto mb-4"></div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    Has visto todos los productos 🎉
+                    Has visto todos los productos ðŸŽ‰
                   </p>
                 </div>
               )}

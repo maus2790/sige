@@ -5,18 +5,18 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
-import { RechargeDialog } from './recharge-dialog';
 import { CheckBalanceDialog } from './check-balance-dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Gift, Send, Clock,
-  TrendingUp, ChevronRight, Wallet, Sparkles, Inbox, Search
+  ChevronRight, Wallet, Inbox, Search
 } from 'lucide-react';
 
 interface GiftCardWalletProps {
   sent: any[];
   received: any[];
+  mine?: any[];
   saved?: any[];
   totalBalance: number;
   stats: {
@@ -30,12 +30,11 @@ interface GiftCardWalletProps {
   } | null;
 }
 
-export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats }: GiftCardWalletProps) {
+export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBalance, stats }: GiftCardWalletProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = searchParams.get('tab') || 'sent';
+  const initialTab = searchParams.get('tab') || 'mine';
   const [activeTab, setActiveTab] = useState(initialTab);
-  const [rechargeOpen, setRechargeOpen] = useState(false);
   const [checkBalanceOpen, setCheckBalanceOpen] = useState(false);
 
   // State for Check Balance feature
@@ -51,7 +50,7 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
 
   const activeSent = sent.filter(isCardActive);
   const activeReceived = received.filter(isCardActive);
-  const activeSaved = saved.filter(isCardActive);
+  const activeMine = mine.filter(isCardActive);
 
   const historyCards = [...sent, ...received, ...saved].filter(c => !isCardActive(c)).sort((a, b) => {
     const tA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt || 0).getTime();
@@ -93,17 +92,17 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
 
           {/* Big balance */}
           <div className="text-center mb-6">
-            <p className="text-sm opacity-80 mb-1">Saldo total disponible</p>
+            <p className="text-sm opacity-80 mb-1">Regalos activos y enviados</p>
             <p className="text-5xl font-black tracking-tighter">
-              Bs. {totalBalance.toFixed(2)}
+              Gift Cards
             </p>
             <p className="text-xs opacity-60 mt-2">
-              En {activeReceived.length + activeSaved.length} gift card{activeReceived.length + activeSaved.length !== 1 ? 's' : ''} activas
+              {activeMine.length} gift card{activeMine.length !== 1 ? 's' : ''} activas para usar
             </p>
           </div>
 
           {/* Action buttons - thumb zone */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Button
               asChild
               className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
@@ -122,16 +121,6 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
               <Search className="h-4 w-4" />
               Consultar
             </Button>
-            <Button
-              className="gift-card-hero-button h-12 bg-white/15 hover:bg-white/25 text-white border border-white/20 rounded-2xl font-bold text-sm"
-              variant="ghost"
-              onClick={() => setRechargeOpen(true)}
-            >
-              <svg className="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Recargar
-            </Button>
           </div>
         </div>
 
@@ -141,9 +130,9 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
       <div className="max-w-4xl mx-auto px-4 mt-5 mb-6">
         <div className="gift-card-tabs-nav flex items-center gap-1 rounded-2xl border bg-card/80 p-1.5 shadow-sm backdrop-blur-xl">
           {[
+            { id: 'mine', label: 'Mis Gift Cards', value: activeMine.length, icon: Wallet },
             { id: 'sent', label: 'Enviadas', value: activeSent.length, icon: Send },
             { id: 'received', label: 'Recibidas', value: activeReceived.length, icon: Inbox },
-            { id: 'saved', label: 'Guardadas', value: activeSaved.length, icon: Wallet },
             { id: 'history', label: 'Historial', value: historyCards.length, icon: Clock },
           ].map(({ id, label, value, icon: Icon }) => (
             <button 
@@ -168,6 +157,22 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
       {/* ── CARDS TABS ── */}
       <div className="max-w-4xl mx-auto px-4 pb-32">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsContent value="mine" className="space-y-4 mt-0">
+            {activeMine.length === 0 ? (
+              <EmptyState
+                icon={<Wallet className="h-10 w-10" />}
+                title="Aun no tienes Gift Cards activas"
+                description="Cuando una tienda active una Gift Card para ti, aparecera aqui."
+                action={{ label: 'Regalar', href: '/gift-cards/buy' }}
+              />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+                {activeMine.map((gc) => (
+                  <GiftCardCard key={gc.id} giftCard={gc} type="received" />
+                ))}
+              </div>
+            )}
+          </TabsContent>
 
           <TabsContent value="sent" className="space-y-4 mt-0">
             {activeSent.length === 0 ? (
@@ -203,22 +208,6 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
             )}
           </TabsContent>
 
-          <TabsContent value="saved" className="space-y-4 mt-0">
-            {activeSaved.length === 0 ? (
-              <EmptyState
-                icon={<Wallet className="h-10 w-10" />}
-                title="No tienes tarjetas guardadas activas"
-                description="Aquí aparecerán las tarjetas que compres para ti o que aún no hayas enviado."
-                action={{ label: 'Comprar para mí', href: '/gift-cards/buy' }}
-              />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
-                {activeSaved.map((gc) => (
-                  <GiftCardCard key={gc.id} giftCard={gc} type="saved" />
-                ))}
-              </div>
-            )}
-          </TabsContent>
 
           <TabsContent value="history" className="space-y-4 mt-0">
             {historyCards.length === 0 ? (
@@ -301,7 +290,6 @@ export function GiftCardWallet({ sent, received, saved = [], totalBalance, stats
         </Tabs>
       </div>
 
-      <RechargeDialog open={rechargeOpen} onOpenChange={setRechargeOpen} />
       <CheckBalanceDialog open={checkBalanceOpen} onOpenChange={setCheckBalanceOpen} />
     </div>
   );

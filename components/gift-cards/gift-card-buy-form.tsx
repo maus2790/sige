@@ -119,16 +119,10 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('');
 
-  // Generar código cuando se llega al paso 3
+  // El codigo real se genera en servidor al crear la Gift Card.
   useEffect(() => {
     if (step === 3 && !giftCardCode) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-      let code = '';
-      for (let i = 0; i < 12; i++) {
-        if (i > 0 && i % 4 === 0) code += '-';
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-      }
-      setGiftCardCode(code);
+      setGiftCardCode('XXXX-XXXX-XXXX');
     }
     
     if (step === 4 && sigeUsers.length === 0) {

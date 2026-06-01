@@ -5,13 +5,17 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { refreshMarketFeed } from "@/app/actions/products";
+import { cn } from "@/lib/utils";
 
 interface RefreshButtonProps {
   onRefresh?: () => void;
   refreshAction?: () => Promise<any>;
+  className?: string;
+  iconClassName?: string;
+  labelClassName?: string;
 }
 
-export function RefreshButton({ onRefresh, refreshAction }: RefreshButtonProps) {
+export function RefreshButton({ onRefresh, refreshAction, className, iconClassName, labelClassName }: RefreshButtonProps) {
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -37,10 +41,10 @@ export function RefreshButton({ onRefresh, refreshAction }: RefreshButtonProps) 
       size="sm"
       onClick={handleRefresh}
       disabled={isRefreshing}
-      className="refresh-button gap-2 rounded-full h-10 px-4 shrink-0"
+      className={cn("refresh-button gap-2 rounded-full h-10 px-4 shrink-0", className)}
     >
-      <RefreshCw className={`refresh-button-icon w-4 h-4 ${isRefreshing ? "animate-spin text-primary" : "text-muted-foreground"}`} />
-      <span className="hidden sm:inline font-medium">Actualizar</span>
+      <RefreshCw className={cn("refresh-button-icon w-4 h-4", isRefreshing ? "animate-spin text-primary" : "text-muted-foreground", iconClassName)} />
+      <span className={cn("hidden sm:inline font-medium", labelClassName)}>Actualizar</span>
     </Button>
   );
 }

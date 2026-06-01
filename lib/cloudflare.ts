@@ -4,7 +4,8 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
-  GetObjectCommand
+  GetObjectCommand,
+  ListObjectsV2Command
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -276,10 +277,42 @@ export async function deleteMultipleImages(keys: string[]): Promise<void> {
 // ============================================
 
 export async function deleteImagesByPrefix(prefix: string): Promise<void> {
-  // Esta función requiere listar objetos primero
-  // Se implementará cuando sea necesario
-  console.log(`Eliminando imágenes con prefijo: ${prefix}`);
-  // Implementación pendiente para Fase 8.5
+  let continuationToken: string | undefined;
+
+  do {
+    const listed = await r2Client.send(new ListObjectsV2Command({
+      Bucket: R2_BUCKET_NAME,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+
+    const keys = (listed.Contents || [])
+      .map((item) => item.Key)
+      .filter((key): key is string => !!key);
+
+    await deleteMultipleImages(keys);
+    continuationToken = listed.NextContinuationToken;
+  } while (continuationToken);
+}
+
+export async function listImageKeysByPrefix(prefix: string): Promise<string[]> {
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+
+  do {
+    const listed = await r2Client.send(new ListObjectsV2Command({
+      Bucket: R2_BUCKET_NAME,
+      Prefix: prefix,
+      ContinuationToken: continuationToken,
+    }));
+
+    keys.push(...(listed.Contents || [])
+      .map((item) => item.Key)
+      .filter((key): key is string => !!key));
+    continuationToken = listed.NextContinuationToken;
+  } while (continuationToken);
+
+  return keys;
 }
 
 // ============================================

@@ -78,21 +78,12 @@ export async function getAssistantStats() {
     .where(eq(orders.status, "cancelled"))
     .get();
 
-  // Gift Card Stats
-  const { giftCards } = await import("@/db/schema");
-  const pendingGiftCards = await db
-    .select({ count: sql<number>`count(*)` })
-    .from(giftCards)
-    .where(eq(giftCards.status, "pending_payment"))
-    .get();
-
   return {
-    pendingPayments: (pendingCount?.count ?? 0) + (pendingGiftCards?.count ?? 0),
+    pendingPayments: pendingCount?.count ?? 0,
     verifiedToday: verifiedToday?.count ?? 0,
     totalVerified: totalVerified?.count ?? 0,
     totalRejected: totalRejected?.count ?? 0,
     pendingOrders: pendingCount?.count ?? 0,
-    pendingGiftCards: pendingGiftCards?.count ?? 0,
   };
 }
 

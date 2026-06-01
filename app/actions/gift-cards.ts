@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from '@/db';
-import { giftCards, products, stores, comercialConfig, users, giftCardRecharges, giftCardHistory, systemConfig } from '@/db/schema';
+import { giftCards, products, stores, comercialConfig, users, giftCardRecharges, giftCardHistory, systemConfig, storeGiftCardTemplates, storeGiftCardPaymentSettings } from '@/db/schema';
 import { eq, or, desc, asc, and, sql, gt } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -10,6 +10,7 @@ import { nextauthConfig } from "@/lib/nextauth.config";
 import crypto from 'crypto';
 import { uploadImageFromBuffer, deleteImage, extractKeyFromUrl } from '@/lib/cloudflare';
 import { sendOneSignalNotification } from '@/lib/onesignal';
+import { generateSecureGiftCardCode } from '@/lib/gift-card-code';
 
 export async function getCurrentUser() {
   const session = await getServerSession(nextauthConfig);
@@ -100,7 +101,7 @@ export async function getUserGiftCards() {
   const received = userGiftCards.filter(gc => gc.recipientId === user.id && gc.senderId !== user.id);
   const saved = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId === user.id);
   
-  return { sent, received, saved, all: userGiftCards };
+  return { sent, received, saved, mine: saved, all: userGiftCards };
 }
 
 export async function getGiftCardById(giftCardId: string) {
@@ -361,13 +362,13 @@ export async function validateGiftCard(code: string) {
 }
 
 export async function purchaseGiftCard(data: {
-  amount: number;
+  amount?: number;
   recipientEmail?: string;
   recipientPhone?: string;
   recipientName: string;
   message?: string;
   templateId?: number;
-  businessId: string;
+  businessId?: string;
   productId?: string;
   recipientId?: string;
   occasion?: string;
@@ -375,21 +376,38 @@ export async function purchaseGiftCard(data: {
   receiptUrl?: string;
   saveToWallet?: boolean;
   scheduledAt?: Date;
+  storeGiftCardTemplateId?: string;
+  paymentMethod?: string;
+  transactionNumber?: string;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  if (!Number.isFinite(data.amount) || data.amount <= 0) {
-    return { error: 'Monto invalido' };
-  }
+  let amount = data.amount || 0;
+  let businessId = data.businessId || 'SIGE-GLOBAL';
+  let status = 'active';
 
-  if (data.amount > 10000) {
-    return { error: 'El monto maximo por Gift Card es Bs. 10.000' };
-  }
-
-  const availableBalance = await getTotalBalance();
-  if (availableBalance < data.amount) {
-    return { error: 'Saldo insuficiente para crear la Gift Card' };
+  if (data.storeGiftCardTemplateId) {
+    const template = await db
+      .select({ amount: storeGiftCardTemplates.amount, storeId: storeGiftCardTemplates.storeId })
+      .from(storeGiftCardTemplates)
+      .where(eq(storeGiftCardTemplates.id, data.storeGiftCardTemplateId))
+      .get();
+    if (!template) return { error: 'Template no encontrado' };
+    amount = template.amount;
+    businessId = template.storeId;
+    status = 'pending_payment';
+  } else {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { error: 'Monto invalido' };
+    }
+    if (amount > 10000) {
+      return { error: 'El monto maximo por Gift Card es Bs. 10.000' };
+    }
+    const availableBalance = await getTotalBalance();
+    if (availableBalance < amount) {
+      return { error: 'Saldo insuficiente para crear la Gift Card' };
+    }
   }
 
   // Generar código único verificando que no exista
@@ -421,28 +439,33 @@ export async function purchaseGiftCard(data: {
   expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
   await db.transaction(async (tx) => {
-    await consumeGiftCardBalance(tx, user.id, data.amount);
+    if (!data.storeGiftCardTemplateId) {
+      await consumeGiftCardBalance(tx, user.id, amount);
+    }
 
     await tx.insert(giftCards).values({
       id,
       code,
       qrHash,
-      amount: data.amount,
-      balance: data.amount,
+      amount,
+      balance: amount,
       expiresAt,
-      status: 'active',
+      status,
       senderId: user.id,
       recipientId: data.saveToWallet ? user.id : data.recipientId,
       recipientEmail: data.recipientEmail || null,
       recipientPhone: data.recipientPhone || null,
       recipientName: data.recipientName,
-      businessId: data.businessId,
+      businessId,
       productId: data.productId || null,
       message: data.message || null,
       templateId: data.templateId || null,
       occasion: data.occasion || null,
       cardImageUrl: data.cardImageUrl || null,
       receiptUrl: data.receiptUrl || null,
+      paymentMethod: data.paymentMethod || null,
+      transactionNumber: data.transactionNumber || null,
+      storeGiftCardTemplateId: data.storeGiftCardTemplateId || null,
       scheduledAt: data.scheduledAt || null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -1281,4 +1304,331 @@ export async function getGiftCardHistoryByAction(action: 'sent' | 'received' | '
 
   return history;
 }
+
+export async function getStoreGiftCardPaymentSettings(storeId: string) {
+  const settings = await db
+    .select()
+    .from(storeGiftCardPaymentSettings)
+    .where(eq(storeGiftCardPaymentSettings.storeId, storeId))
+    .get();
+
+  return settings || null;
+}
+
+export async function getMyStoreGiftCardData() {
+  const user = await getCurrentUser();
+  if (!user) redirect('/auth/login');
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store) {
+    return {
+      store: null,
+      templates: [],
+      settings: null,
+      pending: [],
+    };
+  }
+
+  const [templates, settings, pendingRows] = await Promise.all([
+    db
+      .select()
+      .from(storeGiftCardTemplates)
+      .where(eq(storeGiftCardTemplates.storeId, store.id))
+      .orderBy(desc(storeGiftCardTemplates.createdAt))
+      .all(),
+    db
+      .select()
+      .from(storeGiftCardPaymentSettings)
+      .where(eq(storeGiftCardPaymentSettings.storeId, store.id))
+      .get(),
+    db
+      .select({
+        giftCard: giftCards,
+        senderName: users.name,
+        senderEmail: users.email,
+      })
+      .from(giftCards)
+      .leftJoin(users, eq(giftCards.senderId, users.id))
+      .where(and(eq(giftCards.businessId, store.id), eq(giftCards.status, 'pending_payment')))
+      .orderBy(desc(giftCards.createdAt))
+      .all(),
+  ]);
+
+  return {
+    store,
+    templates,
+    settings: settings || null,
+    pending: pendingRows.map((row) => ({
+      ...row.giftCard,
+      senderName: row.senderName || 'Usuario desconocido',
+      senderEmail: row.senderEmail || 'Sin email',
+    })),
+  };
+}
+
+export async function upsertStoreGiftCardTemplate(data: {
+  id?: string;
+  storeId: string;
+  name: string;
+  amount: number;
+  description?: string;
+  designId?: number;
+  occasion?: string;
+  isActive?: boolean;
+}) {
+  const auth = await ensureStoreOwner(data.storeId);
+  if ('error' in auth) return auth;
+
+  if (!data.name.trim()) return { error: 'El nombre es obligatorio' };
+  if (!Number.isFinite(data.amount) || data.amount <= 0) return { error: 'Monto invalido' };
+
+  const settings = await db
+    .select({ maxAmount: storeGiftCardPaymentSettings.maxAmount })
+    .from(storeGiftCardPaymentSettings)
+    .where(eq(storeGiftCardPaymentSettings.storeId, data.storeId))
+    .get();
+  const maxLimit = settings?.maxAmount ?? 5000;
+  if (data.amount > maxLimit) return { error: `El monto maximo por Gift Card es Bs. ${maxLimit.toLocaleString()}` };
+
+  const now = new Date();
+  const isActive = data.isActive ?? true;
+  const payload = {
+    storeId: data.storeId,
+    name: data.name.trim(),
+    amount: Number(data.amount.toFixed(2)),
+    description: data.description?.trim() || null,
+    designId: data.designId || 1,
+    occasion: data.occasion || null,
+    isActive,
+    updatedAt: now,
+  };
+
+  if (data.id) {
+    const existing = await db
+      .select()
+      .from(storeGiftCardTemplates)
+      .where(and(eq(storeGiftCardTemplates.id, data.id), eq(storeGiftCardTemplates.storeId, data.storeId)))
+      .get();
+
+    if (!existing) return { error: 'Gift Card de tienda no encontrada' };
+
+    const code = isActive ? (existing.code || await generateUniqueGiftCardCode()) : null;
+
+    await db
+      .update(storeGiftCardTemplates)
+      .set({ ...payload, code })
+      .where(eq(storeGiftCardTemplates.id, data.id));
+  } else {
+    await db.insert(storeGiftCardTemplates).values({
+      id: crypto.randomUUID(),
+      ...payload,
+      code: isActive ? await generateUniqueGiftCardCode() : null,
+      createdAt: now,
+    });
+  }
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath(`/tienda/${data.storeId}`);
+  revalidatePath('/gift-cards/buy');
+  return { success: true };
+}
+
+export async function toggleStoreGiftCardTemplate(templateId: string, isActive: boolean) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store) return { error: 'Tienda no encontrada' };
+
+  await db
+    .update(storeGiftCardTemplates)
+    .set({
+      isActive,
+      code: isActive ? await generateUniqueGiftCardCode() : null,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(storeGiftCardTemplates.id, templateId), eq(storeGiftCardTemplates.storeId, store.id)));
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath(`/tienda/${store.id}`);
+  revalidatePath('/gift-cards/buy');
+  return { success: true };
+}
+
+export async function updateStoreGiftCardPaymentSettings(data: {
+  storeId: string;
+  qrUrl?: string;
+  bankDetails?: string;
+  tigoMoney?: string;
+  operatorPhone?: string;
+  maxAmount?: number;
+}) {
+  const auth = await ensureStoreOwner(data.storeId);
+  if ('error' in auth) return auth;
+
+  const now = new Date();
+  const existing = await db
+    .select()
+    .from(storeGiftCardPaymentSettings)
+    .where(eq(storeGiftCardPaymentSettings.storeId, data.storeId))
+    .get();
+
+  const values = {
+    storeId: data.storeId,
+    qrUrl: data.qrUrl?.trim() || null,
+    bankDetails: data.bankDetails?.trim() || null,
+    tigoMoney: data.tigoMoney?.trim() || null,
+    operatorPhone: data.operatorPhone?.trim() || null,
+    maxAmount: data.maxAmount !== undefined ? Number(data.maxAmount) : 5000,
+    updatedAt: now,
+  };
+
+  if (existing) {
+    await db
+      .update(storeGiftCardPaymentSettings)
+      .set(values)
+      .where(eq(storeGiftCardPaymentSettings.storeId, data.storeId));
+  } else {
+    await db.insert(storeGiftCardPaymentSettings).values({
+      id: crypto.randomUUID(),
+      ...values,
+      createdAt: now,
+    });
+  }
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath('/gift-cards/buy');
+  return { success: true };
+}
+
+export async function verifyStoreGiftCardPayment(
+  giftCardId: string,
+  action: 'approve' | 'reject',
+  rejectionReason?: string
+) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store && user.role !== 'superadmin') {
+    return { error: 'Tienda no encontrada' };
+  }
+
+  const card = await db
+    .select()
+    .from(giftCards)
+    .where(eq(giftCards.id, giftCardId))
+    .get();
+
+  if (!card) return { error: 'Gift Card no encontrada' };
+  if (store && card.businessId !== store.id) return { error: 'No autorizado para esta tienda' };
+  if (card.status !== 'pending_payment') return { error: 'Esta Gift Card ya fue procesada' };
+
+  const nextStatus = action === 'approve' ? 'active' : 'cancelled';
+  await db
+    .update(giftCards)
+    .set({
+      status: nextStatus,
+      rejectionReason: action === 'reject' ? (rejectionReason || 'Pago no verificado') : null,
+      verifiedBy: user.id,
+      verifiedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(giftCards.id, giftCardId));
+
+  if (action === 'approve') {
+    if (card.recipientId) {
+      await sendOneSignalNotification({
+        userIds: [card.recipientId],
+        title: 'Gift Card activada',
+        message: `Tu Gift Card de Bs. ${card.amount.toFixed(2)} ya esta activa.`,
+        url: `/gift-cards/${giftCardId}`,
+      });
+
+      const { createNotification } = await import('./notifications');
+      await createNotification({
+        userId: card.recipientId,
+        title: 'Gift Card activada',
+        message: `Tu Gift Card de Bs. ${card.amount.toFixed(2)} ya esta activa.`,
+        type: 'gift_card',
+        link: `/gift-cards/${giftCardId}`,
+      });
+    }
+  }
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath('/gift-cards');
+  revalidatePath(`/gift-cards/${giftCardId}`);
+  return {
+    success: true,
+    message: action === 'approve' ? 'Gift Card activada correctamente' : 'Gift Card rechazada',
+  };
+}
+
+async function getOwnedStoreForUser(userId: string) {
+  return db
+    .select()
+    .from(stores)
+    .where(eq(stores.userId, userId))
+    .get();
+}
+
+async function ensureStoreOwner(storeId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' as const };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store || store.id !== storeId) {
+    return { error: 'No tienes permiso para administrar esta tienda' as const };
+  }
+
+  return { user, store };
+}
+
+async function generateUniqueGiftCardCode() {
+  for (let attempts = 0; attempts < 20; attempts++) {
+    const code = generateSecureGiftCardCode();
+    const existingCard = await db
+      .select({ id: giftCards.id })
+      .from(giftCards)
+      .where(eq(giftCards.code, code))
+      .get();
+    const existingTemplate = await db
+      .select({ id: storeGiftCardTemplates.id })
+      .from(storeGiftCardTemplates)
+      .where(eq(storeGiftCardTemplates.code, code))
+      .get();
+
+    if (!existingCard && !existingTemplate) return code;
+  }
+
+  throw new Error('No se pudo generar un codigo unico de Gift Card');
+}
+
+export async function getActiveStoreGiftCardTemplates(storeId?: string) {
+  const conditions = [eq(storeGiftCardTemplates.isActive, true)];
+  if (storeId) {
+    conditions.push(eq(storeGiftCardTemplates.storeId, storeId));
+  }
+
+  return db
+    .select({
+      id: storeGiftCardTemplates.id,
+      storeId: storeGiftCardTemplates.storeId,
+      name: storeGiftCardTemplates.name,
+      amount: storeGiftCardTemplates.amount,
+      description: storeGiftCardTemplates.description,
+      designId: storeGiftCardTemplates.designId,
+      occasion: storeGiftCardTemplates.occasion,
+      storeName: stores.name,
+      storeLogoUrl: stores.logoUrl,
+    })
+    .from(storeGiftCardTemplates)
+    .innerJoin(stores, eq(storeGiftCardTemplates.storeId, stores.id))
+    .where(and(...conditions))
+    .orderBy(desc(storeGiftCardTemplates.createdAt))
+    .all();
+}
+
+
 

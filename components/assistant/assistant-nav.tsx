@@ -10,7 +10,6 @@ import {
   Users,
   LogOut,
   ShieldCheck,
-  Gift
 } from "lucide-react";
 import { handleLogout } from "@/app/actions/auth";
 import { cn } from "@/lib/utils";
@@ -19,7 +18,6 @@ import { DashboardSwitcher } from "@/components/shared/dashboard-switcher";
 const navItems = [
   { href: "/assistant", label: "Panel Principal", icon: LayoutDashboard },
   { href: "/assistant/verificaciones", label: "Verificaciones", icon: CheckCircle },
-  { href: "/assistant/gift-cards", label: "Verificación Gift Cards", icon: Gift },
   { href: "/assistant/pagos-pendientes", label: "Pagos Pendientes", icon: ClipboardList },
   { href: "/assistant/tiendas", label: "Gestión Tiendas", icon: Users },
 ];

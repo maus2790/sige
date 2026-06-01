@@ -64,6 +64,20 @@
       "when": 1780140001000,
       "tag": "0008_store_product_sku",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1780140002000,
+      "tag": "0009_store_gift_cards",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1780140003000,
+      "tag": "0010_store_gift_card_template_codes",
+      "breakpoints": true
     }
   ]
 }

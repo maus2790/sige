@@ -11,7 +11,8 @@ import {
   LayoutDashboard, 
   LogOut,
   Tags,
-  ReceiptText
+  ReceiptText,
+  Gift
 } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/dashboard/productos", label: "Productos", icon: Package },
   { href: "/dashboard/inventario", label: "Inventario", icon: Package },
   { href: "/dashboard/comercial", label: "Comercial", icon: Tags },
+  { href: "/dashboard/gift-cards", label: "Gift Cards", icon: Gift },
   { href: "/dashboard/facturacion", label: "Facturacion", icon: ReceiptText },
   { href: "/dashboard/pedidos", label: "Pedidos", icon: ShoppingCart },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },

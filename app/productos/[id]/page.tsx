@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ProductGallery } from "@/components/productos/product-gallery";
 import { ShareWhatsAppButton } from "@/components/productos/share-whatsapp-button";
+import { AddToCartButton } from "@/components/productos/add-to-cart-button";
 import { cn } from "@/lib/utils";
 import { ProductBackButton } from "@/components/productos/product-back-button";
 import { getSystemConfig } from "@/app/actions/config";
@@ -176,9 +177,14 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
               <Link href={`/tienda/${product.storeId}`}>
                 <Button variant="outline" size="sm" className="rounded-xl gap-2 font-bold h-10 px-4 border-2">
                   <Store className="w-4 h-4" />
-                  Ir a Tienda
+                  Ir Tienda
                 </Button>
               </Link>
+              <AddToCartButton
+                product={product}
+                disabled={isOutOfStock}
+                className="h-10 px-4 text-sm"
+              />
               <ShareWhatsAppButton
                 productId={product.id}
                 productName={product.name}
@@ -203,13 +209,20 @@ export default async function ProductoDetailPage({ params }: ProductoDetailPageP
                    <Link href={`/tienda/${product.storeId}`} className="flex-1">
                      <Button variant="outline" className="w-full h-9 rounded-xl gap-1.5 font-bold text-[10px] uppercase border-2 shadow-sm">
                        <Store className="w-3.5 h-3.5" />
-                       Tienda
+                       Ir Tienda
                      </Button>
                    </Link>
+                   <AddToCartButton
+                     product={product}
+                     disabled={isOutOfStock}
+                     label="Al Carrito"
+                     className="flex-1 h-9 rounded-xl border-2 text-[10px] font-bold gap-1.5 uppercase shadow-sm px-2"
+                     iconClassName="w-3.5 h-3.5"
+                   />
                    <ShareWhatsAppButton
                      productId={product.id}
                      productName={product.name}
-                     className="flex-1 h-9 rounded-xl border-2 text-[10px] font-bold gap-1.5 uppercase shadow-sm"
+                     className="flex-1 h-9 rounded-xl border-2 text-[10px] font-bold gap-1.5 shadow-sm px-2"
                    />
                  </div>
                }

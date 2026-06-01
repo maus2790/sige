@@ -83,12 +83,6 @@ export default async function AssistantHomePage() {
                 el pago y dejar una nota explicativa.
               </p>
             </div>
-            <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
-              <h3 className="font-semibold mb-2">🎁 Gift Cards</h3>
-              <p className="text-sm text-muted-foreground">
-                Activa las tarjetas de regalo verificando el comprobante de transferencia bancaria.
-              </p>
-            </div>
           </CardContent>
         </Card>
 

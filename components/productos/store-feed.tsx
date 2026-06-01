@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useInView } from "react-intersection-observer";
 import { useMemo, useEffect, useState } from "react";
@@ -143,7 +143,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
   const [isScrolled, setIsScrolled] = useState(false);
 
   const categoriesList = [
-    { value: "todos", label: "Todos", icon: "✨" },
+    { value: "todos", label: "Todos", icon: "âœ¨" },
     ...categories.map(c => ({ value: c.name, label: c.name, icon: c.icon }))
   ];
 
@@ -216,7 +216,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
 
   return (
     <div className={cn("store-theme-scope min-h-screen bg-background pb-24", storeThemeClass)}>
-      {/* ─── PREMIUM STORE HEADER ─── */}
+      {/* â”€â”€â”€ PREMIUM STORE HEADER â”€â”€â”€ */}
       <div className="relative">
         <div className={cn(
           "store-hero relative overflow-hidden rounded-b-[3rem] shadow-xl text-white",
@@ -312,27 +312,38 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
         </div>
       </div>
 
-      {/* ─── SEARCH & ACTIONS BAR ─── */}
+      {/* â”€â”€â”€ SEARCH & ACTIONS BAR â”€â”€â”€ */}
       <div className={`sticky top-16 z-40 transition-all duration-300 px-4 w-full max-w-6xl mx-auto -mt-6 mb-8 ${isScrolled ? 'drop-shadow-2xl' : ''}`}>
         <div className="flex items-center gap-3">
           
-          {/* Botón AÑADIR PRODUCTO (Solo Dueño) */}
+          {/* BotÃ³n AÃ‘ADIR PRODUCTO (Solo DueÃ±o) */}
           {isOwner && (
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
               className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(37,99,235,0.4)] border-2 border-blue-300 dark:border-blue-400/50 hover:bg-blue-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
             >
               <Plus className="h-5 w-5" />
-              Añadir Producto
+              AÃ±adir Producto
             </button>
           )}
+          {/* BotÃ³n ACTUALIZAR (Refresh) */}
+          <div className="hidden lg:flex">
+            <RefreshButton 
+              refreshAction={() => refreshStoreFeed(store.id)} 
+              onRefresh={() => refetch()} 
+              className="market-action store-action h-12 px-6 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all uppercase tracking-wider btn-shine"
+              iconClassName="h-5 w-5 text-purple-600 dark:text-purple-400"
+              labelClassName="font-black"
+            />
+          </div>
+
 
           {/* Buscador Central (Market Style) */}
           <div className="market-search-shell store-search-shell glass-card flex-1 rounded-2xl p-1 flex items-center border border-zinc-300 dark:border-white/40 shadow-xl dark:shadow-[0_0_20px_rgba(255,255,255,0.1)] backdrop-blur-xl bg-white dark:bg-zinc-900/90 btn-shine">
             <div className="relative flex-1">
               <input
                 type="text"
-                placeholder="¿Qué estás buscando en esta tienda?"
+                placeholder="Â¿QuÃ© estÃ¡s buscando en esta tienda?"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full h-10 pl-11 pr-4 rounded-xl bg-transparent border-none focus:ring-0 focus:outline-none text-foreground placeholder:text-zinc-500 dark:placeholder:text-zinc-400 font-bold text-sm"
@@ -362,17 +373,10 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             </div>
           </div>
 
-          {/* Botón ACTUALIZAR (Refresh) */}
-          <div className="hidden lg:flex">
-            <RefreshButton 
-              refreshAction={() => refreshStoreFeed(store.id)} 
-              onRefresh={() => refetch()} 
-            />
-          </div>
 
-          {/* Botón GIFT CARDS */}
+          {/* BotÃ³n GIFT CARDS */}
           <Link
-            href="/gift-cards"
+            href={`/gift-cards/buy?storeId=${store.id}`}
             className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
           >
             <Gift className="h-5 w-5" />
@@ -411,7 +415,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
         )}>
           <div className="flex items-center gap-3 mb-4">
             <div className="store-section-accent h-8 w-1.5 rounded-full bg-emerald-500"></div>
-            <h2 className="text-xl font-black tracking-tight">Ubicación</h2>
+            <h2 className="text-xl font-black tracking-tight">UbicaciÃ³n</h2>
           </div>
           <StoreMap 
             latitude={store.latitude} 
@@ -428,7 +432,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
         {/* Header: use same grid so titles align perfectly with their content below */}
         {showComplexLayout ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 md:gap-6 mb-6">
-            {/* Products title — spans same cols as the product cards */}
+            {/* Products title â€” spans same cols as the product cards */}
             <div className={cn(
               "col-span-2 flex items-center justify-between",
               products.length === 1 && !isOwner && "md:col-span-1"
@@ -436,7 +440,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
               <div className="flex items-center gap-3">
                 <div className={cn("store-section-accent h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
                 <h2 className="text-2xl font-black tracking-tight">
-                  {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
+                  {searchTerm || category !== "todos" ? "Resultados de bÃºsqueda" : "Productos Publicados"}
                 </h2>
               </div>
               {/* Badge only on mobile (desktop badge is below) */}
@@ -445,7 +449,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
               </Badge>
             </div>
 
-            {/* Map title — spans same cols as the map, hidden on mobile */}
+            {/* Map title â€” spans same cols as the map, hidden on mobile */}
             <div className={cn(
               "hidden md:flex items-center justify-between",
               products.length === 1 && !isOwner
@@ -454,7 +458,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             )}>
               <div className="flex items-center gap-3">
                 <div className="store-section-accent h-10 w-1.5 rounded-full bg-emerald-500"></div>
-                <h2 className="text-2xl font-black tracking-tight">Ubicación de la Tienda</h2>
+                <h2 className="text-2xl font-black tracking-tight">UbicaciÃ³n de la Tienda</h2>
               </div>
               <Badge variant="outline" className="rounded-full px-3 border-muted-foreground/20 text-muted-foreground font-bold text-xs">
                 {products.length} {products.length === 1 ? 'Item' : 'Items'}
@@ -466,7 +470,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             <div className="flex items-center gap-3">
               <div className={cn("store-section-accent h-10 w-1.5 rounded-full", searchTerm ? "bg-purple-600" : "bg-blue-600")}></div>
               <h2 className="text-2xl font-black tracking-tight">
-                {searchTerm || category !== "todos" ? "Resultados de búsqueda" : "Productos Publicados"}
+                {searchTerm || category !== "todos" ? "Resultados de bÃºsqueda" : "Productos Publicados"}
               </h2>
             </div>
             <Badge variant="outline" className="rounded-full px-4 border-muted-foreground/20 text-muted-foreground font-bold">
@@ -487,8 +491,8 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
             </h3>
             <p className="text-muted-foreground">
               {searchTerm 
-                ? "No encontramos productos que coincidan con tu búsqueda." 
-                : "Esta tienda aún no tiene productos publicados."}
+                ? "No encontramos productos que coincidan con tu bÃºsqueda." 
+                : "Esta tienda aÃºn no tiene productos publicados."}
             </p>
           </div>
         ) : (
@@ -505,7 +509,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                 </div>
               ))}
 
-              {/* CTA placeholder cards para dueños con menos de 2 productos */}
+              {/* CTA placeholder cards para dueÃ±os con menos de 2 productos */}
               {isOwner && products.length < 2 && Array.from({ length: 2 - products.length }).map((_, i) => {
                 const labels = products.length === 0
                   ? ["tu primer producto", "tu segundo producto"]
@@ -559,7 +563,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
                 </div>
               ))}
 
-              {/* Trailing CTA — visible para dueños con 2+ productos */}
+              {/* Trailing CTA â€” visible para dueÃ±os con 2+ productos */}
               {isOwner && products.length >= 2 && (
                 <button
                   onClick={() => window.dispatchEvent(new CustomEvent('open-publish-modal'))}
@@ -579,7 +583,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
               {isFetchingNextPage && (
                 <div className="flex items-center gap-2 px-8 py-4 bg-white dark:bg-card border rounded-full shadow-premium animate-bounce">
                   <Loader2 className="store-loader w-5 h-5 animate-spin text-blue-600" />
-                  <span className="store-loader-text text-sm font-black text-blue-600 uppercase tracking-widest">Cargando catálogo...</span>
+                  <span className="store-loader-text text-sm font-black text-blue-600 uppercase tracking-widest">Cargando catÃ¡logo...</span>
                 </div>
               )}
             </div>
