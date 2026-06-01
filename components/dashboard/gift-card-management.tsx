@@ -49,6 +49,7 @@ type Template = {
   designId: number;
   occasion: string | null;
   isActive: boolean;
+  customStyle?: string | null;
 };
 type SettingsData = {
   qrUrl: string | null;
@@ -76,6 +77,7 @@ type DraftCard = {
   occasion: string;
   designId: number;
   isActive: boolean;
+  customStyle?: string;
 };
 
 const defaultDraft = (): DraftCard => ({
@@ -84,17 +86,24 @@ const defaultDraft = (): DraftCard => ({
   message: '',
   occasion: 'otros',
   designId: 1,
-  isActive: true,
+  isActive: false,
+  customStyle: '',
 });
 
 export function GiftCardManagement({
   store,
   templates,
+  availableTemplates,
+  activeTemplates,
+  inactiveTemplates,
   settings,
   pending,
 }: {
   store: Store | null;
   templates: Template[];
+  availableTemplates: Template[];
+  activeTemplates: Template[];
+  inactiveTemplates: Template[];
   settings: SettingsData;
   pending: Pending[];
 }) {
@@ -110,6 +119,8 @@ export function GiftCardManagement({
   const [operatorPhone, setOperatorPhone] = useState(settings?.operatorPhone || '');
   const [maxAmount, setMaxAmount] = useState<string>(String(settings?.maxAmount ?? 5000));
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmingCard, setConfirmingCard] = useState<Pending | null>(null);
 
   if (!store) {
     return (
@@ -150,12 +161,13 @@ export function GiftCardManagement({
     for (const draft of drafts) {
       const result = await upsertStoreGiftCardTemplate({
         storeId: activeStore.id,
-        name: draft.name,
+        name: draft.name.trim() || 'Gift Card',
         amount: Number(draft.amount),
         description: draft.message,
         designId: draft.designId,
         occasion: draft.occasion,
         isActive: draft.isActive,
+        customStyle: draft.designId === 99 ? draft.customStyle : undefined,
       });
       if ('error' in result && result.error) {
         setSavingTemplates(false);
@@ -216,12 +228,25 @@ export function GiftCardManagement({
     window.location.reload();
   }
 
-  async function handleVerify(id: string, action: 'approve' | 'reject') {
-    setProcessingId(id);
-    const result = await verifyStoreGiftCardPayment(id, action);
+  function handleVerifyClick(card: Pending) {
+    setConfirmingId(card.id);
+    setConfirmingCard(card);
+  }
+
+  async function handleVerifyConfirm(action: 'approve' | 'reject') {
+    if (!confirmingId) return;
+    setProcessingId(confirmingId);
+    const result = await verifyStoreGiftCardPayment(confirmingId, action);
     setProcessingId(null);
+    setConfirmingId(null);
+    setConfirmingCard(null);
     if ('error' in result && result.error) return toast.error(result.error);
-    toast.success('message' in result ? result.message : 'Operacion completada');
+
+    if (action === 'approve' && 'code' in result && result.code) {
+      toast.success(`Gift Card activada. Código: ${result.code}`);
+    } else {
+      toast.success('message' in result ? result.message : 'Operacion completada');
+    }
     window.location.reload();
   }
 
@@ -230,7 +255,7 @@ export function GiftCardManagement({
   const activeDraft = drafts[activeDraftIndex] || drafts[0];
   const activeDraftVisual = getGiftCardTemplate(activeDraft.designId);
   const ActiveDraftIcon = getGiftCardOccasion(activeDraft.occasion).icon;
-  const createDisabled = savingTemplates || drafts.some((draft) => !draft.name || !draft.amount);
+  const createDisabled = savingTemplates || drafts.some((draft) => !draft.amount);
 
   return (
     <div className="space-y-6">
@@ -253,67 +278,287 @@ export function GiftCardManagement({
         </TabsList>
 
         <TabsContent value="cards" className="mt-0">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {templates.length === 0 ? (
-              <Card className="md:col-span-2 xl:col-span-3">
-                <CardContent className="py-14 text-center">
-                  <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
-                  <h2 className="font-black text-xl">Aun no creaste Gift Cards</h2>
-                  <p className="text-sm text-muted-foreground mb-5">Crea una o varias tarjetas para que tus clientes puedan regalarlas.</p>
-                  <Button onClick={() => setCreateOpen(true)} className="rounded-2xl">Crear ahora</Button>
-                </CardContent>
-              </Card>
-            ) : templates.map((template) => {
-              const visual = getGiftCardTemplate(template.designId);
-              const occasion = getGiftCardOccasion(template.occasion);
-              const OccasionIcon = occasion.icon;
-              return (
-                <article
-                  key={template.id}
-                  className={`card-shine group relative aspect-[1.62/1] overflow-hidden rounded-[2rem] p-5 text-white shadow-premium transition hover:-translate-y-0.5 hover:shadow-2xl ${visual.className}`}
-                >
-                  <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/25" />
-                  <div className="absolute right-4 top-4 opacity-15"><Gift size={104} /></div>
+          <Tabs defaultValue="available" className="space-y-5">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3 rounded-2xl h-12 p-1">
+              <TabsTrigger value="available" className="rounded-xl">Disponibles</TabsTrigger>
+              <TabsTrigger value="active" className="rounded-xl">Activas</TabsTrigger>
+              <TabsTrigger value="inactive" className="rounded-xl">Inactivas</TabsTrigger>
+            </TabsList>
 
-                  <div className="relative z-10 flex h-full flex-col justify-between">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{activeStore.name}</p>
-                        <h3 className="mt-1 text-2xl font-black leading-tight">{template.name}</h3>
-                        <p className="mt-1 flex items-center gap-1.5 text-xs font-bold opacity-75">
-                          <OccasionIcon className="h-3.5 w-3.5" />
-                          {occasion.label} · {visual.name}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-col items-end gap-2">
-                        <span className={`rounded-full px-3 py-1 text-[10px] font-black ring-1 ring-white/20 ${template.isActive ? 'bg-emerald-400/25' : 'bg-zinc-950/35'}`}>
-                          {template.isActive ? 'Activa' : 'Boceto'}
-                        </span>
-                        <Switch checked={template.isActive} onCheckedChange={(checked) => handleToggle(template.id, checked)} />
-                      </div>
-                    </div>
+            <TabsContent value="available" className="mt-0">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {availableTemplates.length === 0 ? (
+                  <Card className="md:col-span-2 xl:col-span-3">
+                    <CardContent className="py-14 text-center">
+                      <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <h2 className="font-black text-xl">Sin Gift Cards disponibles</h2>
+                      <p className="text-sm text-muted-foreground mb-5">Crea una o varias tarjetas para que tus clientes puedan regalarlas.</p>
+                      <Button onClick={() => setCreateOpen(true)} className="rounded-2xl">Crear ahora</Button>
+                    </CardContent>
+                  </Card>
+                ) : availableTemplates.map((template) => {
+                  const visual = getGiftCardTemplate(template.designId);
+                  const occasion = getGiftCardOccasion(template.occasion);
+                  const OccasionIcon = occasion.icon;
 
-                    {template.description && (
-                      <p className="max-w-[78%] overflow-hidden text-ellipsis text-xs font-semibold opacity-80">"{template.description}"</p>
-                    )}
+                  let customBgStyle: React.CSSProperties = {};
+                  if (template.designId === 99) {
+                    try {
+                      const cfg = template.customStyle ? JSON.parse(template.customStyle) : {};
+                      const colors = cfg.colors && Array.isArray(cfg.colors)
+                        ? cfg.colors
+                        : [cfg.color1 || '#ec4899', cfg.color2 || '#8b5cf6'];
+                      const angle = cfg.angle ?? 135;
 
-                    <div className="flex items-end justify-between gap-3 border-t border-white/20 pt-3">
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Codigo</p>
-                        <p className="font-mono text-xs font-black tracking-widest">
-                          {template.isActive && template.code ? template.code : 'SIN CODIGO'}
-                        </p>
+                      if (cfg.type === 'radial') {
+                        customBgStyle = { background: `radial-gradient(circle, ${colors.join(', ')})` };
+                      } else if (cfg.type === 'conic') {
+                        customBgStyle = { background: `conic-gradient(from ${angle}deg at center, ${colors.join(', ')})` };
+                      } else if (cfg.type === 'reflected') {
+                        const mirroredColors = [...colors, ...colors.slice(0, -1).reverse()];
+                        customBgStyle = { background: `linear-gradient(${angle}deg, ${mirroredColors.join(', ')})` };
+                      } else if (cfg.type === 'diamond') {
+                        const quad = [...colors, ...colors.slice(1, -1).reverse()];
+                        const fullCycle = [...quad, ...quad, ...quad, ...quad, colors[0]];
+                        const stops = fullCycle.map((color, index) => {
+                          const pct = (index / (fullCycle.length - 1)) * 100;
+                          return `${color} ${pct}%`;
+                        });
+                        customBgStyle = { background: `conic-gradient(from 45deg at center, ${stops.join(', ')})` };
+                      } else {
+                        customBgStyle = { background: `linear-gradient(${angle}deg, ${colors.join(', ')})` };
+                      }
+                    } catch (e) {
+                      customBgStyle = { background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' };
+                    }
+                  }
+
+                  return (
+                    <article
+                      key={template.id}
+                      className={`card-shine group relative aspect-[1.62/1] overflow-hidden rounded-[2rem] p-5 text-white shadow-premium transition hover:-translate-y-0.5 hover:shadow-2xl ${template.designId === 99 ? '' : visual.className}`}
+                      style={template.designId === 99 ? customBgStyle : undefined}
+                    >
+                      <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/25" />
+                      <div className="absolute right-4 top-4 opacity-15"><Gift size={104} /></div>
+
+                      <div className="relative z-10 flex h-full flex-col justify-between">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{activeStore.name}</p>
+                            <h3 className="mt-1 text-2xl font-black leading-tight">{template.name}</h3>
+                            <p className="mt-1 flex items-center gap-1.5 text-xs font-bold opacity-75">
+                              <OccasionIcon className="h-3.5 w-3.5" />
+                              {occasion.label} · {visual.name}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <span className="rounded-full bg-blue-400/25 px-3 py-1 text-[10px] font-black ring-1 ring-white/20">
+                              Disponible
+                            </span>
+                          </div>
+                        </div>
+
+                        {template.description && (
+                          <p className="max-w-[78%] overflow-hidden text-ellipsis text-xs font-semibold opacity-80">"{template.description}"</p>
+                        )}
+
+                        <div className="flex items-end justify-between gap-3 border-t border-white/20 pt-3">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Codigo</p>
+                            <p className="font-mono text-xs font-black tracking-widest">SIN CODIGO</p>
+                          </div>
+                          <p className="shrink-0 text-3xl font-black">Bs. {template.amount.toFixed(2)}</p>
+                        </div>
                       </div>
-                      <p className="shrink-0 text-3xl font-black">Bs. {template.amount.toFixed(2)}</p>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
-          {templates.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-4">{activeCount} activas · {inactiveCount} bocetos</p>
-          )}
+                    </article>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="active" className="mt-0">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {activeTemplates.length === 0 ? (
+                  <Card className="md:col-span-2 xl:col-span-3">
+                    <CardContent className="py-14 text-center">
+                      <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <h2 className="font-black text-xl">Sin Gift Cards activas</h2>
+                      <p className="text-sm text-muted-foreground">Cuando apruebes un pago, la Gift Card aparecerá aquí.</p>
+                    </CardContent>
+                  </Card>
+                ) : activeTemplates.map((template) => {
+                  const visual = getGiftCardTemplate(template.designId);
+                  const occasion = getGiftCardOccasion(template.occasion);
+                  const OccasionIcon = occasion.icon;
+
+                  let customBgStyle: React.CSSProperties = {};
+                  if (template.designId === 99) {
+                    try {
+                      const cfg = template.customStyle ? JSON.parse(template.customStyle) : {};
+                      const colors = cfg.colors && Array.isArray(cfg.colors)
+                        ? cfg.colors
+                        : [cfg.color1 || '#ec4899', cfg.color2 || '#8b5cf6'];
+                      const angle = cfg.angle ?? 135;
+
+                      if (cfg.type === 'radial') {
+                        customBgStyle = { background: `radial-gradient(circle, ${colors.join(', ')})` };
+                      } else if (cfg.type === 'conic') {
+                        customBgStyle = { background: `conic-gradient(from ${angle}deg at center, ${colors.join(', ')})` };
+                      } else if (cfg.type === 'reflected') {
+                        const mirroredColors = [...colors, ...colors.slice(0, -1).reverse()];
+                        customBgStyle = { background: `linear-gradient(${angle}deg, ${mirroredColors.join(', ')})` };
+                      } else if (cfg.type === 'diamond') {
+                        const quad = [...colors, ...colors.slice(1, -1).reverse()];
+                        const fullCycle = [...quad, ...quad, ...quad, ...quad, colors[0]];
+                        const stops = fullCycle.map((color, index) => {
+                          const pct = (index / (fullCycle.length - 1)) * 100;
+                          return `${color} ${pct}%`;
+                        });
+                        customBgStyle = { background: `conic-gradient(from 45deg at center, ${stops.join(', ')})` };
+                      } else {
+                        customBgStyle = { background: `linear-gradient(${angle}deg, ${colors.join(', ')})` };
+                      }
+                    } catch (e) {
+                      customBgStyle = { background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' };
+                    }
+                  }
+
+                  return (
+                    <article
+                      key={template.id}
+                      className={`card-shine group relative aspect-[1.62/1] overflow-hidden rounded-[2rem] p-5 text-white shadow-premium transition hover:-translate-y-0.5 hover:shadow-2xl ${template.designId === 99 ? '' : visual.className}`}
+                      style={template.designId === 99 ? customBgStyle : undefined}
+                    >
+                      <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/25" />
+                      <div className="absolute right-4 top-4 opacity-15"><Gift size={104} /></div>
+
+                      <div className="relative z-10 flex h-full flex-col justify-between">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{activeStore.name}</p>
+                            <h3 className="mt-1 text-2xl font-black leading-tight">{template.name}</h3>
+                            <p className="mt-1 flex items-center gap-1.5 text-xs font-bold opacity-75">
+                              <OccasionIcon className="h-3.5 w-3.5" />
+                              {occasion.label} · {visual.name}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <span className="rounded-full bg-emerald-400/25 px-3 py-1 text-[10px] font-black ring-1 ring-white/20">
+                              Activa
+                            </span>
+                          </div>
+                        </div>
+
+                        {template.description && (
+                          <p className="max-w-[78%] overflow-hidden text-ellipsis text-xs font-semibold opacity-80">"{template.description}"</p>
+                        )}
+
+                        <div className="flex items-end justify-between gap-3 border-t border-white/20 pt-3">
+                          <div className="flex-1">
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Codigo</p>
+                            <p className="font-mono text-xs font-black tracking-widest">{template.code || 'SIN CODIGO'}</p>
+                          </div>
+                          <p className="shrink-0 text-3xl font-black">Bs. {template.amount.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="inactive" className="mt-0">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {inactiveTemplates.length === 0 ? (
+                  <Card className="md:col-span-2 xl:col-span-3">
+                    <CardContent className="py-14 text-center">
+                      <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
+                      <h2 className="font-black text-xl">Sin Gift Cards inactivas</h2>
+                      <p className="text-sm text-muted-foreground">Las tarjetas desactivadas aparecerán aquí.</p>
+                    </CardContent>
+                  </Card>
+                ) : inactiveTemplates.map((template) => {
+                  const visual = getGiftCardTemplate(template.designId);
+                  const occasion = getGiftCardOccasion(template.occasion);
+                  const OccasionIcon = occasion.icon;
+
+                  let customBgStyle: React.CSSProperties = {};
+                  if (template.designId === 99) {
+                    try {
+                      const cfg = template.customStyle ? JSON.parse(template.customStyle) : {};
+                      const colors = cfg.colors && Array.isArray(cfg.colors)
+                        ? cfg.colors
+                        : [cfg.color1 || '#ec4899', cfg.color2 || '#8b5cf6'];
+                      const angle = cfg.angle ?? 135;
+
+                      if (cfg.type === 'radial') {
+                        customBgStyle = { background: `radial-gradient(circle, ${colors.join(', ')})` };
+                      } else if (cfg.type === 'conic') {
+                        customBgStyle = { background: `conic-gradient(from ${angle}deg at center, ${colors.join(', ')})` };
+                      } else if (cfg.type === 'reflected') {
+                        const mirroredColors = [...colors, ...colors.slice(0, -1).reverse()];
+                        customBgStyle = { background: `linear-gradient(${angle}deg, ${mirroredColors.join(', ')})` };
+                      } else if (cfg.type === 'diamond') {
+                        const quad = [...colors, ...colors.slice(1, -1).reverse()];
+                        const fullCycle = [...quad, ...quad, ...quad, ...quad, colors[0]];
+                        const stops = fullCycle.map((color, index) => {
+                          const pct = (index / (fullCycle.length - 1)) * 100;
+                          return `${color} ${pct}%`;
+                        });
+                        customBgStyle = { background: `conic-gradient(from 45deg at center, ${stops.join(', ')})` };
+                      } else {
+                        customBgStyle = { background: `linear-gradient(${angle}deg, ${colors.join(', ')})` };
+                      }
+                    } catch (e) {
+                      customBgStyle = { background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' };
+                    }
+                  }
+
+                  return (
+                    <article
+                      key={template.id}
+                      className={`card-shine group relative aspect-[1.62/1] overflow-hidden rounded-[2rem] p-5 text-white shadow-premium transition opacity-60 hover:-translate-y-0.5 hover:shadow-2xl ${template.designId === 99 ? '' : visual.className}`}
+                      style={template.designId === 99 ? customBgStyle : undefined}
+                    >
+                      <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/25" />
+                      <div className="absolute right-4 top-4 opacity-15"><Gift size={104} /></div>
+
+                      <div className="relative z-10 flex h-full flex-col justify-between">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{activeStore.name}</p>
+                            <h3 className="mt-1 text-2xl font-black leading-tight">{template.name}</h3>
+                            <p className="mt-1 flex items-center gap-1.5 text-xs font-bold opacity-75">
+                              <OccasionIcon className="h-3.5 w-3.5" />
+                              {occasion.label} · {visual.name}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-2">
+                            <span className="rounded-full bg-zinc-500/25 px-3 py-1 text-[10px] font-black ring-1 ring-white/20">
+                              Inactiva
+                            </span>
+                          </div>
+                        </div>
+
+                        {template.description && (
+                          <p className="max-w-[78%] overflow-hidden text-ellipsis text-xs font-semibold opacity-80">"{template.description}"</p>
+                        )}
+
+                        <div className="flex items-end justify-between gap-3 border-t border-white/20 pt-3">
+                          <div>
+                            <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Codigo</p>
+                            <p className="font-mono text-xs font-black tracking-widest">-</p>
+                          </div>
+                          <p className="shrink-0 text-3xl font-black">Bs. {template.amount.toFixed(2)}</p>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="verifications" className="mt-0">
@@ -349,10 +594,10 @@ export function GiftCardManagement({
                     </a>
                   )}
                   <div className="grid grid-cols-2 gap-2">
-                    <Button variant="destructive" size="sm" onClick={() => handleVerify(card.id, 'reject')} disabled={processingId === card.id}>
+                    <Button variant="destructive" size="sm" onClick={() => handleVerifyConfirm('reject')} disabled={processingId === card.id}>
                       <XCircle className="h-4 w-4 mr-1" /> Rechazar
                     </Button>
-                    <Button size="sm" onClick={() => handleVerify(card.id, 'approve')} disabled={processingId === card.id}>
+                    <Button size="sm" onClick={() => handleVerifyClick(card)} disabled={processingId === card.id}>
                       {processingId === card.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
                       Aprobar
                     </Button>
@@ -456,6 +701,7 @@ export function GiftCardManagement({
                     occasion: activeDraft.occasion,
                     designId: activeDraft.designId,
                     isActive: activeDraft.isActive,
+                    customStyle: activeDraft.customStyle,
                   }}
                   onChange={(patch) => updateDraft(activeDraftIndex, {
                     name: patch.templateName ?? activeDraft.name,
@@ -464,6 +710,7 @@ export function GiftCardManagement({
                     occasion: patch.occasion ?? activeDraft.occasion,
                     designId: patch.designId ?? activeDraft.designId,
                     isActive: patch.isActive ?? activeDraft.isActive,
+                    customStyle: patch.customStyle ?? activeDraft.customStyle,
                   })}
                   showTemplateFields={createStep === 1}
                   showActiveSwitch={createStep === 3}
@@ -526,7 +773,6 @@ export function GiftCardManagement({
                     className="h-12 rounded-2xl"
                     onClick={() => {
                       if (createStep === 1) {
-                        if (!activeDraft.name.trim()) return toast.error('El nombre es obligatorio');
                         if (!activeDraft.amount || Number(activeDraft.amount) <= 0) return toast.error('Ingresa un monto válido');
                         if (Number(activeDraft.amount) > Number(maxAmount || 5000)) return toast.error(`El monto máximo es Bs. ${Number(maxAmount || 5000)}`);
                       }
@@ -544,6 +790,77 @@ export function GiftCardManagement({
               </div>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!confirmingCard} onOpenChange={(open) => {
+        if (!open) {
+          setConfirmingId(null);
+          setConfirmingCard(null);
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>¿Activar Gift Card?</DialogTitle>
+            <DialogDescription>
+              El monto será reservado y disponible para compras en tu tienda
+            </DialogDescription>
+          </DialogHeader>
+
+          {confirmingCard && (
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-4 space-y-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Monto:</span>
+                  <span className="font-bold text-lg">Bs. {confirmingCard.amount.toFixed(2)}</span>
+                </div>
+                <div className="border-t pt-3 space-y-2">
+                  <div>
+                    <span className="text-muted-foreground">De:</span> {confirmingCard.senderName}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Para:</span> {confirmingCard.recipientName || 'Sin nombre'}
+                  </div>
+                  {confirmingCard.paymentMethod && (
+                    <div>
+                      <span className="text-muted-foreground">Método:</span> {confirmingCard.paymentMethod}
+                    </div>
+                  )}
+                  {confirmingCard.transactionNumber && (
+                    <div>
+                      <span className="text-muted-foreground">Transacción:</span> {confirmingCard.transactionNumber}
+                    </div>
+                  )}
+                  {confirmingCard.createdAt && (
+                    <div>
+                      <span className="text-muted-foreground">Fecha:</span> {new Date(confirmingCard.createdAt).toLocaleDateString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-900">
+                <p className="font-semibold mb-1">⚠️ Advertencia</p>
+                <p>Al activar esta tarjeta, el dinero estará disponible para que los clientes realicen compras.</p>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => {
+              setConfirmingId(null);
+              setConfirmingCard(null);
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => handleVerifyConfirm('approve')} disabled={processingId === confirmingId}>
+              {processingId === confirmingId ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Activando...</>
+              ) : (
+                <><Check className="h-4 w-4 mr-2" /> Confirmar</>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

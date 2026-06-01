@@ -10,6 +10,7 @@ export const storeGiftCardTemplates = sqliteTable('store_gift_card_templates', {
   designId: integer('design_id').notNull().default(1),
   occasion: text('occasion'),
   isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+  customStyle: text('custom_style'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });
@@ -56,6 +57,7 @@ export const giftCards = sqliteTable('gift_cards', {
   scheduledAt: integer('scheduled_at', { mode: 'timestamp' }),
   deliveredAt: integer('delivered_at', { mode: 'timestamp' }),
   openedAt: integer('opened_at', { mode: 'timestamp' }),
+  customStyle: text('custom_style'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull(),
 });

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useInView } from "react-intersection-observer";
 import { useMemo, useEffect, useState } from "react";
@@ -49,9 +49,10 @@ interface StoreFeedProps {
   initialProducts: any[];
   myUserId?: string | null;
   categories?: any[];
+  hasGiftCards?: boolean;
 }
 
-export function StoreFeed({ store, initialProducts, myUserId, categories = [] }: StoreFeedProps) {
+export function StoreFeed({ store, initialProducts, myUserId, categories = [], hasGiftCards = false }: StoreFeedProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { premiumTheme } = usePremiumTheme();
@@ -374,14 +375,16 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           </div>
 
 
-          {/* BotÃ³n GIFT CARDS */}
-          <Link
-            href={`/gift-cards/buy?storeId=${store.id}`}
-            className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
-          >
-            <Gift className="h-5 w-5" />
-            Gift Cards
-          </Link>
+          {/* Botón GIFT CARDS DE LA TIENDA - solo si la tienda tiene gift cards activas */}
+          {hasGiftCards && (
+            <Link
+              href={`/gift-cards/buy?storeId=${store.id}`}
+              className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
+            >
+              <Gift className="h-5 w-5" />
+              Gift Cards de la Tienda
+            </Link>
+          )}
         </div>
       </div>
 
@@ -623,6 +626,17 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [] }:
           onOpenChange={setShowSettings} 
           onThemeChange={setStoreThemeOverride}
         />
+      )}
+
+      {/* Botón flotante Gift Cards de la Tienda - Solo en móvil, solo si hay gift cards */}
+      {hasGiftCards && (
+        <Link
+          href={`/gift-cards/buy?storeId=${store.id}`}
+          className="md:hidden fixed bottom-20 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl bg-purple-600 text-white font-black text-xs shadow-2xl shadow-purple-500/40 hover:bg-purple-700 active:scale-95 transition-all uppercase tracking-wider"
+        >
+          <Gift className="h-4 w-4" />
+          Gift Cards
+        </Link>
       )}
     </div>
   );

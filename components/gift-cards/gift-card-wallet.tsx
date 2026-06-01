@@ -50,13 +50,30 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
 
   const activeSent = sent.filter(isCardActive);
   const activeReceived = received.filter(isCardActive);
-  const activeMine = mine.filter(isCardActive);
+  
+  const pendingVerification = [...sent, ...received, ...saved]
+    .filter((c, index, self) => 
+      c.status === 'pending_payment' && 
+      self.findIndex(t => t.id === c.id) === index
+    );
 
-  const historyCards = [...sent, ...received, ...saved].filter(c => !isCardActive(c)).sort((a, b) => {
-    const tA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt || 0).getTime();
-    const tB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt || 0).getTime();
-    return tB - tA;
-  });
+  const activeMine = [
+    ...mine,
+    ...pendingVerification
+  ].filter((c, index, self) => self.findIndex(t => t.id === c.id) === index);
+
+  // History: ALL cards (excluding pending_payment — those haven't been activated yet)
+  // This is now a full transaction log: active, sent, received, expired, redeemed, etc.
+  const historyCards = [...sent, ...received, ...saved]
+    .filter((c, index, self) =>
+      c.status !== 'pending_payment' &&
+      self.findIndex(t => t.id === c.id) === index
+    )
+    .sort((a, b) => {
+      const tA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt || 0).getTime();
+      const tB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt || 0).getTime();
+      return tB - tA;
+    });
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
@@ -110,7 +127,7 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
             >
               <Link href="/gift-cards/buy">
                 <Gift className="h-4 w-4 mr-1.5" />
-                Regalar
+                Crear
               </Link>
             </Button>
             <Button
@@ -213,13 +230,13 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
             {historyCards.length === 0 ? (
               <EmptyState
                 icon={<Clock className="h-10 w-10" />}
-                title="Historial limpio"
-                description="No tienes tarjetas expiradas o con saldo cero en tu historial."
+                title="Historial vacío"
+                description="Aquí apareceran todas tus transacciones de Gift Cards una vez activadas."
               />
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold">Transacciones completadas</h3>
+                  <h3 className="text-lg font-bold">Historial de Gift Cards</h3>
                   <Button
                     variant="destructive"
                     size="sm"
@@ -241,19 +258,43 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
                 </div>
                 <div className="space-y-2">
                   {historyCards.map((gc) => {
-                    const type = sent.some(s => s.id === gc.id) ? 'sent' : received.some(r => r.id === gc.id) ? 'received' : 'saved';
+                    const isSent = sent.some(s => s.id === gc.id);
+                    const isReceived = received.some(r => r.id === gc.id);
+                    const isSaved = !isSent && !isReceived;
+
+                    // Contextual label
+                    let label = '';
+                    if (isSent) label = gc.recipientName ? `Regalado a ${gc.recipientName}` : 'Gift Card Enviada';
+                    else if (isReceived) label = (gc as any).senderName ? `Regalo de ${(gc as any).senderName}` : 'Gift Card Recibida';
+                    else label = 'Gift Card propia';
+
+                    // Status badge
                     const isExpired = new Date(gc.expiresAt) < new Date();
-                    const statusLabel = isExpired ? 'Expirada' : gc.balance === 0 ? 'Canjeada' : 'Inactiva';
-                    
+                    let statusLabel = 'Activa';
+                    let statusColor = 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400';
+                    if (gc.status === 'cancelled') { statusLabel = 'Cancelada'; statusColor = 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'; }
+                    else if (isExpired) { statusLabel = 'Expirada'; statusColor = 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'; }
+                    else if (gc.balance === 0) { statusLabel = 'Canjeada'; statusColor = 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'; }
+
                     return (
-                      <div key={gc.id} className="flex items-center justify-between p-4 bg-card border rounded-xl hover:shadow-md transition-shadow">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            {type === 'sent' && <Send className="h-4 w-4 text-muted-foreground" />}
-                            {type === 'received' && <Inbox className="h-4 w-4 text-muted-foreground" />}
-                            {type === 'saved' && <Wallet className="h-4 w-4 text-muted-foreground" />}
-                            <span className="font-bold text-sm">{gc.recipientName}</span>
-                            <span className="text-xs text-muted-foreground">• {statusLabel}</span>
+                      <div key={gc.id} className="flex items-center justify-between p-4 bg-card border rounded-xl hover:shadow-md transition-shadow gap-3">
+                        {/* Icon */}
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                          isSent ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+                          : isReceived ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/40 dark:text-purple-400'
+                          : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400'
+                        }`}>
+                          {isSent && <Send className="h-4 w-4" />}
+                          {isReceived && <Inbox className="h-4 w-4" />}
+                          {isSaved && <Wallet className="h-4 w-4" />}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="font-bold text-sm truncate">{label}</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${statusColor}`}>
+                              {statusLabel}
+                            </span>
                           </div>
                           <div className="text-xs text-muted-foreground">
                             Bs. {gc.amount.toFixed(2)} • {gc.code}
@@ -262,6 +303,7 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
                             {new Date(gc.createdAt).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </div>
                         </div>
+
                         <Button
                           variant="ghost"
                           size="sm"
@@ -276,7 +318,7 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
                               }
                             }
                           }}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
                         >
                           Eliminar
                         </Button>

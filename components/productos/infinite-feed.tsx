@@ -1,12 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useInView } from "react-intersection-observer";
 import { useEffect, useState } from "react";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
-import Link from "next/link";
+
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, Filter, Home, Search, Tags, ShoppingCart, X, Gift, Plus, Download } from "lucide-react";
+import { Loader2, Package, Filter, Home, Search, Tags, ShoppingCart, X, RefreshCw, Plus, Download } from "lucide-react";
 import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -132,14 +132,14 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </button>
         )}
 
-        {/* BotÃ³n Gift Card (Arriba Derecha) */}
-        <Link
-          href="/gift-cards"
-          className="market-hero-pill absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500"
+        {/* Botón Actualizar (Arriba Derecha) */}
+        <button
+          onClick={() => refetch()}
+          className="market-hero-pill absolute top-4 right-4 z-20 flex items-center gap-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-full border border-white/30 text-white text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg group animate-in fade-in duration-500 cursor-pointer"
         >
-          <Gift className="w-3.5 h-3.5 group-hover:animate-bounce" />
-          <span>Gift Cards</span>
-        </Link>
+          <RefreshCw className="w-3.5 h-3.5 group-hover:animate-spin" />
+          <span>Actualizar</span>
+        </button>
 
         <div className="relative z-10 max-w-4xl mx-auto text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <div className="flex justify-center mb-6">
@@ -221,14 +221,14 @@ export function InfiniteFeed({ search: initialSearch = "", initialCategories }: 
           </div>
 
 
-          {/* BotÃ³n GIFT CARDS (Pill llamativa con animaciÃ³n de brillo y bordes mÃ¡s coloridos) */}
-          <Link
-            href="/gift-cards"
-            className="market-action market-action-gift hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
-          >
-            <Gift className="h-5 w-5" />
-            Gift Cards
-          </Link>
+
+
+
+
+
+
+
+
         </div>
       </div>
       {category !== "todos" && (

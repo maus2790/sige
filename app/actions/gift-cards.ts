@@ -10,7 +10,7 @@ import { nextauthConfig } from "@/lib/nextauth.config";
 import crypto from 'crypto';
 import { uploadImageFromBuffer, deleteImage, extractKeyFromUrl } from '@/lib/cloudflare';
 import { sendOneSignalNotification } from '@/lib/onesignal';
-import { generateSecureGiftCardCode } from '@/lib/gift-card-code';
+import { generateSecureGiftCardCode, hashGiftCardCode } from '@/lib/gift-card-code';
 
 export async function getCurrentUser() {
   const session = await getServerSession(nextauthConfig);
@@ -42,20 +42,6 @@ export async function getSIGEUsers() {
   return allUsers;
 }
 
-function generateGiftCode(): string {
-  const prefix = 'GIFT';
-  // Generar código corto de 4 caracteres alfanuméricos
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Sin caracteres confusos como I, O, 0, 1
-  let random = '';
-  for (let i = 0; i < 4; i++) {
-    random += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return `${prefix}-${random}`;
-}
-
-function generateQrHash(code: string): string {
-  return crypto.createHash('sha256').update(code).digest('hex');
-}
 
 async function addHistoryRecord(
   giftCardId: string,
@@ -85,10 +71,45 @@ export async function getUserGiftCards() {
   if (!user) {
     redirect('/login');
   }
-  
+
   const userGiftCards = await db
-    .select()
+    .select({
+      id: giftCards.id,
+      code: giftCards.code,
+      qrHash: giftCards.qrHash,
+      amount: giftCards.amount,
+      balance: giftCards.balance,
+      expiresAt: giftCards.expiresAt,
+      status: giftCards.status,
+      senderId: giftCards.senderId,
+      senderName: users.name,
+      recipientId: giftCards.recipientId,
+      recipientEmail: giftCards.recipientEmail,
+      recipientPhone: giftCards.recipientPhone,
+      recipientName: giftCards.recipientName,
+      businessId: giftCards.businessId,
+      storeGiftCardTemplateId: giftCards.storeGiftCardTemplateId,
+      productId: giftCards.productId,
+      message: giftCards.message,
+      templateId: giftCards.templateId,
+      occasion: giftCards.occasion,
+      customImageUrl: giftCards.customImageUrl,
+      cardImageUrl: giftCards.cardImageUrl,
+      receiptUrl: giftCards.receiptUrl,
+      paymentMethod: giftCards.paymentMethod,
+      transactionNumber: giftCards.transactionNumber,
+      rejectionReason: giftCards.rejectionReason,
+      verifiedBy: giftCards.verifiedBy,
+      verifiedAt: giftCards.verifiedAt,
+      scheduledAt: giftCards.scheduledAt,
+      deliveredAt: giftCards.deliveredAt,
+      openedAt: giftCards.openedAt,
+      customStyle: giftCards.customStyle,
+      createdAt: giftCards.createdAt,
+      updatedAt: giftCards.updatedAt,
+    })
     .from(giftCards)
+    .leftJoin(users, eq(giftCards.senderId, users.id))
     .where(
       or(
         eq(giftCards.senderId, user.id),
@@ -404,34 +425,19 @@ export async function purchaseGiftCard(data: {
     if (amount > 10000) {
       return { error: 'El monto maximo por Gift Card es Bs. 10.000' };
     }
-    const availableBalance = await getTotalBalance();
-    if (availableBalance < amount) {
-      return { error: 'Saldo insuficiente para crear la Gift Card' };
+    if (businessId === 'SIGE-GLOBAL') {
+      const availableBalance = await getTotalBalance();
+      if (availableBalance < amount) {
+        return { error: 'Saldo insuficiente para crear la Gift Card' };
+      }
+    } else {
+      status = 'pending_payment';
     }
   }
 
-  // Generar código único verificando que no exista
-  let code = generateGiftCode();
-  let attempts = 0;
-  const maxAttempts = 10;
-  
-  while (attempts < maxAttempts) {
-    const existing = await db
-      .select()
-      .from(giftCards)
-      .where(eq(giftCards.code, code))
-      .get();
-    
-    if (!existing) break;
-    code = generateGiftCode();
-    attempts++;
-  }
-  
-  if (attempts >= maxAttempts) {
-    return { error: 'No se pudo generar un código único. Intenta nuevamente.' };
-  }
-
-  const qrHash = generateQrHash(code);
+  // Generar código único de forma segura
+  const code = await generateUniqueGiftCardCode();
+  const qrHash = hashGiftCardCode(code);
   const id = crypto.randomUUID();
 
   // Expiración en 1 año
@@ -439,7 +445,7 @@ export async function purchaseGiftCard(data: {
   expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
   await db.transaction(async (tx) => {
-    if (!data.storeGiftCardTemplateId) {
+    if (!data.storeGiftCardTemplateId && businessId === 'SIGE-GLOBAL') {
       await consumeGiftCardBalance(tx, user.id, amount);
     }
 
@@ -472,13 +478,16 @@ export async function purchaseGiftCard(data: {
     });
   });
 
-  // Registrar en historial
-  if (data.saveToWallet) {
-    await addHistoryRecord(id, user.id, 'saved', `Gift card guardada en billetera`, data.amount);
-  } else {
-    await addHistoryRecord(id, user.id, 'sent', `Gift card enviada a ${data.recipientName || data.recipientEmail || 'usuario'}`, data.amount);
-    if (data.recipientId) {
-      await addHistoryRecord(id, data.recipientId, 'received', `Gift card recibida de ${user.name || 'usuario'}`, data.amount);
+  // Registrar en historial solo si la tarjeta ya está activa
+  // Si está pending_payment, el historial se crea cuando el vendedor la active
+  if (status !== 'pending_payment') {
+    if (data.saveToWallet) {
+      await addHistoryRecord(id, user.id, 'saved', `Gift card guardada en billetera`, data.amount);
+    } else {
+      await addHistoryRecord(id, user.id, 'sent', `Gift card enviada a ${data.recipientName || data.recipientEmail || 'usuario'}`, data.amount);
+      if (data.recipientId) {
+        await addHistoryRecord(id, data.recipientId, 'received', `Gift card recibida de ${user.name || 'usuario'}`, data.amount);
+      }
     }
   }
 
@@ -501,28 +510,9 @@ export async function requestGiftCardBalanceTopUp(data: {
     return { error: 'El monto maximo de carga es Bs. 10.000' };
   }
 
-  // Generar código único verificando que no exista
-  let code = generateGiftCode();
-  let attempts = 0;
-  const maxAttempts = 10;
-  
-  while (attempts < maxAttempts) {
-    const existing = await db
-      .select()
-      .from(giftCards)
-      .where(eq(giftCards.code, code))
-      .get();
-    
-    if (!existing) break;
-    code = generateGiftCode();
-    attempts++;
-  }
-  
-  if (attempts >= maxAttempts) {
-    return { error: 'No se pudo generar un código único. Intenta nuevamente.' };
-  }
-
-  const qrHash = generateQrHash(code);
+  // Generar código único de forma segura
+  const code = await generateUniqueGiftCardCode();
+  const qrHash = hashGiftCardCode(code);
   const id = crypto.randomUUID();
   const expiresAt = new Date();
   expiresAt.setFullYear(expiresAt.getFullYear() + 1);
@@ -622,18 +612,48 @@ export async function updateGiftCardRecipient(data: {
 
   const giftCard = await getGiftCardById(data.giftCardId);
   if (!giftCard) return { error: 'Gift card no encontrada' };
-  if (giftCard.senderId !== user.id) return { error: 'No autorizado' };
+  if (giftCard.senderId !== user.id && giftCard.recipientId !== user.id) {
+    return { error: 'No autorizado' };
+  }
+
+  const updates: any = {
+    recipientName: data.recipientName,
+    recipientEmail: data.recipientEmail || null,
+    recipientId: data.recipientId || null,
+    recipientPhone: data.recipientPhone || null,
+    updatedAt: new Date(),
+  };
+
+  // Si el destinatario decide regalarla, se convierte en el nuevo remitente
+  const isRegifting = giftCard.recipientId === user.id;
+  if (isRegifting) {
+    updates.senderId = user.id;
+  }
 
   await db
     .update(giftCards)
-    .set({
-      recipientName: data.recipientName,
-      recipientEmail: data.recipientEmail || null,
-      recipientId: data.recipientId || null,
-      recipientPhone: data.recipientPhone || null,
-      updatedAt: new Date(),
-    })
+    .set(updates)
     .where(eq(giftCards.id, data.giftCardId));
+
+  // Registrar historial del re-regalo
+  if (isRegifting) {
+    await addHistoryRecord(
+      data.giftCardId,
+      user.id,
+      'sent',
+      `Gift card regalada a ${data.recipientName || data.recipientEmail || 'usuario'}`,
+      giftCard.balance
+    );
+    if (data.recipientId) {
+      await addHistoryRecord(
+        data.giftCardId,
+        data.recipientId,
+        'received',
+        `Gift card recibida de ${user.name}`,
+        giftCard.balance
+      );
+    }
+  }
 
   revalidatePath('/gift-cards');
   revalidatePath(`/gift-cards/${data.giftCardId}`);
@@ -896,27 +916,40 @@ export async function verifyGiftCardPayment(giftCardId: string, action: "approve
     })
     .where(eq(giftCards.id, giftCardId));
 
-  // Si se aprueba, enviar la notificación pendiente
-  if (action === "approve" && giftCard.recipientId) {
+  // Si se aprueba, registrar historial y enviar notificación
+  if (action === "approve") {
     // Obtener info del remitente para el mensaje
     const sender = await db.select().from(users).where(eq(users.id, giftCard.senderId)).get();
     const senderName = sender?.name || "Alguien";
 
-    await sendOneSignalNotification({
-      userIds: [giftCard.recipientId],
-      title: "¡Has recibido un regalo! 🎁",
-      message: `${senderName} te ha enviado una Gift Card de Bs. ${giftCard.amount.toFixed(2)}.`,
-      url: `/gift-cards/${giftCardId}`
-    });
+    // Registrar historial ahora que la tarjeta está activa
+    const isSavedToWallet = giftCard.senderId === giftCard.recipientId;
+    if (isSavedToWallet) {
+      await addHistoryRecord(giftCardId, giftCard.senderId, 'saved', `Gift card guardada en billetera`, giftCard.amount);
+    } else {
+      await addHistoryRecord(giftCardId, giftCard.senderId, 'sent', `Gift card enviada a ${giftCard.recipientName || giftCard.recipientEmail || 'usuario'}`, giftCard.amount);
+      if (giftCard.recipientId) {
+        await addHistoryRecord(giftCardId, giftCard.recipientId, 'received', `Gift card recibida de ${senderName}`, giftCard.amount);
+      }
+    }
 
-    const { createNotification } = await import('./notifications');
-    await createNotification({
-      userId: giftCard.recipientId,
-      title: "¡Has recibido un regalo! 🎁",
-      message: `${senderName} te ha enviado una Gift Card de Bs. ${giftCard.amount.toFixed(2)}.`,
-      type: 'gift_card',
-      link: `/gift-cards/${giftCardId}`
-    });
+    if (giftCard.recipientId) {
+      await sendOneSignalNotification({
+        userIds: [giftCard.recipientId],
+        title: "¡Has recibido un regalo! 🎁",
+        message: `${senderName} te ha enviado una Gift Card de Bs. ${giftCard.amount.toFixed(2)}.`,
+        url: `/gift-cards/${giftCardId}`
+      });
+
+      const { createNotification } = await import('./notifications');
+      await createNotification({
+        userId: giftCard.recipientId,
+        title: "¡Has recibido un regalo! 🎁",
+        message: `${senderName} te ha enviado una Gift Card de Bs. ${giftCard.amount.toFixed(2)}.`,
+        type: 'gift_card',
+        link: `/gift-cards/${giftCardId}`
+      });
+    }
   }
 
   revalidatePath("/assistant/pagos-pendientes");
@@ -1324,6 +1357,9 @@ export async function getMyStoreGiftCardData() {
     return {
       store: null,
       templates: [],
+      availableTemplates: [],
+      activeTemplates: [],
+      inactiveTemplates: [],
       settings: null,
       pending: [],
     };
@@ -1354,9 +1390,17 @@ export async function getMyStoreGiftCardData() {
       .all(),
   ]);
 
+  // Categorize templates by status and code assignment
+  const availableTemplates = templates.filter((t) => !t.isActive && !t.code);
+  const activeTemplates = templates.filter((t) => t.isActive && t.code);
+  const inactiveTemplates = templates.filter((t) => !t.isActive && t.code);
+
   return {
     store,
     templates,
+    availableTemplates,
+    activeTemplates,
+    inactiveTemplates,
     settings: settings || null,
     pending: pendingRows.map((row) => ({
       ...row.giftCard,
@@ -1375,6 +1419,7 @@ export async function upsertStoreGiftCardTemplate(data: {
   designId?: number;
   occasion?: string;
   isActive?: boolean;
+  customStyle?: string;
 }) {
   const auth = await ensureStoreOwner(data.storeId);
   if ('error' in auth) return auth;
@@ -1391,7 +1436,7 @@ export async function upsertStoreGiftCardTemplate(data: {
   if (data.amount > maxLimit) return { error: `El monto maximo por Gift Card es Bs. ${maxLimit.toLocaleString()}` };
 
   const now = new Date();
-  const isActive = data.isActive ?? true;
+  const isActive = data.isActive ?? false;
   const payload = {
     storeId: data.storeId,
     name: data.name.trim(),
@@ -1400,6 +1445,7 @@ export async function upsertStoreGiftCardTemplate(data: {
     designId: data.designId || 1,
     occasion: data.occasion || null,
     isActive,
+    customStyle: data.customStyle || null,
     updatedAt: now,
   };
 
@@ -1412,17 +1458,15 @@ export async function upsertStoreGiftCardTemplate(data: {
 
     if (!existing) return { error: 'Gift Card de tienda no encontrada' };
 
-    const code = isActive ? (existing.code || await generateUniqueGiftCardCode()) : null;
-
     await db
       .update(storeGiftCardTemplates)
-      .set({ ...payload, code })
+      .set({ ...payload, code: existing.code })
       .where(eq(storeGiftCardTemplates.id, data.id));
   } else {
     await db.insert(storeGiftCardTemplates).values({
       id: crypto.randomUUID(),
       ...payload,
-      code: isActive ? await generateUniqueGiftCardCode() : null,
+      code: null,
       createdAt: now,
     });
   }
@@ -1444,7 +1488,7 @@ export async function toggleStoreGiftCardTemplate(templateId: string, isActive: 
     .update(storeGiftCardTemplates)
     .set({
       isActive,
-      code: isActive ? await generateUniqueGiftCardCode() : null,
+      code: isActive ? undefined : null,
       updatedAt: new Date(),
     })
     .where(and(eq(storeGiftCardTemplates.id, templateId), eq(storeGiftCardTemplates.storeId, store.id)));
@@ -1525,6 +1569,28 @@ export async function verifyStoreGiftCardPayment(
   if (card.status !== 'pending_payment') return { error: 'Esta Gift Card ya fue procesada' };
 
   const nextStatus = action === 'approve' ? 'active' : 'cancelled';
+  let assignedCode: string | null = null;
+
+  if (action === 'approve' && card.storeGiftCardTemplateId) {
+    // Assign code to template if it doesn't have one
+    const template = await db
+      .select({ code: storeGiftCardTemplates.code })
+      .from(storeGiftCardTemplates)
+      .where(eq(storeGiftCardTemplates.id, card.storeGiftCardTemplateId))
+      .get();
+
+    if (template && !template.code) {
+      const newCode = await generateUniqueGiftCardCode();
+      await db
+        .update(storeGiftCardTemplates)
+        .set({ code: newCode, updatedAt: new Date() })
+        .where(eq(storeGiftCardTemplates.id, card.storeGiftCardTemplateId));
+      assignedCode = newCode;
+    } else if (template && template.code) {
+      assignedCode = template.code;
+    }
+  }
+
   await db
     .update(giftCards)
     .set({
@@ -1537,6 +1603,21 @@ export async function verifyStoreGiftCardPayment(
     .where(eq(giftCards.id, giftCardId));
 
   if (action === 'approve') {
+    // Obtener nombre del remitente para el historial
+    const sender = await db.select({ name: users.name }).from(users).where(eq(users.id, card.senderId)).get();
+    const senderName = sender?.name || 'Alguien';
+
+    // Registrar historial ahora que la tarjeta está activa
+    const isSavedToWallet = card.senderId === card.recipientId;
+    if (isSavedToWallet) {
+      await addHistoryRecord(giftCardId, card.senderId, 'saved', `Gift card guardada en billetera`, card.amount);
+    } else {
+      await addHistoryRecord(giftCardId, card.senderId, 'sent', `Gift card enviada a ${card.recipientName || card.recipientEmail || 'usuario'}`, card.amount);
+      if (card.recipientId) {
+        await addHistoryRecord(giftCardId, card.recipientId, 'received', `Gift card recibida de ${senderName}`, card.amount);
+      }
+    }
+
     if (card.recipientId) {
       await sendOneSignalNotification({
         userIds: [card.recipientId],
@@ -1562,6 +1643,7 @@ export async function verifyStoreGiftCardPayment(
   return {
     success: true,
     message: action === 'approve' ? 'Gift Card activada correctamente' : 'Gift Card rechazada',
+    ...(assignedCode && { code: assignedCode }),
   };
 }
 
@@ -1606,7 +1688,10 @@ async function generateUniqueGiftCardCode() {
 }
 
 export async function getActiveStoreGiftCardTemplates(storeId?: string) {
-  const conditions = [eq(storeGiftCardTemplates.isActive, true)];
+  const conditions = [
+    eq(storeGiftCardTemplates.isActive, true),
+    sql`${storeGiftCardTemplates.code} IS NOT NULL`,
+  ];
   if (storeId) {
     conditions.push(eq(storeGiftCardTemplates.storeId, storeId));
   }

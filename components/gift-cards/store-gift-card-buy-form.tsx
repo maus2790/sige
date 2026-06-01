@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
+import { toPng } from 'html-to-image';
 import {
   ArrowLeft,
   Calendar,
@@ -29,7 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { purchaseGiftCard, getSIGEUsers, getStoreGiftCardPaymentSettings } from '@/app/actions/gift-cards';
+import { purchaseGiftCard, getSIGEUsers, getStoreGiftCardPaymentSettings, uploadGiftCardImage } from '@/app/actions/gift-cards';
 import { getGiftCardTemplate } from './gift-card-templates';
 import { GIFT_CARD_MAX_MESSAGE_LENGTH, getGiftCardMessages, getGiftCardOccasion } from './gift-card-customization';
 import { GiftCardDesigner, GiftCardPreview } from './gift-card-designer';
@@ -44,6 +46,7 @@ type StoreGiftCardTemplate = {
   occasion: string | null;
   storeName: string;
   storeLogoUrl: string | null;
+  customStyle?: string | null;
 };
 
 type PaymentSettings = {
@@ -74,11 +77,14 @@ export function StoreGiftCardBuyForm({
   initialPaymentSettings?: PaymentSettings;
 }) {
   const router = useRouter();
+  const { data: session } = useSession();
+  const cardRef = useRef<HTMLDivElement | null>(null);
   const [step, setStep] = useState(0); // step 0 is selection screen
   const [isCustomDesign, setIsCustomDesign] = useState<boolean | null>(null);
   
   // Custom design step fields
   const [customAmount, setCustomAmount] = useState('100');
+  const [customStyle, setCustomStyle] = useState('');
   const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id || '');
   const selectedTemplate = templates.find((item) => item.id === selectedTemplateId) || null;
   
@@ -173,31 +179,59 @@ export function StoreGiftCardBuyForm({
 
   async function handleSubmit() {
     if (!isCustomDesign && !selectedTemplate) return toast.error('Selecciona una Gift Card');
-    if (!recipientName) return toast.error('Ingresa el nombre del destinatario');
-    if (deliveryOption === 'schedule' && (!scheduleDate || !scheduleTime)) return toast.error('Selecciona fecha y hora');
-    if (deliveryMethod === 'whatsapp' && !recipientPhone) return toast.error('Ingresa WhatsApp');
-    if (deliveryMethod === 'email' && !recipientEmail) return toast.error('Ingresa email');
-    if (deliveryMethod === 'sige' && !recipientId) return toast.error('Selecciona usuario SIGE');
     if (paymentMethod !== 'operator' && !receiptFile) return toast.error('Sube comprobante de pago');
     if (paymentMethod !== 'operator' && !transactionNumber) return toast.error('Ingresa numero de transaccion');
 
     setLoading(true);
     try {
       const receiptUrl = paymentMethod === 'operator' ? '' : await uploadReceipt();
-      const scheduledAt = deliveryOption === 'schedule' ? new Date(`${scheduleDate}T${scheduleTime}`) : undefined;
       
+      let cardImageUrl: string | undefined = undefined;
+      if (cardRef.current) {
+        toast.loading('Generando diseño de tarjeta...', { id: 'card-image' });
+        try {
+          const dataUrl = await toPng(cardRef.current, {
+            cacheBust: true,
+            pixelRatio: 2,
+            style: { margin: '0' },
+            fontEmbedCSS: '',
+            filter: (node: any) => {
+              if (node.tagName === 'STYLE' || node.tagName === 'LINK') {
+                try {
+                  const sheet = (node as any).sheet;
+                  if (sheet && !sheet.cssRules) return false;
+                } catch {
+                  return false;
+                }
+              }
+              return true;
+            }
+          });
+          const imgResult = await uploadGiftCardImage(dataUrl);
+          if (imgResult.success) {
+            cardImageUrl = imgResult.url;
+            toast.success('Diseño guardado', { id: 'card-image' });
+          } else {
+            toast.error('Error al guardar diseño en Cloudflare', { id: 'card-image' });
+          }
+        } catch (e) {
+          console.error("Error generating card image:", e);
+        }
+      }
+
+      const buyerName = session?.user?.name || 'Mi Inventario';
       const payload: any = {
-        recipientName,
-        recipientEmail: deliveryMethod === 'email' || deliveryMethod === 'sige' ? recipientEmail : undefined,
-        recipientPhone: deliveryMethod === 'whatsapp' ? recipientPhone : undefined,
-        recipientId: deliveryMethod === 'sige' ? recipientId : undefined,
+        recipientName: buyerName,
         message,
         templateId: selectedDesignId,
         occasion: selectedOccasion,
         paymentMethod,
         transactionNumber,
         receiptUrl,
-        scheduledAt,
+        cardImageUrl,
+        customStyle: selectedDesignId === 99 ? customStyle : undefined,
+        saveToWallet: true,
+        recipientId: (session?.user as any)?.id,
       };
 
       if (isCustomDesign) {
@@ -214,8 +248,8 @@ export function StoreGiftCardBuyForm({
         return;
       }
 
-      toast.success('Gift Card enviada a verificacion de la tienda');
-      router.push('/gift-cards?tab=sent');
+      toast.success('Gift Card enviada a verificación de la tienda');
+      router.push('/gift-cards?tab=mine');
     } catch (error: any) {
       toast.error(error.message || 'No se pudo procesar la Gift Card');
     } finally {
@@ -265,26 +299,31 @@ export function StoreGiftCardBuyForm({
       )}
 
       <div className="max-w-5xl mx-auto px-4 py-8 grid gap-6 lg:grid-cols-[minmax(300px,430px)_1fr] items-start">
-        {step > 0 ? (
-          <GiftCardPreview
-            value={{
-              templateName: isCustomDesign ? 'Mi Gift Card' : (selectedTemplate?.name || 'Gift Card'),
-              storeName: isCustomDesign ? activeStoreName : (selectedTemplate?.storeName || 'Tienda'),
-              amount: displayAmount,
-              recipientName,
-              message,
-              occasion: selectedOccasion,
-              designId: selectedDesignId,
-            }}
-            isBuyer={true}
-          />
-        ) : (
-          <div className="aspect-[1.62/1] w-full bg-muted/30 rounded-[2rem] border-2 border-dashed flex flex-col justify-center items-center p-8 text-center text-muted-foreground">
-            <Gift className="h-10 w-10 mb-2 text-muted-foreground/60 animate-pulse" />
-            <p className="font-bold text-sm">Previsualización de la Gift Card</p>
-            <p className="text-xs">Se actualizará en tiempo real a medida que diseñes tu tarjeta.</p>
-          </div>
-        )}
+        <div className="sticky top-[136px] z-20 self-start bg-background/95 pb-4 pt-1 backdrop-blur-md lg:sticky lg:top-32 lg:bg-transparent lg:backdrop-blur-none w-full">
+          {step > 0 ? (
+            <div ref={cardRef} className="w-full">
+              <GiftCardPreview
+                value={{
+                  templateName: isCustomDesign ? 'Mi Gift Card' : (selectedTemplate?.name || 'Gift Card'),
+                  storeName: isCustomDesign ? activeStoreName : (selectedTemplate?.storeName || 'Tienda'),
+                  amount: displayAmount,
+                  recipientName,
+                  message,
+                  occasion: selectedOccasion,
+                  designId: selectedDesignId,
+                  customStyle: isCustomDesign ? customStyle : (selectedTemplate?.customStyle || undefined),
+                }}
+                isBuyer={true}
+              />
+            </div>
+          ) : (
+            <div className="aspect-[1.62/1] w-full bg-muted/30 rounded-[2rem] border-2 border-dashed flex flex-col justify-center items-center p-8 text-center text-muted-foreground">
+              <Gift className="h-10 w-10 mb-2 text-muted-foreground/60 animate-pulse" />
+              <p className="font-bold text-sm">Previsualización de la Gift Card</p>
+              <p className="text-xs">Se actualizará en tiempo real a medida que diseñes tu tarjeta.</p>
+            </div>
+          )}
+        </div>
 
         <Card className="overflow-hidden">
           {step === 0 && (
@@ -460,67 +499,24 @@ export function StoreGiftCardBuyForm({
                     message,
                     occasion: selectedOccasion,
                     designId: selectedDesignId,
+                    customStyle,
                   }}
                   onChange={(patch) => {
                     if (patch.designId !== undefined) setSelectedDesignId(patch.designId);
+                    if (patch.customStyle !== undefined) setCustomStyle(patch.customStyle);
                   }}
                   sections={['style']}
                   hidePreview={true}
                 />
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" className="flex-1" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-2" /> Atrás</Button>
-                  <Button className="flex-1" onClick={() => { loadSigeUsers(); setStep(4); }}>Siguiente <ChevronRight className="h-4 w-4 ml-2" /></Button>
-                </div>
-              </CardContent>
-            </>
-          )}
-
-          {step === 4 && isCustomDesign && (
-            <>
-              <CardHeader>
-                <CardTitle>Destinatario y Envío</CardTitle>
-                <CardDescription>Configura para quién es y cuándo se enviará la tarjeta.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button variant={deliveryOption === 'send' ? 'default' : 'outline'} className="rounded-xl" onClick={() => setDeliveryOption('send')}><Send className="h-4 w-4 mr-2" />Enviar ahora</Button>
-                  <Button variant={deliveryOption === 'schedule' ? 'default' : 'outline'} className="rounded-xl" onClick={() => setDeliveryOption('schedule')}><Calendar className="h-4 w-4 mr-2" />Programar</Button>
-                </div>
-                {deliveryOption === 'schedule' && <div className="grid grid-cols-2 gap-2"><Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} /><Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} /></div>}
-                
-                <div className="space-y-2">
-                  <Label>Nombre del destinatario</Label>
-                  <Input placeholder="Nombre del destinatario" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="h-11" />
-                </div>
-                
-                <div className="grid grid-cols-3 gap-2">
-                  <Button variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'} className="rounded-xl" onClick={() => setDeliveryMethod('whatsapp')}><MessageCircle className="h-4 w-4 mr-2" /> WhatsApp</Button>
-                  <Button variant={deliveryMethod === 'email' ? 'default' : 'outline'} className="rounded-xl" onClick={() => setDeliveryMethod('email')}><Mail className="h-4 w-4 mr-2" /> Email</Button>
-                  <Button variant={deliveryMethod === 'sige' ? 'default' : 'outline'} className="rounded-xl" onClick={() => setDeliveryMethod('sige')}><User className="h-4 w-4 mr-2" /> SIGE</Button>
-                </div>
-                {deliveryMethod === 'whatsapp' && <Input placeholder="+591 7XXXXXXX" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} className="h-11" />}
-                {deliveryMethod === 'email' && <Input type="email" placeholder="correo@ejemplo.com" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="h-11" />}
-                {deliveryMethod === 'sige' && (
-                  <select className="w-full h-11 rounded-md border bg-background px-3" value={recipientId} onChange={(e) => {
-                    setRecipientId(e.target.value);
-                    const selected = sigeUsers.find((item) => item.id === e.target.value);
-                    if (selected) {
-                      setRecipientName(selected.name);
-                      setRecipientEmail(selected.email);
-                    }
-                  }}>
-                    <option value="">Selecciona usuario SIGE</option>
-                    {sigeUsers.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.email})</option>)}
-                  </select>
-                )}
-                
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(3)}><ArrowLeft className="h-4 w-4 mr-2" /> Atrás</Button>
                   <Button className="flex-1" onClick={() => setStep(5)}>Siguiente <ChevronRight className="h-4 w-4 ml-2" /></Button>
                 </div>
               </CardContent>
             </>
           )}
+
+
 
           {step === 5 && (
             <>
@@ -529,40 +525,7 @@ export function StoreGiftCardBuyForm({
                 <CardDescription>Realiza el pago y registra el comprobante. El comercio verificará el pago para activar la tarjeta.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* For pre-designed flow, we render the recipient fields inside Step 5 to keep it as a single direct checkout step */}
-                {!isCustomDesign && (
-                  <div className="space-y-4 border-b pb-4">
-                    <h4 className="font-black text-xs uppercase tracking-wider text-primary">Datos del destinatario</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button variant={deliveryOption === 'send' ? 'default' : 'outline'} className="rounded-xl h-10 text-xs" onClick={() => setDeliveryOption('send')}><Send className="h-3 w-3 mr-1" />Enviar ahora</Button>
-                      <Button variant={deliveryOption === 'schedule' ? 'default' : 'outline'} className="rounded-xl h-10 text-xs" onClick={() => setDeliveryOption('schedule')}><Calendar className="h-3 w-3 mr-1" />Programar</Button>
-                    </div>
-                    {deliveryOption === 'schedule' && <div className="grid grid-cols-2 gap-2"><Input type="date" value={scheduleDate} onChange={(e) => setScheduleDate(e.target.value)} /><Input type="time" value={scheduleTime} onChange={(e) => setScheduleTime(e.target.value)} /></div>}
-                    
-                    <Input placeholder="Nombre del destinatario" value={recipientName} onChange={(e) => setRecipientName(e.target.value)} className="h-11" />
-                    
-                    <div className="grid grid-cols-3 gap-2">
-                      <Button variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'} className="rounded-xl h-10 text-xs px-1" onClick={() => setDeliveryMethod('whatsapp')}><MessageCircle className="h-3 w-3 mr-1" /> WA</Button>
-                      <Button variant={deliveryMethod === 'email' ? 'default' : 'outline'} className="rounded-xl h-10 text-xs px-1" onClick={() => setDeliveryMethod('email')}><Mail className="h-3 w-3 mr-1" /> Email</Button>
-                      <Button variant={deliveryMethod === 'sige' ? 'default' : 'outline'} className="rounded-xl h-10 text-xs px-1" onClick={() => setDeliveryMethod('sige')}><User className="h-3 w-3 mr-1" /> SIGE</Button>
-                    </div>
-                    {deliveryMethod === 'whatsapp' && <Input placeholder="+591 7XXXXXXX" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} className="h-11" />}
-                    {deliveryMethod === 'email' && <Input type="email" placeholder="correo@ejemplo.com" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value)} className="h-11" />}
-                    {deliveryMethod === 'sige' && (
-                      <select className="w-full h-11 rounded-md border bg-background px-3" value={recipientId} onChange={(e) => {
-                        setRecipientId(e.target.value);
-                        const selected = sigeUsers.find((item) => item.id === e.target.value);
-                        if (selected) {
-                          setRecipientName(selected.name);
-                          setRecipientEmail(selected.email);
-                        }
-                      }}>
-                        <option value="">Selecciona usuario SIGE</option>
-                        {sigeUsers.map((item) => <option key={item.id} value={item.id}>{item.name} ({item.email})</option>)}
-                      </select>
-                    )}
-                  </div>
-                )}
+
 
                 <div className="grid grid-cols-4 gap-2">
                   {PAYMENT_METHODS.map(({ id, icon: Icon }) => (
@@ -621,7 +584,7 @@ export function StoreGiftCardBuyForm({
                 )}
 
                 <div className="grid grid-cols-2 gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setStep(isCustomDesign ? 4 : 1)} disabled={loading}>
+                  <Button variant="outline" onClick={() => setStep(isCustomDesign ? 3 : 1)} disabled={loading}>
                     <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
                   </Button>
                   <Button onClick={handleSubmit} disabled={loading} className="font-black">
