@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import {
+  AlertCircle,
   BadgeCheck,
   Check,
   CheckCircle,
@@ -98,6 +99,7 @@ export function GiftCardManagement({
   inactiveTemplates,
   settings,
   pending,
+  giftCardsEnabled,
 }: {
   store: Store | null;
   templates: Template[];
@@ -106,6 +108,7 @@ export function GiftCardManagement({
   inactiveTemplates: Template[];
   settings: SettingsData;
   pending: Pending[];
+  giftCardsEnabled: boolean;
 }) {
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState<1 | 2 | 3>(1);
@@ -259,6 +262,26 @@ export function GiftCardManagement({
 
   return (
     <div className="space-y-6">
+      {!giftCardsEnabled && (
+        <div className="p-4 rounded-lg border border-amber-200 bg-amber-50">
+          <div className="flex gap-3">
+            <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+            <div className="text-amber-800 text-sm">
+              <p className="font-semibold mb-2">Gift Cards deshabilitado</p>
+              <p className="mb-3">El servicio de gift cards está deshabilitado en tu tienda. Los clientes no pueden ver ni comprar gift cards.</p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-amber-300 hover:bg-amber-100"
+                onClick={() => window.location.href = '/dashboard/configuracion'}
+              >
+                Ir a Configuración
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight">Gift Cards</h1>

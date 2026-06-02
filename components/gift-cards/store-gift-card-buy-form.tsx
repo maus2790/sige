@@ -298,8 +298,30 @@ export function StoreGiftCardBuyForm({
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-4 py-8 grid gap-6 lg:grid-cols-[minmax(300px,430px)_1fr] items-start">
-        <div className="sticky top-[136px] z-20 self-start bg-background/95 pb-4 pt-1 backdrop-blur-md lg:sticky lg:top-32 lg:bg-transparent lg:backdrop-blur-none w-full">
+      <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col lg:grid gap-6 lg:grid-cols-[minmax(300px,430px)_1fr] items-start">
+        {/* Mostrar preview en móvil después del header, antes del contenido */}
+        <div className="lg:hidden w-full">
+          {step > 0 && (
+            <div ref={cardRef} className="w-full mb-6">
+              <GiftCardPreview
+                value={{
+                  templateName: isCustomDesign ? 'Mi Gift Card' : (selectedTemplate?.name || 'Gift Card'),
+                  storeName: isCustomDesign ? activeStoreName : (selectedTemplate?.storeName || 'Tienda'),
+                  amount: displayAmount,
+                  recipientName,
+                  message,
+                  occasion: selectedOccasion,
+                  designId: selectedDesignId,
+                  customStyle: isCustomDesign ? customStyle : (selectedTemplate?.customStyle || undefined),
+                }}
+                isBuyer={true}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Preview pegada en desktop */}
+        <div className="hidden lg:block sticky top-[136px] z-20 self-start bg-background/95 pb-4 pt-1 backdrop-blur-md lg:sticky lg:top-32 lg:bg-transparent lg:backdrop-blur-none w-full">
           {step > 0 ? (
             <div ref={cardRef} className="w-full">
               <GiftCardPreview

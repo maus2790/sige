@@ -13,6 +13,7 @@ export default async function DashboardGiftCardsPage() {
       inactiveTemplates={data.inactiveTemplates as any}
       settings={data.settings}
       pending={data.pending as any}
+      giftCardsEnabled={data.giftCardsEnabled}
     />
   );
 }

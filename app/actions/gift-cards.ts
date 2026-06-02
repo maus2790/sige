@@ -1361,6 +1361,7 @@ export async function getMyStoreGiftCardData() {
       activeTemplates: [],
       inactiveTemplates: [],
       settings: null,
+      giftCardsEnabled: true,
       pending: [],
     };
   }
@@ -1402,6 +1403,7 @@ export async function getMyStoreGiftCardData() {
     activeTemplates,
     inactiveTemplates,
     settings: settings || null,
+    giftCardsEnabled: (store.giftCardsEnabled ?? true) as boolean,
     pending: pendingRows.map((row) => ({
       ...row.giftCard,
       senderName: row.senderName || 'Usuario desconocido',
@@ -1691,6 +1693,7 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
   const conditions = [
     eq(storeGiftCardTemplates.isActive, true),
     sql`${storeGiftCardTemplates.code} IS NOT NULL`,
+    eq(stores.giftCardsEnabled, true),
   ];
   if (storeId) {
     conditions.push(eq(storeGiftCardTemplates.storeId, storeId));
@@ -1713,6 +1716,50 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
     .where(and(...conditions))
     .orderBy(desc(storeGiftCardTemplates.createdAt))
     .all();
+}
+
+export async function toggleStoreGiftCardsEnabled(enabled: boolean) {
+  const sessionUser = await getCurrentUser();
+  if (!sessionUser || (sessionUser.role !== "seller" && sessionUser.role !== "superadmin")) {
+    return { error: "No autorizado" };
+  }
+
+  const store = await db
+    .select({ id: stores.id })
+    .from(stores)
+    .where(eq(stores.userId, sessionUser.id))
+    .get();
+
+  if (!store) {
+    return { error: "Tienda no encontrada" };
+  }
+
+  await db
+    .update(stores)
+    .set({ giftCardsEnabled: enabled })
+    .where(eq(stores.id, store.id));
+
+  revalidatePath("/dashboard/gift-cards");
+  revalidatePath("/dashboard/configuracion");
+
+  return { success: true, enabled };
+}
+
+export async function getStoreGiftCardsEnabled() {
+  const sessionUser = await getCurrentUser();
+  if (!sessionUser) {
+    redirect('/login');
+  }
+
+  const storeData = await db
+    .select({
+      giftCardsEnabled: stores.giftCardsEnabled,
+    })
+    .from(stores)
+    .where(eq(stores.userId, sessionUser.id))
+    .get();
+
+  return storeData?.giftCardsEnabled ?? true;
 }
 
 

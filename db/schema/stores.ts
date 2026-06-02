@@ -15,6 +15,7 @@ export const stores = sqliteTable("stores", {
     rating: real("rating").default(0),
     latitude: real("latitude"),
     longitude: real("longitude"),
+    giftCardsEnabled: integer("gift_cards_enabled", { mode: "boolean" }).default(true),
     createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
