@@ -6,10 +6,11 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
 import { CheckBalanceDialog } from './check-balance-dialog';
+import { StoresGrid } from './stores-grid';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Gift, Send, Clock,
+  Gift, Send, Clock, Store,
   ChevronRight, Wallet, Inbox, Search
 } from 'lucide-react';
 
@@ -18,6 +19,7 @@ interface GiftCardWalletProps {
   received: any[];
   mine?: any[];
   saved?: any[];
+  stores?: any[];
   totalBalance: number;
   stats: {
     totalCards: number;
@@ -30,7 +32,7 @@ interface GiftCardWalletProps {
   } | null;
 }
 
-export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBalance, stats }: GiftCardWalletProps) {
+export function GiftCardWallet({ sent, received, mine = [], saved = [], stores = [], totalBalance, stats }: GiftCardWalletProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') || 'mine';
@@ -150,6 +152,7 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
             { id: 'mine', label: 'Mis Gift Cards', value: activeMine.length, icon: Wallet },
             { id: 'sent', label: 'Enviadas', value: activeSent.length, icon: Send },
             { id: 'received', label: 'Recibidas', value: activeReceived.length, icon: Inbox },
+            { id: 'stores', label: 'Tiendas', value: stores.length, icon: Store },
             { id: 'history', label: 'Historial', value: historyCards.length, icon: Clock },
           ].map(({ id, label, value, icon: Icon }) => (
             <button 
@@ -225,6 +228,10 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], totalBal
             )}
           </TabsContent>
 
+
+          <TabsContent value="stores" className="space-y-4 mt-0">
+            <StoresGrid stores={stores} />
+          </TabsContent>
 
           <TabsContent value="history" className="space-y-4 mt-0">
             {historyCards.length === 0 ? (

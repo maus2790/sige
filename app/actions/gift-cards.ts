@@ -1762,5 +1762,77 @@ export async function getStoreGiftCardsEnabled() {
   return storeData?.giftCardsEnabled ?? true;
 }
 
+export async function getStoresWithGiftCards() {
+  const conditions = [
+    eq(storeGiftCardTemplates.isActive, true),
+    sql`${storeGiftCardTemplates.code} IS NOT NULL`,
+    eq(stores.giftCardsEnabled, true),
+  ];
+
+  const results = await db
+    .select({
+      storeId: stores.id,
+      storeName: stores.name,
+      storeLogoUrl: stores.logoUrl,
+      storeBannerUrl: stores.bannerUrl,
+      templateId: storeGiftCardTemplates.id,
+      templateName: storeGiftCardTemplates.name,
+      templateAmount: storeGiftCardTemplates.amount,
+      templateImage: storeGiftCardTemplates.customStyle,
+      designId: storeGiftCardTemplates.designId,
+      createdAt: storeGiftCardTemplates.createdAt,
+    })
+    .from(storeGiftCardTemplates)
+    .innerJoin(stores, eq(storeGiftCardTemplates.storeId, stores.id))
+    .where(and(...conditions))
+    .orderBy(desc(stores.createdAt))
+    .all();
+
+  // Group by store and keep only unique stores with their first gift card
+  const storesMap = new Map();
+  for (const result of results) {
+    if (!storesMap.has(result.storeId)) {
+      storesMap.set(result.storeId, {
+        id: result.storeId,
+        name: result.storeName,
+        logoUrl: result.storeLogoUrl,
+        bannerUrl: result.storeBannerUrl,
+        firstTemplateId: result.templateId,
+        firstTemplateName: result.templateName,
+        firstTemplateAmount: result.templateAmount,
+        firstTemplateDesignId: result.designId,
+      });
+    }
+  }
+
+  return Array.from(storesMap.values());
+}
+
+export async function getStoreWithGiftCards(storeId: string) {
+  const store = await db
+    .select({
+      id: stores.id,
+      name: stores.name,
+      logoUrl: stores.logoUrl,
+      bannerUrl: stores.bannerUrl,
+      description: stores.description,
+      giftCardsEnabled: stores.giftCardsEnabled,
+    })
+    .from(stores)
+    .where(eq(stores.id, storeId))
+    .get();
+
+  if (!store) {
+    return null;
+  }
+
+  const templates = await getActiveStoreGiftCardTemplates(storeId);
+
+  return {
+    ...store,
+    templates: templates,
+  };
+}
+
 
 
