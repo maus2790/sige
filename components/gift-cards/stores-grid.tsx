@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MapPin, Gift, Store, Sparkles } from 'lucide-react';
+import { GiftCardPreview } from './gift-card-designer';
+import { getGiftCardTemplate } from './gift-card-templates';
 
 interface StoreWithGiftCard {
   id: string;
@@ -39,92 +41,101 @@ export function StoresGrid({ stores }: StoresGridProps) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {stores.map((store) => (
-        <Card
-          key={store.id}
-          className="overflow-hidden hover:shadow-lg transition-shadow"
-        >
-          {/* Thumbnail */}
-          <div className="relative h-40 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden">
-            {store.logoUrl ? (
-              <Image
-                src={store.logoUrl}
-                alt={store.name}
-                fill
-                className="object-cover"
-              />
-            ) : (
-              <Gift className="h-16 w-16 text-white opacity-50" />
-            )}
-          </div>
+      {stores.map((store) => {
+        const visual = getGiftCardTemplate(store.firstTemplateDesignId);
 
-          <CardContent className="p-4 space-y-3">
-            {/* Store info */}
-            <div className="space-y-2">
-              <div>
-                <h3 className="font-bold text-base line-clamp-2">{store.name}</h3>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                  <Gift className="h-3 w-3" />
-                  {store.firstTemplateName}
-                </p>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-primary">
-                  Bs. {store.firstTemplateAmount}
-                </span>
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                  Disponible
-                </span>
+        return (
+          <Card
+            key={store.id}
+            className="overflow-hidden hover:shadow-lg transition-shadow"
+          >
+            {/* Gift Card Preview Thumbnail */}
+            <div className="relative h-40 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden">
+              <div className="w-full h-full flex items-center justify-center p-2 scale-75">
+                <GiftCardPreview
+                  value={{
+                    templateName: store.firstTemplateName,
+                    storeName: store.name,
+                    amount: store.firstTemplateAmount,
+                    recipientName: '',
+                    message: '',
+                    occasion: 'otros',
+                    designId: store.firstTemplateDesignId,
+                  }}
+                />
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t">
-              {/* Visitar tienda */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto flex flex-col gap-1 py-2"
-                onClick={() => router.push(`/tienda/${store.id}`)}
-                title="Visitar tienda"
-              >
-                <Store className="h-4 w-4" />
-                <span className="text-[10px]">Visitar</span>
-              </Button>
+            <CardContent className="p-4 space-y-3">
+              {/* Store info */}
+              <div className="space-y-2">
+                <div>
+                  <h3 className="font-bold text-base line-clamp-2">{store.name}</h3>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                    <Gift className="h-3 w-3" />
+                    {store.firstTemplateName}
+                  </p>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="font-semibold text-primary">
+                    Bs. {store.firstTemplateAmount}
+                  </span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                    Disponible
+                  </span>
+                </div>
+              </div>
 
-              {/* Comprar */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto flex flex-col gap-1 py-2"
-                onClick={() => router.push(`/tienda/${store.id}/gift-cards`)}
-                title="Comprar gift card"
-              >
-                <Gift className="h-4 w-4" />
-                <span className="text-[10px]">Comprar</span>
-              </Button>
+              {/* Action buttons */}
+              <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+                {/* Visitar tienda */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto flex flex-col gap-1 py-2"
+                  onClick={() => router.push(`/tienda/${store.id}`)}
+                  title="Visitar tienda"
+                >
+                  <Store className="h-4 w-4" />
+                  <span className="text-[10px]">Visitar</span>
+                </Button>
 
-              {/* Personalizar */}
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto flex flex-col gap-1 py-2"
-                onClick={() => {
-                  // Redirigir a /gift-cards/buy con el storeId preseleccionado
-                  // pero también indicar que es un flujo personalizado
-                  router.push(
-                    `/gift-cards/buy?storeId=${store.id}&customDesign=true`
-                  );
-                }}
-                title="Diseño personalizado"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span className="text-[10px]">Diseñar</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+                {/* Comprar (directo a payment step) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto flex flex-col gap-1 py-2"
+                  onClick={() =>
+                    router.push(
+                      `/tienda/${store.id}/gift-cards?templateId=${store.firstTemplateId}&step=payment`
+                    )
+                  }
+                  title="Comprar gift card"
+                >
+                  <Gift className="h-4 w-4" />
+                  <span className="text-[10px]">Comprar</span>
+                </Button>
+
+                {/* Personalizar (custom design) */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto flex flex-col gap-1 py-2"
+                  onClick={() => {
+                    router.push(
+                      `/tienda/${store.id}/gift-cards?customDesign=true&storeId=${store.id}`
+                    );
+                  }}
+                  title="Diseño personalizado"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span className="text-[10px]">Diseñar</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 }

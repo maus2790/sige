@@ -71,21 +71,29 @@ export function StoreGiftCardBuyForm({
   templates,
   initialStoreId,
   initialPaymentSettings,
+  initialTemplateId,
+  initialStep,
+  skipSelectionStep,
+  initialCustomDesign,
 }: {
   templates: StoreGiftCardTemplate[];
   initialStoreId?: string;
   initialPaymentSettings?: PaymentSettings;
+  initialTemplateId?: string;
+  initialStep?: number;
+  skipSelectionStep?: boolean;
+  initialCustomDesign?: boolean;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
   const cardRef = useRef<HTMLDivElement | null>(null);
-  const [step, setStep] = useState(0); // step 0 is selection screen
-  const [isCustomDesign, setIsCustomDesign] = useState<boolean | null>(null);
+  const [step, setStep] = useState(initialStep ?? 0); // step 0 is selection screen
+  const [isCustomDesign, setIsCustomDesign] = useState<boolean | null>(initialCustomDesign ?? null);
   
   // Custom design step fields
   const [customAmount, setCustomAmount] = useState('100');
   const [customStyle, setCustomStyle] = useState('');
-  const [selectedTemplateId, setSelectedTemplateId] = useState(templates[0]?.id || '');
+  const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplateId || templates[0]?.id || '');
   const selectedTemplate = templates.find((item) => item.id === selectedTemplateId) || null;
   
   const [selectedDesignId, setSelectedDesignId] = useState(selectedTemplate?.designId || 1);
@@ -132,6 +140,22 @@ export function StoreGiftCardBuyForm({
         console.error('Error fetching store payment settings:', err);
       });
   }, [selectedTemplateId, isCustomDesign]);
+
+  // Auto-advance if skipSelectionStep is true
+  useEffect(() => {
+    if (skipSelectionStep && step === 0 && selectedTemplateId) {
+      if (isCustomDesign) {
+        // Custom design: stay at step 1 (monto screen)
+        setStep(1);
+      } else {
+        // Pre-selected template: jump to payment step
+        (async () => {
+          await loadSigeUsers();
+          setStep(5);
+        })();
+      }
+    }
+  }, [skipSelectionStep, step, selectedTemplateId, isCustomDesign]);
 
   // Load store settings when entering custom flow as well
   useEffect(() => {

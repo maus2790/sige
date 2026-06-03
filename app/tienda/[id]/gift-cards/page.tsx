@@ -12,10 +12,13 @@ import { StoreGiftCardBuyForm } from '@/components/gift-cards/store-gift-card-bu
 
 export default async function StoreGiftCardsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ templateId?: string; step?: string; customDesign?: string }>;
 }) {
   const { id: storeId } = await params;
+  const { templateId, step, customDesign } = await searchParams;
   const store = await getStoreWithGiftCards(storeId);
 
   if (!store || !store.giftCardsEnabled) {
@@ -57,6 +60,10 @@ export default async function StoreGiftCardsPage({
         <StoreGiftCardBuyForm
           templates={store.templates as any}
           initialStoreId={storeId}
+          initialTemplateId={templateId}
+          initialStep={step === 'payment' ? 1 : customDesign === 'true' ? 0 : 0}
+          skipSelectionStep={step === 'payment' || customDesign === 'true'}
+          initialCustomDesign={customDesign === 'true'}
         />
       </Suspense>
     </div>
