@@ -1778,7 +1778,6 @@ export async function getStoresWithGiftCards() {
       templateId: storeGiftCardTemplates.id,
       templateName: storeGiftCardTemplates.name,
       templateAmount: storeGiftCardTemplates.amount,
-      templateImage: storeGiftCardTemplates.customStyle,
       designId: storeGiftCardTemplates.designId,
       createdAt: storeGiftCardTemplates.createdAt,
     })
@@ -1788,10 +1787,26 @@ export async function getStoresWithGiftCards() {
     .orderBy(desc(stores.createdAt))
     .all();
 
-  // Group by store and keep only unique stores with their first gift card
+  // Get gift card images for each store
   const storesMap = new Map();
   for (const result of results) {
     if (!storesMap.has(result.storeId)) {
+      // Get the first active gift card image for this store
+      const giftCardImage = await db
+        .select({
+          cardImageUrl: giftCards.cardImageUrl,
+          customImageUrl: giftCards.customImageUrl,
+        })
+        .from(giftCards)
+        .where(
+          and(
+            eq(giftCards.businessId, result.storeId),
+            eq(giftCards.status, 'active')
+          )
+        )
+        .orderBy(desc(giftCards.createdAt))
+        .get();
+
       storesMap.set(result.storeId, {
         id: result.storeId,
         name: result.storeName,
@@ -1801,6 +1816,7 @@ export async function getStoresWithGiftCards() {
         firstTemplateName: result.templateName,
         firstTemplateAmount: result.templateAmount,
         firstTemplateDesignId: result.designId,
+        imageUrl: giftCardImage?.cardImageUrl || giftCardImage?.customImageUrl || null,
       });
     }
   }
