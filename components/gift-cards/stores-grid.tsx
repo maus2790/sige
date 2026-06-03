@@ -39,21 +39,21 @@ export function StoresGrid({ stores }: StoresGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="space-y-4">
       {stores.map((store) => (
         <Card
           key={store.id}
-          className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full"
+          className="overflow-hidden hover:shadow-lg transition-shadow flex flex-row h-40"
         >
-          {/* Gift Card Image - Full Width Top */}
-          <div className="relative w-full bg-gradient-to-br from-blue-400 to-blue-600 flex-shrink-0 aspect-video">
+          {/* Gift Card Image - Left Side */}
+          <div className="relative w-48 flex-shrink-0 bg-gradient-to-br from-blue-400 to-blue-600">
             {store.imageUrl ? (
               <Image
                 src={store.imageUrl}
                 alt={store.firstTemplateName}
                 fill
                 className="object-cover w-full h-full"
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                sizes="200px"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
@@ -62,71 +62,60 @@ export function StoresGrid({ stores }: StoresGridProps) {
             )}
           </div>
 
-          {/* Card Info and Actions */}
-          <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+          {/* Card Info and Actions - Right Side */}
+          <CardContent className="p-4 flex-1 flex flex-col justify-between">
             {/* Store info */}
-            <div className="space-y-2 flex-1">
-              <div>
-                <h3 className="font-bold text-base line-clamp-2">{store.name}</h3>
-                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                  <Gift className="h-3 w-3" />
-                  {store.firstTemplateName}
-                </p>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-semibold text-primary">
-                  Bs. {store.firstTemplateAmount}
-                </span>
-                <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                  Disponible
-                </span>
-              </div>
+            <div className="space-y-1">
+              <h3 className="font-bold text-base line-clamp-2">{store.name}</h3>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Gift className="h-3 w-3" />
+                {store.firstTemplateName}
+              </p>
+              <p className="text-sm font-semibold text-primary">
+                Bs. {store.firstTemplateAmount}
+              </p>
             </div>
 
             {/* Action buttons */}
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+            <div className="flex gap-2 pt-2">
               {/* Visitar tienda */}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-auto flex flex-col gap-1 py-2"
+                className="flex-1"
                 onClick={() => router.push(`/tienda/${store.id}`)}
-                title="Visitar tienda"
               >
-                <Store className="h-4 w-4" />
-                <span className="text-[10px]">Visitar</span>
+                <Store className="h-3 w-3 mr-1" />
+                Visitar
               </Button>
 
               {/* Comprar (directo a payment step) */}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
-                className="h-auto flex flex-col gap-1 py-2"
+                className="flex-1"
                 onClick={() =>
                   router.push(
                     `/tienda/${store.id}/gift-cards?templateId=${store.firstTemplateId}&step=payment`
                   )
                 }
-                title="Comprar gift card"
               >
-                <Gift className="h-4 w-4" />
-                <span className="text-[10px]">Comprar</span>
+                <Gift className="h-3 w-3 mr-1" />
+                Comprar
               </Button>
 
               {/* Personalizar (custom design) */}
               <Button
-                variant="ghost"
                 size="sm"
-                className="h-auto flex flex-col gap-1 py-2"
+                className="flex-1"
                 onClick={() => {
                   router.push(
                     `/tienda/${store.id}/gift-cards?customDesign=true&storeId=${store.id}`
                   );
                 }}
-                title="Diseño personalizado"
               >
-                <Sparkles className="h-4 w-4" />
-                <span className="text-[10px]">Diseñar</span>
+                <Sparkles className="h-3 w-3 mr-1" />
+                Diseñar
               </Button>
             </div>
           </CardContent>
