@@ -1720,7 +1720,7 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
 
 export async function toggleStoreGiftCardsEnabled(enabled: boolean) {
   const sessionUser = await getCurrentUser();
-  if (!sessionUser || (sessionUser.role !== "seller" && sessionUser.role !== "superadmin")) {
+  if (!sessionUser || (sessionUser.role !== "seller" && sessionUser.role !== "assistant" && sessionUser.role !== "superadmin")) {
     return { error: "No autorizado" };
   }
 
