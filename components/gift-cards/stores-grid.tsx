@@ -47,28 +47,27 @@ export function StoresGrid({ stores }: StoresGridProps) {
         return (
           <Card
             key={store.id}
-            className="overflow-hidden hover:shadow-lg transition-shadow"
+            className="overflow-hidden hover:shadow-lg transition-shadow flex flex-col h-full"
           >
-            {/* Gift Card Preview Thumbnail */}
-            <div className="relative h-40 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center p-2 scale-75">
-                <GiftCardPreview
-                  value={{
-                    templateName: store.firstTemplateName,
-                    storeName: store.name,
-                    amount: store.firstTemplateAmount,
-                    recipientName: '',
-                    message: '',
-                    occasion: 'otros',
-                    designId: store.firstTemplateDesignId,
-                  }}
-                />
-              </div>
+            {/* Gift Card Preview - Full Width Top */}
+            <div className="relative h-56 bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center overflow-hidden flex-shrink-0 -m-0">
+              <GiftCardPreview
+                value={{
+                  templateName: store.firstTemplateName,
+                  storeName: store.name,
+                  amount: store.firstTemplateAmount,
+                  recipientName: '',
+                  message: '',
+                  occasion: 'otros',
+                  designId: store.firstTemplateDesignId,
+                }}
+              />
             </div>
 
-            <CardContent className="p-4 space-y-3">
+            {/* Card Info and Actions */}
+            <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
               {/* Store info */}
-              <div className="space-y-2">
+              <div className="space-y-2 flex-1">
                 <div>
                   <h3 className="font-bold text-base line-clamp-2">{store.name}</h3>
                   <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">

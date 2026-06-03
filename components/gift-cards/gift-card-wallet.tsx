@@ -35,7 +35,7 @@ interface GiftCardWalletProps {
 export function GiftCardWallet({ sent, received, mine = [], saved = [], stores = [], totalBalance, stats }: GiftCardWalletProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = searchParams.get('tab') || 'mine';
+  const initialTab = searchParams.get('tab') || 'stores';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [checkBalanceOpen, setCheckBalanceOpen] = useState(false);
 
@@ -149,10 +149,10 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
       <div className="max-w-4xl mx-auto px-4 mt-5 mb-6">
         <div className="gift-card-tabs-nav flex items-center gap-1 rounded-2xl border bg-card/80 p-1.5 shadow-sm backdrop-blur-xl">
           {[
+            { id: 'stores', label: 'Tiendas', value: stores.length, icon: Store },
             { id: 'mine', label: 'Mis Gift Cards', value: activeMine.length, icon: Wallet },
             { id: 'sent', label: 'Enviadas', value: activeSent.length, icon: Send },
             { id: 'received', label: 'Recibidas', value: activeReceived.length, icon: Inbox },
-            { id: 'stores', label: 'Tiendas', value: stores.length, icon: Store },
             { id: 'history', label: 'Historial', value: historyCards.length, icon: Clock },
           ].map(({ id, label, value, icon: Icon }) => (
             <button 
@@ -177,6 +177,10 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
       {/* ── CARDS TABS ── */}
       <div className="max-w-4xl mx-auto px-4 pb-32">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <TabsContent value="stores" className="space-y-4 mt-0">
+            <StoresGrid stores={stores} />
+          </TabsContent>
+
           <TabsContent value="mine" className="space-y-4 mt-0">
             {activeMine.length === 0 ? (
               <EmptyState
@@ -228,10 +232,6 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
             )}
           </TabsContent>
 
-
-          <TabsContent value="stores" className="space-y-4 mt-0">
-            <StoresGrid stores={stores} />
-          </TabsContent>
 
           <TabsContent value="history" className="space-y-4 mt-0">
             {historyCards.length === 0 ? (
