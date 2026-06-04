@@ -1,40 +1,19 @@
 'use client';
 
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { useSession } from 'next-auth/react';
-import { toPng } from 'html-to-image';
-import {
-  ArrowLeft,
-  Calendar,
-  Check,
-  ChevronRight,
-  CreditCard,
-  Gift,
-  Loader2,
-  Mail,
-  MessageCircle,
-  QrCode,
-  Send,
-  Smartphone,
-  Sparkles,
-  Upload,
-  User,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, Calendar, Check, ChevronRight, CreditCard, Gift, Loader2, Mail, MessageCircle, QrCode, Send, Smartphone, Sparkles, Upload, User, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { purchaseGiftCard, getSIGEUsers, getStoreGiftCardPaymentSettings, uploadGiftCardImage } from '@/app/actions/gift-cards';
-import { getGiftCardTemplate } from './gift-card-templates';
-import { GIFT_CARD_MAX_MESSAGE_LENGTH, getGiftCardMessages, getGiftCardOccasion } from './gift-card-customization';
+import { purchaseGiftCard, getSIGEUsers, getStoreGiftCardPaymentSettings } from '@/app/actions/gift-cards';
 import { GiftCardDesigner, GiftCardPreview } from './gift-card-designer';
+import { getGiftCardMessages } from './gift-card-customization';
 
 type StoreGiftCardTemplate = {
   id: string;
@@ -46,7 +25,6 @@ type StoreGiftCardTemplate = {
   occasion: string | null;
   storeName: string;
   storeLogoUrl: string | null;
-  customStyle?: string | null;
 };
 
 type PaymentSettings = {
@@ -58,13 +36,13 @@ type PaymentSettings = {
 } | null;
 
 type DeliveryMethod = 'whatsapp' | 'email' | 'sige';
-type DeliveryOption = 'send' | 'schedule';
 type PaymentMethod = 'qr' | 'bank_transfer' | 'tigo_money' | 'operator';
-const PAYMENT_METHODS: { id: PaymentMethod; icon: LucideIcon }[] = [
-  { id: 'qr', icon: QrCode },
-  { id: 'bank_transfer', icon: CreditCard },
-  { id: 'tigo_money', icon: Smartphone },
-  { id: 'operator', icon: MessageCircle },
+
+const PAYMENT_METHODS: { id: PaymentMethod; icon: LucideIcon; label: string }[] = [
+  { id: 'qr', icon: QrCode, label: 'QR' },
+  { id: 'bank_transfer', icon: CreditCard, label: 'Banco' },
+  { id: 'tigo_money', icon: Smartphone, label: 'Tigo' },
+  { id: 'operator', icon: MessageCircle, label: 'Operador' },
 ];
 
 export function StoreGiftCardBuyForm({
@@ -73,7 +51,6 @@ export function StoreGiftCardBuyForm({
   initialPaymentSettings,
   initialTemplateId,
   initialStep,
-  skipSelectionStep,
   initialCustomDesign,
 }: {
   templates: StoreGiftCardTemplate[];
@@ -85,104 +62,55 @@ export function StoreGiftCardBuyForm({
   initialCustomDesign?: boolean;
 }) {
   const router = useRouter();
-  const { data: session } = useSession();
-  const cardRef = useRef<HTMLDivElement | null>(null);
-  const [step, setStep] = useState(initialStep ?? 0); // step 0 is selection screen
-  const [isCustomDesign, setIsCustomDesign] = useState<boolean | null>(initialCustomDesign ?? null);
-  
-  // Custom design step fields
-  const [customAmount, setCustomAmount] = useState('100');
-  const [customStyle, setCustomStyle] = useState('');
+  const [step, setStep] = useState(initialStep || 1);
+  const [isCustomDesign, setIsCustomDesign] = useState(initialCustomDesign || false);
   const [selectedTemplateId, setSelectedTemplateId] = useState(initialTemplateId || templates[0]?.id || '');
   const selectedTemplate = templates.find((item) => item.id === selectedTemplateId) || null;
-  
+  const filteredTemplates = useMemo(() => initialStoreId ? templates.filter((item) => item.storeId === initialStoreId) : templates, [templates, initialStoreId]);
+  const activeStoreId = initialStoreId || selectedTemplate?.storeId || filteredTemplates[0]?.storeId || '';
+  const activeStoreName = selectedTemplate?.storeName || filteredTemplates[0]?.storeName || 'Tienda';
+
+  const [amount, setAmount] = useState(String(selectedTemplate?.amount || 100));
   const [selectedDesignId, setSelectedDesignId] = useState(selectedTemplate?.designId || 1);
   const [selectedOccasion, setSelectedOccasion] = useState(selectedTemplate?.occasion || 'otros');
-  const [message, setMessage] = useState(selectedTemplate?.description || '');
-  
+  const [message, setMessage] = useState(selectedTemplate?.description || getGiftCardMessages(selectedTemplate?.occasion || 'otros')[0]);
   const [recipientName, setRecipientName] = useState('');
   const [recipientEmail, setRecipientEmail] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [recipientId, setRecipientId] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('whatsapp');
-  const [deliveryOption, setDeliveryOption] = useState<DeliveryOption>('send');
-  const [scheduleDate, setScheduleDate] = useState('');
-  const [scheduleTime, setScheduleTime] = useState('');
   const [sigeUsers, setSigeUsers] = useState<any[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qr');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>(initialPaymentSettings || null);
+  const [loading, setLoading] = useState(false);
 
-  const filteredTemplates = useMemo(() => {
-    return initialStoreId ? templates.filter((item) => item.storeId === initialStoreId) : templates;
-  }, [templates, initialStoreId]);
-
-  const activeStoreId = initialStoreId || templates[0]?.storeId;
-  const activeStoreName = templates[0]?.storeName || 'Tienda';
-  const activeMaxAmount = paymentSettings?.maxAmount ?? 5000;
+  const maxAmount = paymentSettings?.maxAmount ?? 5000;
+  const displayAmount = isCustomDesign ? Number(amount || 0) : selectedTemplate?.amount || 0;
 
   useEffect(() => {
-    if (!selectedTemplate) return;
-    if (!isCustomDesign) {
-      setSelectedDesignId(selectedTemplate.designId);
-      setSelectedOccasion(selectedTemplate.occasion || 'otros');
-      setMessage(selectedTemplate.description || getGiftCardMessages(selectedTemplate.occasion || 'otros')[0]);
-    }
+    if (!selectedTemplate || isCustomDesign) return;
+    setAmount(String(selectedTemplate.amount));
+    setSelectedDesignId(selectedTemplate.designId);
+    setSelectedOccasion(selectedTemplate.occasion || 'otros');
+    setMessage(selectedTemplate.description || getGiftCardMessages(selectedTemplate.occasion || 'otros')[0]);
+  }, [selectedTemplate?.id, isCustomDesign]);
 
-    getStoreGiftCardPaymentSettings(selectedTemplate.storeId)
-      .then((settings) => {
-        setPaymentSettings(settings);
-      })
-      .catch((err) => {
-        console.error('Error fetching store payment settings:', err);
-      });
-  }, [selectedTemplateId, isCustomDesign]);
-
-  // Auto-advance if skipSelectionStep is true
   useEffect(() => {
-    if (skipSelectionStep && step === 0 && selectedTemplateId) {
-      if (isCustomDesign) {
-        // Custom design: stay at step 1 (monto screen)
-        setStep(1);
-      } else {
-        // Pre-selected template: jump to payment step
-        (async () => {
-          await loadSigeUsers();
-          setStep(5);
-        })();
-      }
-    }
-  }, [skipSelectionStep, step, selectedTemplateId, isCustomDesign]);
-
-  // Load store settings when entering custom flow as well
-  useEffect(() => {
-    if (activeStoreId) {
-      getStoreGiftCardPaymentSettings(activeStoreId)
-        .then((settings) => {
-          setPaymentSettings(settings);
-        })
-        .catch((err) => {
-          console.error('Error fetching store payment settings:', err);
-        });
-    }
+    if (!activeStoreId) return;
+    getStoreGiftCardPaymentSettings(activeStoreId).then(setPaymentSettings).catch(() => {});
   }, [activeStoreId]);
 
   async function loadSigeUsers() {
-    if (sigeUsers.length === 0) {
-      setSigeUsers(await getSIGEUsers());
-    }
+    if (sigeUsers.length === 0) setSigeUsers(await getSIGEUsers());
   }
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('El comprobante no puede superar 5MB');
-      return;
-    }
+    if (file.size > 5 * 1024 * 1024) return toast.error('El comprobante no puede superar 5MB');
     setReceiptFile(file);
     const reader = new FileReader();
     reader.onload = () => setReceiptPreview(reader.result as string);
@@ -195,85 +123,37 @@ export function StoreGiftCardBuyForm({
     formData.append('file', receiptFile);
     const response = await fetch('/api/upload/payment-proof', { method: 'POST', body: formData });
     const result = await response.json();
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || 'No se pudo subir el comprobante');
-    }
+    if (!response.ok || !result.success) throw new Error(result.error || 'No se pudo subir el comprobante');
     return result.url as string;
   }
 
   async function handleSubmit() {
+    if (!activeStoreId) return toast.error('Tienda no encontrada');
     if (!isCustomDesign && !selectedTemplate) return toast.error('Selecciona una Gift Card');
+    if (isCustomDesign && (!Number.isFinite(Number(amount)) || Number(amount) <= 0)) return toast.error('Ingresa un monto valido');
     if (paymentMethod !== 'operator' && !receiptFile) return toast.error('Sube comprobante de pago');
     if (paymentMethod !== 'operator' && !transactionNumber) return toast.error('Ingresa numero de transaccion');
 
     setLoading(true);
     try {
       const receiptUrl = paymentMethod === 'operator' ? '' : await uploadReceipt();
-      
-      let cardImageUrl: string | undefined = undefined;
-      if (cardRef.current) {
-        toast.loading('Generando diseño de tarjeta...', { id: 'card-image' });
-        try {
-          const dataUrl = await toPng(cardRef.current, {
-            cacheBust: true,
-            pixelRatio: 2,
-            style: { margin: '0' },
-            fontEmbedCSS: '',
-            filter: (node: any) => {
-              if (node.tagName === 'STYLE' || node.tagName === 'LINK') {
-                try {
-                  const sheet = (node as any).sheet;
-                  if (sheet && !sheet.cssRules) return false;
-                } catch {
-                  return false;
-                }
-              }
-              return true;
-            }
-          });
-          const imgResult = await uploadGiftCardImage(dataUrl);
-          if (imgResult.success) {
-            cardImageUrl = imgResult.url;
-            toast.success('Diseño guardado', { id: 'card-image' });
-          } else {
-            toast.error('Error al guardar diseño en Cloudflare', { id: 'card-image' });
-          }
-        } catch (e) {
-          console.error("Error generating card image:", e);
-        }
-      }
-
-      const buyerName = session?.user?.name || 'Mi Inventario';
-      const payload: any = {
-        recipientName: buyerName,
+      const result = await purchaseGiftCard({
+        amount: isCustomDesign ? Number(amount) : undefined,
+        businessId: activeStoreId,
+        storeGiftCardTemplateId: isCustomDesign ? undefined : selectedTemplate?.id,
+        recipientName: 'Mi Gift Card',
+        saveToWallet: true,
         message,
         templateId: selectedDesignId,
         occasion: selectedOccasion,
         paymentMethod,
         transactionNumber,
         receiptUrl,
-        cardImageUrl,
-        customStyle: selectedDesignId === 99 ? customStyle : undefined,
-        saveToWallet: true,
-        recipientId: (session?.user as any)?.id,
-      };
+      });
 
-      if (isCustomDesign) {
-        payload.amount = Number(customAmount);
-        payload.businessId = activeStoreId;
-      } else {
-        payload.storeGiftCardTemplateId = selectedTemplate?.id;
-      }
-
-      const result = await purchaseGiftCard(payload);
-
-      if ('error' in result && result.error) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success('Gift Card enviada a verificación de la tienda');
-      router.push('/gift-cards?tab=mine');
+      if ('error' in result && result.error) return toast.error(result.error);
+      toast.success('Gift Card enviada a verificacion de la tienda');
+      router.push('/gift-cards?tab=sent');
     } catch (error: any) {
       toast.error(error.message || 'No se pudo procesar la Gift Card');
     } finally {
@@ -281,361 +161,154 @@ export function StoreGiftCardBuyForm({
     }
   }
 
-  const displayAmount = isCustomDesign ? Number(customAmount || 0) : (selectedTemplate?.amount || 0);
-
-  if (filteredTemplates.length === 0) {
+  if (filteredTemplates.length === 0 && !initialStoreId) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center">
-        <Gift className="h-14 w-14 mx-auto text-muted-foreground mb-4" />
-        <h1 className="text-2xl font-black mb-2">No hay Gift Cards activas</h1>
-        <p className="text-sm text-muted-foreground mb-6">Las tiendas aun no habilitaron tarjetas para regalar.</p>
+      <div className="mx-auto max-w-xl px-4 py-16 text-center">
+        <Gift className="mx-auto mb-4 h-14 w-14 text-muted-foreground" />
+        <h1 className="mb-2 text-2xl font-black">No hay Gift Cards disponibles</h1>
+        <p className="mb-6 text-sm text-muted-foreground">Las tiendas aun no habilitaron tarjetas para regalar.</p>
         <Button asChild variant="outline"><Link href="/gift-cards">Volver</Link></Button>
       </div>
     );
   }
 
+  const previewValue = {
+    templateName: isCustomDesign ? 'Gift Card personalizada' : selectedTemplate?.name || 'Gift Card',
+    storeName: activeStoreName,
+    amount: displayAmount,
+    recipientName,
+    message,
+    occasion: selectedOccasion,
+    designId: selectedDesignId,
+  };
+
   return (
-    <div className="gift-card-buy-section min-h-screen pb-24 bg-background">
-      {step > 0 && (
-        <div className="sticky top-16 z-40 bg-background/85 backdrop-blur-xl border-b">
-          <div className="max-w-5xl mx-auto px-4 py-4 flex items-center gap-2 justify-center">
-            {isCustomDesign ? (
-              [1, 2, 3, 4, 5].map((item) => (
-                <div key={item} className="flex flex-1 items-center gap-2 max-w-[120px]">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black ${step >= item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                    {step > item ? <Check className="h-4 w-4" /> : item}
-                  </div>
-                  {item < 5 && <div className={`h-1 flex-1 rounded-full ${step > item ? 'bg-primary' : 'bg-muted'}`} />}
-                </div>
-              ))
-            ) : (
-              [1, 5].map((item, idx) => (
-                <div key={item} className="flex flex-1 items-center gap-2 max-w-[120px]">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-black ${step >= item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                    {step > item ? <Check className="h-4 w-4" /> : (idx + 1)}
-                  </div>
-                  {item === 1 && <div className={`h-1 flex-1 rounded-full ${step > 1 ? 'bg-primary' : 'bg-muted'}`} />}
-                </div>
-              ))
-            )}
-          </div>
+    <div className="gift-card-buy-section min-h-screen bg-background pb-24">
+      <div className="sticky top-16 z-40 border-b bg-background/85 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-5xl items-center gap-2 px-4 py-4">
+          {[1, 2, 3, 4, 5].map((item) => (
+            <div key={item} className="flex flex-1 items-center gap-2">
+              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black ${step >= item ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                {step > item ? <Check className="h-4 w-4" /> : item}
+              </div>
+              {item < 6 && <div className={`h-1 flex-1 rounded-full ${step > item ? 'bg-primary' : 'bg-muted'}`} />}
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-8 flex flex-col lg:grid gap-6 lg:grid-cols-[minmax(300px,430px)_1fr] items-start">
-        {/* Mostrar preview en móvil después del header, antes del contenido */}
-        <div className="lg:hidden w-full">
-          {step > 0 && (
-            <div ref={cardRef} className="w-full mb-6">
-              <GiftCardPreview
-                value={{
-                  templateName: isCustomDesign ? 'Mi Gift Card' : (selectedTemplate?.name || 'Gift Card'),
-                  storeName: isCustomDesign ? activeStoreName : (selectedTemplate?.storeName || 'Tienda'),
-                  amount: displayAmount,
-                  recipientName,
-                  message,
-                  occasion: selectedOccasion,
-                  designId: selectedDesignId,
-                  customStyle: isCustomDesign ? customStyle : (selectedTemplate?.customStyle || undefined),
-                }}
-                isBuyer={true}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Preview pegada en desktop */}
-        <div className="hidden lg:block sticky top-[136px] z-20 self-start bg-background/95 pb-4 pt-1 backdrop-blur-md lg:sticky lg:top-32 lg:bg-transparent lg:backdrop-blur-none w-full">
-          {step > 0 ? (
-            <div ref={cardRef} className="w-full">
-              <GiftCardPreview
-                value={{
-                  templateName: isCustomDesign ? 'Mi Gift Card' : (selectedTemplate?.name || 'Gift Card'),
-                  storeName: isCustomDesign ? activeStoreName : (selectedTemplate?.storeName || 'Tienda'),
-                  amount: displayAmount,
-                  recipientName,
-                  message,
-                  occasion: selectedOccasion,
-                  designId: selectedDesignId,
-                  customStyle: isCustomDesign ? customStyle : (selectedTemplate?.customStyle || undefined),
-                }}
-                isBuyer={true}
-              />
-            </div>
-          ) : (
-            <div className="aspect-[1.62/1] w-full bg-muted/30 rounded-[2rem] border-2 border-dashed flex flex-col justify-center items-center p-8 text-center text-muted-foreground">
-              <Gift className="h-10 w-10 mb-2 text-muted-foreground/60 animate-pulse" />
-              <p className="font-bold text-sm">Previsualización de la Gift Card</p>
-              <p className="text-xs">Se actualizará en tiempo real a medida que diseñes tu tarjeta.</p>
-            </div>
-          )}
+      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[minmax(300px,430px)_1fr]">
+        <div className="lg:sticky lg:top-32">
+          <GiftCardPreview value={previewValue} mode="buyer" />
         </div>
 
         <Card className="overflow-hidden">
-          {step === 0 && (
+          {step === 1 && (
             <>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Adquirir Gift Card</CardTitle>
-                <CardDescription>Elige entre comprar un diseño preestablecido o elaborar tu propio estilo personalizado.</CardDescription>
+                <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" /> Elegir inicio</CardTitle>
+                <CardDescription>Compra una disponible o disena desde cero para esta tienda.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => {
-                      setIsCustomDesign(false);
-                      setStep(1);
-                    }}
-                    className="flex flex-col items-center justify-between border rounded-2xl p-6 text-center hover:border-primary hover:bg-muted/30 transition group"
-                  >
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 group-hover:scale-105 transition duration-300">
-                      <Gift className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="font-black text-sm block">Comprar diseño listo</span>
-                    <span className="text-xs text-muted-foreground block mt-1">Elige una tarjeta creada por la tienda y ve directo al pago.</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsCustomDesign(true);
-                      setStep(1);
-                    }}
-                    className="flex flex-col items-center justify-between border rounded-2xl p-6 text-center hover:border-primary hover:bg-muted/30 transition group"
-                  >
-                    <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-3 group-hover:scale-105 transition duration-300">
-                      <Sparkles className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="font-black text-sm block">Diseñar propia tarjeta</span>
-                    <span className="text-xs text-muted-foreground block mt-1">Personaliza el monto, mensajes sugeridos, y estilos a tu gusto.</span>
-                  </button>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Button variant={!isCustomDesign ? 'default' : 'outline'} className="h-16 rounded-2xl" onClick={() => setIsCustomDesign(false)}>Usar disponible</Button>
+                  <Button variant={isCustomDesign ? 'default' : 'outline'} className="h-16 rounded-2xl" onClick={() => setIsCustomDesign(true)}>Disenar desde cero</Button>
                 </div>
-              </CardContent>
-            </>
-          )}
-
-          {step === 1 && !isCustomDesign && (
-            <>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Gift className="h-5 w-5" /> Elige un diseño del vendedor</CardTitle>
-                <CardDescription>Tarjetas diseñadas y publicadas por la tienda.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-3 gap-2">
-                  {filteredTemplates.map((template) => {
-                    const visual = getGiftCardTemplate(template.designId);
-                    const selected = selectedTemplateId === template.id;
-                    return (
+                {!isCustomDesign && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {filteredTemplates.map((template) => (
                       <button
                         key={template.id}
                         type="button"
-                        onClick={() => {
-                          setSelectedTemplateId(template.id);
-                        }}
-                        className={`card-shine relative overflow-hidden rounded-2xl p-3 text-left text-white ring-offset-background transition aspect-[1.62/1] ${visual.className} ${selected ? 'scale-[1.03] ring-2 ring-primary ring-offset-2 shadow-lg' : 'opacity-90 hover:opacity-100 hover:scale-[1.01]'}`}
+                        onClick={() => setSelectedTemplateId(template.id)}
+                        className={`rounded-2xl border p-3 text-left transition ${selectedTemplateId === template.id ? 'border-primary bg-primary/5 ring-2 ring-primary/20' : 'hover:bg-muted/50'}`}
                       >
-                        <p className="text-[7px] uppercase font-black opacity-75 truncate">{template.storeName}</p>
-                        <p className="text-[9px] font-black leading-tight truncate mt-0.5">{template.name}</p>
-                        <p className="text-xs font-black mt-2">Bs. {template.amount.toFixed(2)}</p>
-                        {selected && <Check className="absolute bottom-1 right-1 h-3.5 w-3.5 drop-shadow" />}
+                        <p className="font-black">{template.name}</p>
+                        <p className="text-xs text-muted-foreground">{template.storeName}</p>
+                        <p className="mt-2 font-black">Bs. {template.amount.toFixed(2)}</p>
                       </button>
-                    );
-                  })}
-                </div>
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(0)}><ArrowLeft className="h-4 w-4 mr-2" /> Atrás</Button>
-                  <Button className="flex-1" onClick={() => { loadSigeUsers(); setStep(5); }}>Comprar ahora <ChevronRight className="h-4 w-4 ml-2" /></Button>
-                </div>
-              </CardContent>
-            </>
-          )}
-
-          {step === 1 && isCustomDesign && (
-            <>
-              <CardHeader>
-                <CardTitle>Monto de la Gift Card</CardTitle>
-                <CardDescription>Elige o escribe el monto (Máx: Bs. {activeMaxAmount.toLocaleString()})</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Monto personalizado Bs.</Label>
-                  <Input
-                    type="number"
-                    value={customAmount}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === '' || (Number(val) >= 0 && Number(val) <= activeMaxAmount)) {
-                        setCustomAmount(val);
-                      }
-                    }}
-                    placeholder="100"
-                    className="h-12 rounded-2xl text-lg font-black"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground font-black">Montos sugeridos</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {(() => {
-                      const presets = [100, 300, 500, 1000, 5000].filter(p => p < activeMaxAmount);
-                      if (!presets.includes(activeMaxAmount)) presets.push(activeMaxAmount);
-                      presets.sort((a, b) => a - b);
-                      return presets.map((p) => (
-                        <Button
-                          key={p}
-                          type="button"
-                          variant={Number(customAmount) === p ? 'default' : 'outline'}
-                          className="h-10 rounded-xl px-4 text-xs font-black"
-                          onClick={() => setCustomAmount(String(p))}
-                        >
-                          Bs. {p} {p === activeMaxAmount ? '(Max)' : ''}
-                        </Button>
-                      ));
-                    })()}
+                    ))}
                   </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(0)}><ArrowLeft className="h-4 w-4 mr-2" /> Atrás</Button>
-                  <Button className="flex-1" onClick={() => setStep(2)}>Siguiente <ChevronRight className="h-4 w-4 ml-2" /></Button>
-                </div>
+                )}
+                <Button className="h-12 w-full rounded-2xl" onClick={() => setStep(2)}>
+                  Continuar <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
               </CardContent>
             </>
           )}
 
-          {step === 2 && isCustomDesign && (
+          {step === 2 && (
             <>
-              <CardHeader>
-                <CardTitle>Ocasión y Mensaje</CardTitle>
-                <CardDescription>Selecciona la ocasión y escoge una sugerencia o escribe un mensaje personalizado.</CardDescription>
-              </CardHeader>
+              <CardHeader><CardTitle>Ocasion</CardTitle><CardDescription>Elige la ocasion e icono de la tarjeta.</CardDescription></CardHeader>
               <CardContent className="space-y-4">
-                <GiftCardDesigner
-                  value={{
-                    storeName: activeStoreName,
-                    amount: customAmount,
-                    message,
-                    occasion: selectedOccasion,
-                    designId: selectedDesignId,
-                  }}
-                  onChange={(patch) => {
-                    if (patch.message !== undefined) setMessage(patch.message);
-                    if (patch.occasion !== undefined) setSelectedOccasion(patch.occasion);
-                  }}
-                  sections={['occasion', 'suggestions', 'message']}
-                  hidePreview={true}
-                />
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(1)}><ArrowLeft className="h-4 w-4 mr-2" /> Atrás</Button>
-                  <Button className="flex-1" onClick={() => setStep(3)}>Siguiente <ChevronRight className="h-4 w-4 ml-2" /></Button>
-                </div>
+                <GiftCardDesigner value={previewValue} onChange={(patch) => {
+                  if (patch.occasion) setSelectedOccasion(patch.occasion);
+                  if (patch.message !== undefined) setMessage(patch.message);
+                }} sections={['occasion']} hidePreview />
+                <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setStep(1)}><ArrowLeft className="mr-2 h-4 w-4" />Atras</Button><Button className="flex-1" onClick={() => setStep(3)}>Siguiente</Button></div>
               </CardContent>
             </>
           )}
 
-          {step === 3 && isCustomDesign && (
+          {step === 3 && (
             <>
-              <CardHeader>
-                <CardTitle>Estilo de tarjeta</CardTitle>
-                <CardDescription>Escoge el estilo visual para la Gift Card.</CardDescription>
-              </CardHeader>
+              <CardHeader><CardTitle>Sugerencias y mensaje</CardTitle><CardDescription>Escoge una sugerencia o escribe un mensaje corto.</CardDescription></CardHeader>
               <CardContent className="space-y-4">
-                <GiftCardDesigner
-                  value={{
-                    storeName: activeStoreName,
-                    amount: customAmount,
-                    message,
-                    occasion: selectedOccasion,
-                    designId: selectedDesignId,
-                    customStyle,
-                  }}
-                  onChange={(patch) => {
-                    if (patch.designId !== undefined) setSelectedDesignId(patch.designId);
-                    if (patch.customStyle !== undefined) setCustomStyle(patch.customStyle);
-                  }}
-                  sections={['style']}
-                  hidePreview={true}
-                />
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(2)}><ArrowLeft className="h-4 w-4 mr-2" /> Atrás</Button>
-                  <Button className="flex-1" onClick={() => setStep(5)}>Siguiente <ChevronRight className="h-4 w-4 ml-2" /></Button>
-                </div>
+                <GiftCardDesigner value={previewValue} onChange={(patch) => patch.message !== undefined && setMessage(patch.message)} sections={['suggestions']} hidePreview />
+                <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setStep(2)}>Atras</Button><Button className="flex-1" onClick={() => setStep(4)}>Siguiente</Button></div>
               </CardContent>
             </>
           )}
 
-
+          {step === 4 && (
+            <>
+              <CardHeader><CardTitle>Estilo de tarjeta</CardTitle><CardDescription>Todos los tonos disponibles para personalizar.</CardDescription></CardHeader>
+              <CardContent className="space-y-4">
+                <GiftCardDesigner value={previewValue} onChange={(patch) => patch.designId && setSelectedDesignId(patch.designId)} sections={['style']} hidePreview />
+                <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setStep(3)}>Atras</Button><Button className="flex-1" onClick={() => setStep(5)}>Pago</Button></div>
+              </CardContent>
+            </>
+          )}
 
           {step === 5 && (
             <>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" /> Pago a tienda y verificación</CardTitle>
-                <CardDescription>Realiza el pago y registra el comprobante. El comercio verificará el pago para activar la tarjeta.</CardDescription>
-              </CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" /> Pago a tienda</CardTitle><CardDescription>El dueno verificara tu comprobante.</CardDescription></CardHeader>
               <CardContent className="space-y-4">
-
-
+                {isCustomDesign && (
+                  <div className="space-y-2">
+                    <Label>Monto Bs.</Label>
+                    <Input type="number" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-2xl" max={maxAmount} />
+                  </div>
+                )}
                 <div className="grid grid-cols-4 gap-2">
-                  {PAYMENT_METHODS.map(({ id, icon: Icon }) => (
-                    <Button key={id} variant={paymentMethod === id ? 'default' : 'outline'} className="rounded-xl h-11" onClick={() => setPaymentMethod(id)}>
-                      <Icon className="h-4 w-4" />
-                    </Button>
-                  ))}
+                  {PAYMENT_METHODS.map(({ id, icon: Icon, label }) => <Button key={id} variant={paymentMethod === id ? 'default' : 'outline'} className="h-12 flex-col gap-1 text-[10px]" onClick={() => setPaymentMethod(id)}><Icon className="h-4 w-4" />{label}</Button>)}
                 </div>
-
-                {paymentMethod === 'qr' && paymentSettings?.qrUrl && (
-                  <div className="relative mx-auto h-44 w-44 rounded-2xl overflow-hidden border bg-white shadow-sm">
-                    <Image src={paymentSettings.qrUrl} alt="QR de pago" fill className="object-contain p-2" />
-                  </div>
-                )}
-                {paymentMethod === 'bank_transfer' && (
-                  <pre className="rounded-xl bg-muted p-3 text-xs whitespace-pre-wrap font-mono border">
-                    {paymentSettings?.bankDetails || 'La tienda no configuró datos bancarios.'}
-                  </pre>
-                )}
-                {paymentMethod === 'tigo_money' && (
-                  <div className="rounded-xl bg-muted p-3 font-black text-center border">
-                    Tigo Money: {paymentSettings?.tigoMoney || 'La tienda no configuró Tigo Money.'}
-                  </div>
-                )}
-                {paymentMethod === 'operator' && (
-                  <div className="rounded-xl bg-muted p-3 text-sm text-center border">
-                    Contacta a la tienda por Whatsapp/Llamada: <br />
-                    <strong>{paymentSettings?.operatorPhone || 'Teléfono no configurado'}</strong>
-                  </div>
-                )}
-
+                {paymentMethod === 'qr' && paymentSettings?.qrUrl && <div className="relative mx-auto h-44 w-44 overflow-hidden rounded-2xl border bg-white"><Image src={paymentSettings.qrUrl} alt="QR de pago" fill className="object-contain p-2" /></div>}
+                {paymentMethod === 'bank_transfer' && <pre className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs">{paymentSettings?.bankDetails || 'La tienda no configuro datos bancarios.'}</pre>}
+                {paymentMethod === 'tigo_money' && <div className="rounded-xl bg-muted p-3 font-black">Tigo Money: {paymentSettings?.tigoMoney || 'No configurado'}</div>}
+                {paymentMethod === 'operator' && <div className="rounded-xl bg-muted p-3 text-sm">Contacta a la tienda: {paymentSettings?.operatorPhone || 'telefono no configurado'}</div>}
                 {paymentMethod !== 'operator' && (
                   <>
-                    <Label className="font-bold">Comprobante de pago</Label>
+                    <Label>Comprobante</Label>
                     {receiptPreview ? (
-                      <div className="relative rounded-2xl overflow-hidden border">
-                        <div className="relative aspect-video">
-                          <Image src={receiptPreview} alt="Comprobante" fill className="object-contain bg-muted" />
-                        </div>
-                        <button
-                          className="absolute right-2 top-2 h-8 w-8 rounded-full bg-destructive text-white flex items-center justify-center hover:bg-destructive/80 transition"
-                          onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
+                      <div className="relative overflow-hidden rounded-2xl border">
+                        <div className="relative aspect-video"><Image src={receiptPreview} alt="Comprobante" fill className="object-contain bg-muted" /></div>
+                        <button className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-white" onClick={() => { setReceiptFile(null); setReceiptPreview(null); }}><X className="h-4 w-4" /></button>
                       </div>
                     ) : (
-                      <label className="flex h-32 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed gap-2 hover:bg-muted/50 transition">
+                      <label className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed">
                         <Upload className="h-6 w-6 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Subir comprobante</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
                       </label>
                     )}
-                    <Input placeholder="Número de transacción" value={transactionNumber} onChange={(e) => setTransactionNumber(e.target.value)} className="h-11" />
+                    <Input placeholder="Numero de transaccion" value={transactionNumber} onChange={(event) => setTransactionNumber(event.target.value)} />
                   </>
                 )}
-
-                <div className="grid grid-cols-2 gap-2 pt-2">
-                  <Button variant="outline" onClick={() => setStep(isCustomDesign ? 3 : 1)} disabled={loading}>
-                    <ArrowLeft className="h-4 w-4 mr-2" /> Atrás
-                  </Button>
-                  <Button onClick={handleSubmit} disabled={loading} className="font-black">
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : 'Finalizar y enviar'}
-                  </Button>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button variant="outline" onClick={() => setStep(4)} disabled={loading}>Atras</Button>
+                  <Button variant="ghost" asChild disabled={loading}><Link href="/gift-cards">Cancelar</Link></Button>
+                  <Button onClick={handleSubmit} disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enviar'}</Button>
                 </div>
               </CardContent>
             </>

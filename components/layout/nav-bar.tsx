@@ -62,9 +62,10 @@ interface Category {
 interface NavbarProps {
   categories: Category[];
   myStoreId?: string | null;
+  activeGiftCardsCount?: number;
 }
 
-export function Navbar({ categories, myStoreId }: NavbarProps) {
+export function Navbar({ categories, myStoreId, activeGiftCardsCount = 0 }: NavbarProps) {
   const { data: session, status } = useSession();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { premiumTheme, setTheme: setPremiumTheme, themes: premiumThemes } = usePremiumTheme();
@@ -310,6 +311,16 @@ export function Navbar({ categories, myStoreId }: NavbarProps) {
                 {activeUser && (
                   <NotificationCenter themeClassName={activeHeaderThemeClass} />
                 )}
+
+                {/* Gift Cards Link */}
+                <Link href="/gift-cards" className="relative p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center">
+                  <Gift className="h-5 w-5" />
+                  {mounted && activeGiftCardsCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-4 min-w-4 p-0 flex items-center justify-center text-[10px] bg-red-500 border-2 border-background animate-in zoom-in duration-300">
+                      {activeGiftCardsCount}
+                    </Badge>
+                  )}
+                </Link>
 
                 {/* Carrito Link */}
                 <Link href="/cart" className="relative p-2 text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center justify-center">

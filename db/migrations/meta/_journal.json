@@ -78,6 +78,20 @@
       "when": 1780140003000,
       "tag": "0010_store_gift_card_template_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1780140003500,
+      "tag": "0011_store_gift_cards_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1780140004000,
+      "tag": "0012_gift_card_pending_codes_nullable",
+      "breakpoints": true
     }
   ]
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { nextauthConfig } from '@/lib/nextauth.config';
 import { db } from '@/db';
-import { giftCards, storeGiftCardTemplates } from '@/db/schema';
+import { giftCards } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { generateSecureGiftCardCode, hashGiftCardCode } from '@/lib/gift-card-code';
 
@@ -14,7 +14,7 @@ import { generateSecureGiftCardCode, hashGiftCardCode } from '@/lib/gift-card-co
  * - Cryptographically secure random generation (Node.js crypto module)
  * - 32-character alphabet (A-Z excluding O,I; 2-9 excluding 0,1)
  * - 12-character format divided into 3 blocks of 4: XXXX-XXXX-XXXX
- * - Uniqueness verification against existing gift cards and templates
+ * - Uniqueness verification against existing issued gift cards
  * - SHA-256 hash generation for QR code verification
  *
  * @returns {object} Success response with generated code, hash, and format details
@@ -38,20 +38,13 @@ export async function POST(request: NextRequest) {
       code = generateSecureGiftCardCode();
       qrHash = hashGiftCardCode(code);
 
-      const [existingCard, existingTemplate] = await Promise.all([
-        db
-          .select({ id: giftCards.id })
-          .from(giftCards)
-          .where(eq(giftCards.code, code))
-          .get(),
-        db
-          .select({ id: storeGiftCardTemplates.id })
-          .from(storeGiftCardTemplates)
-          .where(eq(storeGiftCardTemplates.code, code))
-          .get(),
-      ]);
+      const existingCard = await db
+        .select({ id: giftCards.id })
+        .from(giftCards)
+        .where(eq(giftCards.code, code))
+        .get();
 
-      if (!existingCard && !existingTemplate) {
+      if (!existingCard) {
         return NextResponse.json({
           success: true,
           code,

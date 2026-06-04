@@ -29,8 +29,8 @@ export const storeGiftCardPaymentSettings = sqliteTable('store_gift_card_payment
 
 export const giftCards = sqliteTable('gift_cards', {
   id: text('id').primaryKey(),
-  code: text('code').notNull().unique(),
-  qrHash: text('qr_hash').notNull().unique(),
+  code: text('code').unique(),
+  qrHash: text('qr_hash').unique(),
   amount: real('amount').notNull(),
   balance: real('balance').notNull(),
   expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),

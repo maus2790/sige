@@ -9,6 +9,7 @@ import { MobileNavBar } from "@/components/layout/mobile-nav-bar";
 import { Providers } from "./providers";
 import { getCategories } from "./actions/categories";
 import { getMyStoreId } from "./actions/storefront";
+import { getActiveGiftCardsCount } from "./actions/gift-cards";
 import { OneSignalProvider } from "@/components/providers/onesignal-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
@@ -48,6 +49,7 @@ export default async function RootLayout({
 }>) {
   const categories = await getCategories();
   const myStoreId = await getMyStoreId();
+  const activeGiftCardsCount = await getActiveGiftCardsCount();
 
   return (
     <html lang="es" suppressHydrationWarning>
@@ -88,7 +90,7 @@ export default async function RootLayout({
         >
           <Providers>
             <OneSignalProvider>
-              <Navbar categories={categories} myStoreId={myStoreId} />
+              <Navbar categories={categories} myStoreId={myStoreId} activeGiftCardsCount={activeGiftCardsCount} />
               <div>
                 {children}
               </div>

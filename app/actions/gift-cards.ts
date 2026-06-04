@@ -400,6 +400,7 @@ export async function purchaseGiftCard(data: {
   storeGiftCardTemplateId?: string;
   paymentMethod?: string;
   transactionNumber?: string;
+  customStyle?: string;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
@@ -410,11 +411,32 @@ export async function purchaseGiftCard(data: {
 
   if (data.storeGiftCardTemplateId) {
     const template = await db
-      .select({ amount: storeGiftCardTemplates.amount, storeId: storeGiftCardTemplates.storeId })
+      .select({
+        amount: storeGiftCardTemplates.amount,
+        storeId: storeGiftCardTemplates.storeId,
+        giftCardsEnabled: stores.giftCardsEnabled,
+        isActive: storeGiftCardTemplates.isActive,
+      })
       .from(storeGiftCardTemplates)
+      .innerJoin(stores, eq(storeGiftCardTemplates.storeId, stores.id))
       .where(eq(storeGiftCardTemplates.id, data.storeGiftCardTemplateId))
       .get();
     if (!template) return { error: 'Template no encontrado' };
+    if (!template.isActive) return { error: 'Esta Gift Card ya no esta disponible' };
+    if (!template.giftCardsEnabled) return { error: 'La tienda no tiene Gift Cards habilitadas' };
+
+    const reserved = await db
+      .select({ id: giftCards.id })
+      .from(giftCards)
+      .where(
+        and(
+          eq(giftCards.storeGiftCardTemplateId, data.storeGiftCardTemplateId),
+          sql`${giftCards.status} != 'cancelled'`
+        )
+      )
+      .get();
+    if (reserved) return { error: 'Esta Gift Card ya fue tomada por otro cliente' };
+
     amount = template.amount;
     businessId = template.storeId;
     status = 'pending_payment';
@@ -431,13 +453,28 @@ export async function purchaseGiftCard(data: {
         return { error: 'Saldo insuficiente para crear la Gift Card' };
       }
     } else {
+      const store = await db
+        .select({ id: stores.id, giftCardsEnabled: stores.giftCardsEnabled })
+        .from(stores)
+        .where(eq(stores.id, businessId))
+        .get();
+      if (!store) return { error: 'Tienda no encontrada' };
+      if (!store.giftCardsEnabled) return { error: 'La tienda no tiene Gift Cards habilitadas' };
+
+      const settings = await db
+        .select({ maxAmount: storeGiftCardPaymentSettings.maxAmount })
+        .from(storeGiftCardPaymentSettings)
+        .where(eq(storeGiftCardPaymentSettings.storeId, businessId))
+        .get();
+      const maxLimit = settings?.maxAmount ?? 5000;
+      if (amount > maxLimit) return { error: `El monto maximo por Gift Card es Bs. ${maxLimit.toLocaleString()}` };
       status = 'pending_payment';
     }
   }
 
   // Generar código único de forma segura
-  const code = await generateUniqueGiftCardCode();
-  const qrHash = hashGiftCardCode(code);
+  const code = status === 'pending_payment' ? null : await generateUniqueGiftCardCode();
+  const qrHash = code ? hashGiftCardCode(code) : null;
   const id = crypto.randomUUID();
 
   // Expiración en 1 año
@@ -473,6 +510,7 @@ export async function purchaseGiftCard(data: {
       transactionNumber: data.transactionNumber || null,
       storeGiftCardTemplateId: data.storeGiftCardTemplateId || null,
       scheduledAt: data.scheduledAt || null,
+      customStyle: data.customStyle || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -628,6 +666,28 @@ export async function updateGiftCardRecipient(data: {
   const isRegifting = giftCard.recipientId === user.id;
   if (isRegifting) {
     updates.senderId = user.id;
+  }
+
+  if (giftCard.status === 'active' && giftCard.code) {
+    const store = await db
+      .select({ name: stores.name })
+      .from(stores)
+      .where(eq(stores.id, giftCard.businessId))
+      .get();
+    const nextCard = {
+      ...giftCard,
+      recipientName: data.recipientName,
+      recipientEmail: data.recipientEmail || null,
+      recipientId: data.recipientId || null,
+      recipientPhone: data.recipientPhone || null,
+    };
+    const imageBuffer = await renderGiftCardImageBuffer(nextCard, giftCard.code, store?.name || 'Tienda');
+    const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${data.giftCardId}.png`, 'image/png', 'gift-cards');
+    if (giftCard.cardImageUrl) {
+      const key = extractKeyFromUrl(giftCard.cardImageUrl);
+      if (key) await deleteImage(key).catch((error) => console.error('Error deleting old gift card image:', error));
+    }
+    updates.cardImageUrl = upload.url;
   }
 
   await db
@@ -1358,15 +1418,15 @@ export async function getMyStoreGiftCardData() {
       store: null,
       templates: [],
       availableTemplates: [],
-      activeTemplates: [],
-      inactiveTemplates: [],
+      activeCards: [],
+      inactiveCards: [],
       settings: null,
       giftCardsEnabled: true,
       pending: [],
     };
   }
 
-  const [templates, settings, pendingRows] = await Promise.all([
+  const [templates, settings, pendingRows, issuedCards] = await Promise.all([
     db
       .select()
       .from(storeGiftCardTemplates)
@@ -1389,19 +1449,31 @@ export async function getMyStoreGiftCardData() {
       .where(and(eq(giftCards.businessId, store.id), eq(giftCards.status, 'pending_payment')))
       .orderBy(desc(giftCards.createdAt))
       .all(),
+    db
+      .select()
+      .from(giftCards)
+      .where(eq(giftCards.businessId, store.id))
+      .orderBy(desc(giftCards.createdAt))
+      .all(),
   ]);
 
-  // Categorize templates by status and code assignment
-  const availableTemplates = templates.filter((t) => !t.isActive && !t.code);
-  const activeTemplates = templates.filter((t) => t.isActive && t.code);
-  const inactiveTemplates = templates.filter((t) => !t.isActive && t.code);
+  const activeCards = issuedCards
+    .filter((card) => card.status === 'active' && card.balance > 1)
+    .sort((a, b) => b.balance - a.balance);
+  const inactiveCards = issuedCards.filter((card) => card.status !== 'active' || card.balance <= 1);
+  const reservedTemplateIds = new Set(
+    issuedCards
+      .filter((card) => card.storeGiftCardTemplateId && card.status !== 'cancelled')
+      .map((card) => card.storeGiftCardTemplateId)
+  );
+  const availableTemplates = templates.filter((template) => template.isActive && !reservedTemplateIds.has(template.id));
 
   return {
     store,
     templates,
     availableTemplates,
-    activeTemplates,
-    inactiveTemplates,
+    activeCards,
+    inactiveCards,
     settings: settings || null,
     giftCardsEnabled: (store.giftCardsEnabled ?? true) as boolean,
     pending: pendingRows.map((row) => ({
@@ -1438,7 +1510,7 @@ export async function upsertStoreGiftCardTemplate(data: {
   if (data.amount > maxLimit) return { error: `El monto maximo por Gift Card es Bs. ${maxLimit.toLocaleString()}` };
 
   const now = new Date();
-  const isActive = data.isActive ?? false;
+  const isActive = data.isActive ?? true;
   const payload = {
     storeId: data.storeId,
     name: data.name.trim(),
@@ -1462,21 +1534,26 @@ export async function upsertStoreGiftCardTemplate(data: {
 
     await db
       .update(storeGiftCardTemplates)
-      .set({ ...payload, code: existing.code })
+      .set({ ...payload, code: null })
       .where(eq(storeGiftCardTemplates.id, data.id));
   } else {
+    const id = crypto.randomUUID();
     await db.insert(storeGiftCardTemplates).values({
-      id: crypto.randomUUID(),
+      id,
       ...payload,
       code: null,
       createdAt: now,
     });
+    revalidatePath('/dashboard/gift-cards');
+    revalidatePath(`/tienda/${data.storeId}`);
+    revalidatePath('/gift-cards/buy');
+    return { success: true, id };
   }
 
   revalidatePath('/dashboard/gift-cards');
   revalidatePath(`/tienda/${data.storeId}`);
   revalidatePath('/gift-cards/buy');
-  return { success: true };
+  return { success: true, id: data.id };
 }
 
 export async function toggleStoreGiftCardTemplate(templateId: string, isActive: boolean) {
@@ -1490,7 +1567,7 @@ export async function toggleStoreGiftCardTemplate(templateId: string, isActive: 
     .update(storeGiftCardTemplates)
     .set({
       isActive,
-      code: isActive ? undefined : null,
+      code: null,
       updatedAt: new Date(),
     })
     .where(and(eq(storeGiftCardTemplates.id, templateId), eq(storeGiftCardTemplates.storeId, store.id)));
@@ -1547,6 +1624,65 @@ export async function updateStoreGiftCardPaymentSettings(data: {
   return { success: true };
 }
 
+const SERVER_GIFT_CARD_GRADIENTS: Record<number, string[]> = {
+  1: ['#2563eb', '#1d4ed8', '#312e81'],
+  2: ['#fde047', '#f59e0b', '#c2410c'],
+  3: ['#09090b', '#164e63', '#0891b2'],
+  4: ['#fb7185', '#db2777', '#701a75'],
+  5: ['#6ee7b7', '#059669', '#052e16'],
+  6: ['#c4b5fd', '#7e22ce', '#312e81'],
+  7: ['#7dd3fc', '#2563eb', '#172554'],
+  8: ['#fdba74', '#ef4444', '#9f1239'],
+  9: ['#a5f3fc', '#06b6d4', '#115e59'],
+  10: ['#f87171', '#be123c', '#1c1917'],
+};
+
+function escapeSvgText(value?: string | null) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function renderGiftCardImageBuffer(card: typeof giftCards.$inferSelect, code: string, storeName: string) {
+  const sharp = (await import('sharp')).default;
+  const colors = SERVER_GIFT_CARD_GRADIENTS[card.templateId || 1] || SERVER_GIFT_CARD_GRADIENTS[1];
+  const width = 1200;
+  const height = 740;
+  const recipient = escapeSvgText(card.recipientName || '________');
+  const message = escapeSvgText(card.message || '');
+  const occasion = escapeSvgText(card.occasion || 'Gift Card');
+  const store = escapeSvgText(storeName);
+  const amount = Number(card.amount || 0).toFixed(2);
+
+  const svg = `
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          ${colors.map((color, index) => `<stop offset="${(index / (colors.length - 1)) * 100}%" stop-color="${color}" />`).join('')}
+        </linearGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.24"/>
+        </filter>
+      </defs>
+      <rect width="${width}" height="${height}" rx="64" fill="url(#bg)" filter="url(#shadow)" />
+      <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="64" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+      <circle cx="1020" cy="120" r="180" fill="rgba(255,255,255,0.10)" />
+      <text x="70" y="96" font-family="Arial, sans-serif" font-size="24" font-weight="900" letter-spacing="6" fill="rgba(255,255,255,0.72)">${store}</text>
+      <text x="70" y="175" font-family="Arial, sans-serif" font-size="32" font-weight="900" letter-spacing="4" fill="rgba(255,255,255,0.72)">PARA</text>
+      <text x="70" y="246" font-family="Arial, sans-serif" font-size="66" font-weight="900" fill="#ffffff">${recipient}</text>
+      <text x="70" y="300" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="rgba(255,255,255,0.76)">${occasion}</text>
+      ${message ? `<rect x="70" y="370" width="1060" height="96" rx="28" fill="rgba(0,0,0,0.16)" stroke="rgba(255,255,255,0.10)" /><text x="600" y="428" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" font-style="italic" fill="#ffffff">${message.slice(0, 60)}</text>` : ''}
+      <line x1="70" y1="560" x2="1130" y2="560" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+      <text x="70" y="620" font-family="Arial, sans-serif" font-size="20" font-weight="900" letter-spacing="5" fill="rgba(255,255,255,0.62)">CODIGO</text>
+      <text x="70" y="672" font-family="Courier New, monospace" font-size="34" font-weight="900" letter-spacing="4" fill="#ffffff">${escapeSvgText(code)}</text>
+      <text x="1130" y="672" text-anchor="end" font-family="Arial, sans-serif" font-size="62" font-weight="900" fill="#ffffff">Bs. ${amount}</text>
+    </svg>`;
+
+  return sharp(Buffer.from(svg)).png().toBuffer();
+}
+
 export async function verifyStoreGiftCardPayment(
   giftCardId: string,
   action: 'approve' | 'reject',
@@ -1570,33 +1706,23 @@ export async function verifyStoreGiftCardPayment(
   if (store && card.businessId !== store.id) return { error: 'No autorizado para esta tienda' };
   if (card.status !== 'pending_payment') return { error: 'Esta Gift Card ya fue procesada' };
 
-  const nextStatus = action === 'approve' ? 'active' : 'cancelled';
   let assignedCode: string | null = null;
+  let cardImageUrl = card.cardImageUrl;
 
-  if (action === 'approve' && card.storeGiftCardTemplateId) {
-    // Assign code to template if it doesn't have one
-    const template = await db
-      .select({ code: storeGiftCardTemplates.code })
-      .from(storeGiftCardTemplates)
-      .where(eq(storeGiftCardTemplates.id, card.storeGiftCardTemplateId))
-      .get();
-
-    if (template && !template.code) {
-      const newCode = await generateUniqueGiftCardCode();
-      await db
-        .update(storeGiftCardTemplates)
-        .set({ code: newCode, updatedAt: new Date() })
-        .where(eq(storeGiftCardTemplates.id, card.storeGiftCardTemplateId));
-      assignedCode = newCode;
-    } else if (template && template.code) {
-      assignedCode = template.code;
-    }
+  if (action === 'approve') {
+    assignedCode = card.code || await generateUniqueGiftCardCode();
+    const imageBuffer = await renderGiftCardImageBuffer(card, assignedCode, store?.name || 'Tienda');
+    const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${giftCardId}.png`, 'image/png', 'gift-cards');
+    cardImageUrl = upload.url;
   }
 
   await db
     .update(giftCards)
     .set({
-      status: nextStatus,
+      status: action === 'approve' ? 'active' : 'cancelled',
+      code: action === 'approve' ? assignedCode : card.code,
+      qrHash: action === 'approve' && assignedCode ? hashGiftCardCode(assignedCode) : card.qrHash,
+      cardImageUrl,
       rejectionReason: action === 'reject' ? (rejectionReason || 'Pago no verificado') : null,
       verifiedBy: user.id,
       verifiedAt: new Date(),
@@ -1637,6 +1763,23 @@ export async function verifyStoreGiftCardPayment(
         link: `/gift-cards/${giftCardId}`,
       });
     }
+  } else {
+    const message = rejectionReason || 'Pago no verificado';
+    await sendOneSignalNotification({
+      userIds: [card.senderId],
+      title: 'Pago de Gift Card rechazado',
+      message,
+      url: '/gift-cards?tab=stores',
+    });
+
+    const { createNotification } = await import('./notifications');
+    await createNotification({
+      userId: card.senderId,
+      title: 'Pago de Gift Card rechazado',
+      message,
+      type: 'gift_card',
+      link: '/gift-cards?tab=stores',
+    });
   }
 
   revalidatePath('/dashboard/gift-cards');
@@ -1647,6 +1790,82 @@ export async function verifyStoreGiftCardPayment(
     message: action === 'approve' ? 'Gift Card activada correctamente' : 'Gift Card rechazada',
     ...(assignedCode && { code: assignedCode }),
   };
+}
+
+export async function updateStoreIssuedGiftCard(
+  giftCardId: string,
+  data: {
+    recipientName?: string;
+    recipientEmail?: string;
+    recipientPhone?: string;
+    message?: string;
+  }
+) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store && user.role !== 'superadmin') return { error: 'Tienda no encontrada' };
+
+  const card = await db.select().from(giftCards).where(eq(giftCards.id, giftCardId)).get();
+  if (!card) return { error: 'Gift Card no encontrada' };
+  if (store && card.businessId !== store.id) return { error: 'No autorizado para esta tienda' };
+
+  let cardImageUrl = card.cardImageUrl;
+  const nextCard = {
+    ...card,
+    recipientName: data.recipientName?.trim() || card.recipientName,
+    recipientEmail: data.recipientEmail?.trim() || null,
+    recipientPhone: data.recipientPhone?.trim() || null,
+    message: data.message?.trim() || null,
+  };
+
+  if (!cardImageUrl && card.code) {
+    const imageBuffer = await renderGiftCardImageBuffer(nextCard, card.code, store?.name || 'Tienda');
+    const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${giftCardId}.png`, 'image/png', 'gift-cards');
+    cardImageUrl = upload.url;
+  }
+
+  await db
+    .update(giftCards)
+    .set({
+      recipientName: nextCard.recipientName,
+      recipientEmail: nextCard.recipientEmail,
+      recipientPhone: nextCard.recipientPhone,
+      message: nextCard.message,
+      cardImageUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(giftCards.id, giftCardId));
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath('/gift-cards');
+  return { success: true };
+}
+
+export async function deleteStoreIssuedGiftCard(giftCardId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store && user.role !== 'superadmin') return { error: 'Tienda no encontrada' };
+
+  const card = await db.select().from(giftCards).where(eq(giftCards.id, giftCardId)).get();
+  if (!card) return { error: 'Gift Card no encontrada' };
+  if (store && card.businessId !== store.id) return { error: 'No autorizado para esta tienda' };
+
+  for (const url of [card.cardImageUrl, card.customImageUrl, card.receiptUrl]) {
+    if (!url) continue;
+    const key = extractKeyFromUrl(url);
+    if (key) await deleteImage(key).catch((error) => console.error('Error deleting gift card R2 object:', error));
+  }
+
+  await db.delete(giftCardHistory).where(eq(giftCardHistory.giftCardId, giftCardId));
+  await db.delete(giftCards).where(eq(giftCards.id, giftCardId));
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath('/gift-cards');
+  return { success: true };
 }
 
 async function getOwnedStoreForUser(userId: string) {
@@ -1677,13 +1896,8 @@ async function generateUniqueGiftCardCode() {
       .from(giftCards)
       .where(eq(giftCards.code, code))
       .get();
-    const existingTemplate = await db
-      .select({ id: storeGiftCardTemplates.id })
-      .from(storeGiftCardTemplates)
-      .where(eq(storeGiftCardTemplates.code, code))
-      .get();
 
-    if (!existingCard && !existingTemplate) return code;
+    if (!existingCard) return code;
   }
 
   throw new Error('No se pudo generar un codigo unico de Gift Card');
@@ -1691,9 +1905,8 @@ async function generateUniqueGiftCardCode() {
 
 export async function getActiveStoreGiftCardTemplates(storeId?: string) {
   const conditions = [
-    eq(storeGiftCardTemplates.isActive, true),
-    sql`${storeGiftCardTemplates.code} IS NOT NULL`,
     eq(stores.giftCardsEnabled, true),
+    eq(storeGiftCardTemplates.isActive, true),
   ];
   if (storeId) {
     conditions.push(eq(storeGiftCardTemplates.storeId, storeId));
@@ -1708,6 +1921,7 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
       description: storeGiftCardTemplates.description,
       designId: storeGiftCardTemplates.designId,
       occasion: storeGiftCardTemplates.occasion,
+      customStyle: storeGiftCardTemplates.customStyle,
       storeName: stores.name,
       storeLogoUrl: stores.logoUrl,
     })
@@ -1717,9 +1931,20 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
     .orderBy(desc(storeGiftCardTemplates.createdAt))
     .all();
 
-  // Get the first gift card image for each template
   const templatesWithImages = await Promise.all(
     templates.map(async (template) => {
+      const reserved = await db
+        .select({ id: giftCards.id })
+        .from(giftCards)
+        .where(
+          and(
+            eq(giftCards.storeGiftCardTemplateId, template.id),
+            sql`${giftCards.status} != 'cancelled'`
+          )
+        )
+        .get();
+      if (reserved) return null;
+
       const giftCardImage = await db
         .select({
           cardImageUrl: giftCards.cardImageUrl,
@@ -1742,7 +1967,7 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
     })
   );
 
-  return templatesWithImages;
+  return templatesWithImages.filter((template): template is NonNullable<typeof template> => Boolean(template));
 }
 
 export async function toggleStoreGiftCardsEnabled(enabled: boolean) {
@@ -1791,8 +2016,6 @@ export async function getStoreGiftCardsEnabled() {
 
 export async function getStoresWithGiftCards() {
   const conditions = [
-    eq(storeGiftCardTemplates.isActive, true),
-    sql`${storeGiftCardTemplates.code} IS NOT NULL`,
     eq(stores.giftCardsEnabled, true),
   ];
 
@@ -1804,8 +2027,10 @@ export async function getStoresWithGiftCards() {
       storeBannerUrl: stores.bannerUrl,
       templateId: storeGiftCardTemplates.id,
       templateName: storeGiftCardTemplates.name,
+      templateDescription: storeGiftCardTemplates.description,
       templateAmount: storeGiftCardTemplates.amount,
       designId: storeGiftCardTemplates.designId,
+      occasion: storeGiftCardTemplates.occasion,
       createdAt: storeGiftCardTemplates.createdAt,
     })
     .from(storeGiftCardTemplates)
@@ -1814,11 +2039,9 @@ export async function getStoresWithGiftCards() {
     .orderBy(desc(stores.createdAt))
     .all();
 
-  // Get gift card images for each store
   const storesMap = new Map();
   for (const result of results) {
     if (!storesMap.has(result.storeId)) {
-      // Get the first active gift card image for this store
       const giftCardImage = await db
         .select({
           cardImageUrl: giftCards.cardImageUrl,
@@ -1844,11 +2067,68 @@ export async function getStoresWithGiftCards() {
         firstTemplateAmount: result.templateAmount,
         firstTemplateDesignId: result.designId,
         imageUrl: giftCardImage?.cardImageUrl || giftCardImage?.customImageUrl || null,
+        templates: [],
+      });
+    }
+
+    const reserved = await db
+      .select({ id: giftCards.id })
+      .from(giftCards)
+      .where(
+        and(
+          eq(giftCards.storeGiftCardTemplateId, result.templateId),
+          sql`${giftCards.status} != 'cancelled'`
+        )
+      )
+      .get();
+
+    if (!reserved) {
+      storesMap.get(result.storeId).templates.push({
+        id: result.templateId,
+        storeId: result.storeId,
+        name: result.templateName,
+        amount: result.templateAmount,
+        description: result.templateDescription,
+        designId: result.designId,
+        occasion: result.occasion,
+        storeName: result.storeName,
+        storeLogoUrl: result.storeLogoUrl,
       });
     }
   }
 
-  return Array.from(storesMap.values());
+  return Array.from(storesMap.values()).filter((store) => store.templates.length > 0);
+}
+
+export async function getGiftCardStoreProducts(storeId: string) {
+  const rows = await db
+    .select({
+      id: products.id,
+      name: products.name,
+      imageUrls: products.imageUrls,
+      price: comercialConfig.precioVenta,
+    })
+    .from(products)
+    .innerJoin(comercialConfig, eq(products.id, comercialConfig.productId))
+    .where(and(eq(products.storeId, storeId), eq(comercialConfig.isPublished, true)))
+    .orderBy(desc(products.createdAt))
+    .limit(24)
+    .all();
+
+  return rows.map((product) => {
+    let imageUrl: string | null = null;
+    try {
+      const parsed = Array.isArray(product.imageUrls)
+        ? product.imageUrls
+        : product.imageUrls
+          ? JSON.parse(product.imageUrls)
+          : [];
+      imageUrl = Array.isArray(parsed) ? parsed[0] || null : null;
+    } catch {
+      imageUrl = null;
+    }
+    return { ...product, imageUrl };
+  });
 }
 
 export async function getStoreWithGiftCards(storeId: string) {
@@ -1875,6 +2155,53 @@ export async function getStoreWithGiftCards(storeId: string) {
     ...store,
     templates: templates,
   };
+}
+
+export async function getActiveGiftCardsCount() {
+  const user = await getCurrentUser();
+  if (!user) return 0;
+
+  const now = Date.now();
+  const isCardActive = (c: any) => {
+    const exp = c.expiresAt instanceof Date ? c.expiresAt.getTime() : Number(c.expiresAt);
+    return c.status === 'active' && exp > now && c.balance > 0;
+  };
+
+  const userGiftCards = await db
+    .select({
+      id: giftCards.id,
+      status: giftCards.status,
+      balance: giftCards.balance,
+      expiresAt: giftCards.expiresAt,
+      senderId: giftCards.senderId,
+      recipientId: giftCards.recipientId,
+    })
+    .from(giftCards)
+    .where(
+      or(
+        eq(giftCards.senderId, user.id),
+        eq(giftCards.recipientId, user.id)
+      )
+    )
+    .all();
+
+  const mine = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId === user.id);
+  const sent = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId !== user.id);
+  const received = userGiftCards.filter(gc => gc.recipientId === user.id && gc.senderId !== user.id);
+
+  const pendingVerification = [...sent, ...received, ...mine]
+    .filter((c, index, self) =>
+      c.status === 'pending_payment' &&
+      self.findIndex(t => t.id === c.id) === index
+    );
+
+  const activeMine = [
+    ...mine,
+    ...pendingVerification
+  ].filter((c, index, self) => self.findIndex(t => t.id === c.id) === index)
+    .filter(isCardActive);
+
+  return activeMine.length;
 }
 
 
