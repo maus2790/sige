@@ -77,12 +77,13 @@ export default async function StorePage({ params }: StorePageProps) {
 
   return (
     <main className="min-h-screen">
-      <StoreFeed 
-        store={store} 
-        initialProducts={initialProducts} 
+      <StoreFeed
+        store={store}
+        initialProducts={initialProducts}
         myUserId={user?.id ?? null}
         categories={categoriesList}
         hasGiftCards={giftCardTemplates.length > 0}
+        giftCardTemplates={giftCardTemplates}
       />
     </main>
   );

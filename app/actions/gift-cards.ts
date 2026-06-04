@@ -1699,7 +1699,7 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
     conditions.push(eq(storeGiftCardTemplates.storeId, storeId));
   }
 
-  return db
+  const templates = await db
     .select({
       id: storeGiftCardTemplates.id,
       storeId: storeGiftCardTemplates.storeId,
@@ -1716,6 +1716,33 @@ export async function getActiveStoreGiftCardTemplates(storeId?: string) {
     .where(and(...conditions))
     .orderBy(desc(storeGiftCardTemplates.createdAt))
     .all();
+
+  // Get the first gift card image for each template
+  const templatesWithImages = await Promise.all(
+    templates.map(async (template) => {
+      const giftCardImage = await db
+        .select({
+          cardImageUrl: giftCards.cardImageUrl,
+          customImageUrl: giftCards.customImageUrl,
+        })
+        .from(giftCards)
+        .where(
+          and(
+            eq(giftCards.storeGiftCardTemplateId, template.id),
+            eq(giftCards.status, 'active')
+          )
+        )
+        .orderBy(desc(giftCards.createdAt))
+        .get();
+
+      return {
+        ...template,
+        imageUrl: giftCardImage?.cardImageUrl || giftCardImage?.customImageUrl || null,
+      };
+    })
+  );
+
+  return templatesWithImages;
 }
 
 export async function toggleStoreGiftCardsEnabled(enabled: boolean) {
