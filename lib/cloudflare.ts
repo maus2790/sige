@@ -185,7 +185,8 @@ export async function uploadImageFromBuffer(
   buffer: Buffer,
   originalName: string,
   mimeType: string,
-  folder: string = "products"
+  folder: string = "products",
+  customKey?: string
 ): Promise<UploadResult> {
   if (!buffer) {
     throw new Error("No se proporcionó ningún buffer");
@@ -203,10 +204,8 @@ export async function uploadImageFromBuffer(
     throw new Error("El archivo es demasiado grande. Máximo 5MB");
   }
 
-  // Generar nombre único
-  const fileExtension = originalName.split(".").pop();
-  const uniqueId = randomUUID();
-  const key = `${folder}/${uniqueId}.${fileExtension}`;
+  // Generar nombre único o usar el key personalizado
+  const key = customKey || `${folder}/${randomUUID()}.${originalName.split(".").pop()}`;
 
   // Subir a R2
   const command = new PutObjectCommand({

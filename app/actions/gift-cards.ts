@@ -118,11 +118,24 @@ export async function getUserGiftCards() {
     )
     .orderBy(desc(giftCards.createdAt));
   
-  const sent = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId !== user.id);
+  const ownedStores = await db
+    .select({ id: stores.id })
+    .from(stores)
+    .where(eq(stores.userId, user.id));
+  const ownedStoreIds = new Set(ownedStores.map(s => s.id));
+
+  // Excluir tarjetas de ventas directas propias del vendedor:
+  // (senderId = user, storeGiftCardTemplateId != null, businessId pertenece al vendedor)
+  // Esas solo deben aparecer en el panel del vendedor, no en el wallet del usuario.
+  const isOwnDirectSale = (gc: typeof userGiftCards[number]) =>
+    gc.senderId === user.id && gc.storeGiftCardTemplateId !== null && ownedStoreIds.has(gc.businessId);
+
+  const sent   = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId !== user.id && !isOwnDirectSale(gc));
   const received = userGiftCards.filter(gc => gc.recipientId === user.id && gc.senderId !== user.id);
-  const saved = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId === user.id);
-  
-  return { sent, received, saved, mine: saved, all: userGiftCards };
+  const saved  = userGiftCards.filter(gc => gc.senderId === user.id && gc.recipientId === user.id && !isOwnDirectSale(gc));
+  const all    = userGiftCards.filter(gc => !isOwnDirectSale(gc));
+
+  return { sent, received, saved, mine: saved, all };
 }
 
 export async function getGiftCardById(giftCardId: string) {
@@ -196,6 +209,12 @@ export async function getGiftCardStats() {
     .get();
   const directBalance = userRow?.balance ?? 0;
   
+  const ownedStores = await db
+    .select({ id: stores.id })
+    .from(stores)
+    .where(eq(stores.userId, user.id));
+  const ownedStoreIds = new Set(ownedStores.map(s => s.id));
+
   const allCards = await db
     .select()
     .from(giftCards)
@@ -205,10 +224,15 @@ export async function getGiftCardStats() {
         eq(giftCards.recipientId, user.id)
       )
     );
+
+  const isOwnDirectSale = (gc: typeof allCards[number]) =>
+    gc.senderId === user.id && gc.storeGiftCardTemplateId !== null && ownedStoreIds.has(gc.businessId);
+
+  const filteredCards = allCards.filter(c => !isOwnDirectSale(c));
   
-  const sent = allCards.filter(c => c.senderId === user.id && c.recipientId !== user.id);
-  const received = allCards.filter(c => c.recipientId === user.id && c.senderId !== user.id);
-  const saved = allCards.filter(c => c.senderId === user.id && c.recipientId === user.id);
+  const sent = filteredCards.filter(c => c.senderId === user.id && c.recipientId !== user.id);
+  const received = filteredCards.filter(c => c.recipientId === user.id && c.senderId !== user.id);
+  const saved = filteredCards.filter(c => c.senderId === user.id && c.recipientId === user.id);
   
   const activeReceived = received.filter(c => 
     c.status === 'active' && c.expiresAt > new Date()
@@ -229,7 +253,7 @@ export async function getGiftCardStats() {
   );
   
   return {
-    totalCards: allCards.length,
+    totalCards: filteredCards.length,
     sentCount: sent.length,
     receivedCount: received.length,
     savedCount: saved.length,
@@ -682,10 +706,14 @@ export async function updateGiftCardRecipient(data: {
       recipientPhone: data.recipientPhone || null,
     };
     const imageBuffer = await renderGiftCardImageBuffer(nextCard, giftCard.code, store?.name || 'Tienda');
-    const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${data.giftCardId}.png`, 'image/png', 'gift-cards');
+    const upload = await uploadGiftCardWithThumbnail(imageBuffer, 'gift-cards');
     if (giftCard.cardImageUrl) {
       const key = extractKeyFromUrl(giftCard.cardImageUrl);
-      if (key) await deleteImage(key).catch((error) => console.error('Error deleting old gift card image:', error));
+      if (key) {
+        await deleteImage(key).catch((error) => console.error('Error deleting old gift card image:', error));
+        const whatsappKey = key.replace('gift-cards/', 'miniaturasGiftWhatsapp/');
+        await deleteImage(whatsappKey).catch((error) => console.error('Error deleting old whatsapp thumbnail:', error));
+      }
     }
     updates.cardImageUrl = upload.url;
   }
@@ -718,7 +746,10 @@ export async function updateGiftCardRecipient(data: {
   revalidatePath('/gift-cards');
   revalidatePath(`/gift-cards/${data.giftCardId}`);
   
-  return { success: true };
+  return { 
+    success: true, 
+    cardImageUrl: updates.cardImageUrl || giftCard.cardImageUrl 
+  };
 }
 
 export async function saveGiftCardToWallet(giftCardId: string) {
@@ -778,12 +809,7 @@ export async function uploadGiftCardImage(base64Image: string) {
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "");
     const buffer = Buffer.from(base64Data, 'base64');
     
-    const result = await uploadImageFromBuffer(
-      buffer, 
-      `gift-card-${Date.now()}.png`, 
-      'image/png', 
-      'gift-cards'
-    );
+    const result = await uploadGiftCardWithThumbnail(buffer, 'gift-cards');
 
     return { success: true, url: result.url };
   } catch (error) {
@@ -1712,7 +1738,7 @@ export async function verifyStoreGiftCardPayment(
   if (action === 'approve') {
     assignedCode = card.code || await generateUniqueGiftCardCode();
     const imageBuffer = await renderGiftCardImageBuffer(card, assignedCode, store?.name || 'Tienda');
-    const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${giftCardId}.png`, 'image/png', 'gift-cards');
+    const upload = await uploadGiftCardWithThumbnail(imageBuffer, 'gift-cards');
     cardImageUrl = upload.url;
   }
 
@@ -1822,7 +1848,7 @@ export async function updateStoreIssuedGiftCard(
 
   if (!cardImageUrl && card.code) {
     const imageBuffer = await renderGiftCardImageBuffer(nextCard, card.code, store?.name || 'Tienda');
-    const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${giftCardId}.png`, 'image/png', 'gift-cards');
+    const upload = await uploadGiftCardWithThumbnail(imageBuffer, 'gift-cards');
     cardImageUrl = upload.url;
   }
 
@@ -2202,6 +2228,188 @@ export async function getActiveGiftCardsCount() {
     .filter(isCardActive);
 
   return activeMine.length;
+}
+
+export async function deleteStoreGiftCardTemplate(templateId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store) return { error: 'Tienda no encontrada' };
+
+  // Check if there are any active gift cards associated with this template.
+  const cardsUsingTemplate = await db
+    .select({ id: giftCards.id })
+    .from(giftCards)
+    .where(
+      and(
+        eq(giftCards.storeGiftCardTemplateId, templateId),
+        sql`${giftCards.status} != 'cancelled'`
+      )
+    )
+    .limit(1);
+
+  if (cardsUsingTemplate.length > 0) {
+    return { error: 'No se puede eliminar este boceto porque tiene Gift Cards vendidas o emitidas asociadas.' };
+  }
+
+  await db
+    .delete(storeGiftCardTemplates)
+    .where(and(eq(storeGiftCardTemplates.id, templateId), eq(storeGiftCardTemplates.storeId, store.id)));
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath(`/tienda/${store.id}`);
+  revalidatePath('/gift-cards/buy');
+  return { success: true };
+}
+
+export async function sellStoreGiftCardDirectly(data: {
+  templateId: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  recipientName: string;
+  message?: string;
+  recipientId?: string;
+  paymentMethod: string; // 'efectivo', 'qr', etc.
+  transactionNumber?: string;
+}) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store) return { error: 'Tienda no encontrada o no autorizada' };
+
+  const template = await db
+    .select()
+    .from(storeGiftCardTemplates)
+    .where(and(eq(storeGiftCardTemplates.id, data.templateId), eq(storeGiftCardTemplates.storeId, store.id)))
+    .get();
+
+  if (!template) return { error: 'Boceto de Gift Card no encontrado' };
+
+  const amount = template.amount;
+  const status = 'active';
+
+  // Generar código único de forma segura
+  const code = await generateUniqueGiftCardCode();
+  const qrHash = hashGiftCardCode(code);
+  const id = crypto.randomUUID();
+
+  // Expiración en 1 año
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+  // Intentar renderizar la imagen
+  let cardImageUrl: string | null = null;
+  try {
+    const nextCardMock = {
+      id,
+      code,
+      qrHash,
+      amount,
+      balance: amount,
+      expiresAt,
+      status,
+      senderId: user.id,
+      recipientId: data.recipientId || null,
+      recipientEmail: data.recipientEmail || null,
+      recipientPhone: data.recipientPhone || null,
+      recipientName: data.recipientName || 'Mi saldo Gift Card',
+      businessId: store.id,
+      productId: null,
+      message: data.message || template.description || null,
+      templateId: template.designId,              // use template design for rendering
+      occasion: template.occasion,
+      customImageUrl: null,
+      cardImageUrl: null,
+      receiptUrl: null,
+      paymentMethod: data.paymentMethod,
+      transactionNumber: data.transactionNumber || null,
+      storeGiftCardTemplateId: template.id,
+      scheduledAt: null,
+      customStyle: template.customStyle,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      rejectionReason: null,
+      verifiedBy: user.id,
+      verifiedAt: new Date(),
+      deliveredAt: new Date(),
+      openedAt: new Date(),
+    };
+
+    const imageBuffer = await renderGiftCardImageBuffer(nextCardMock as any, code, store.name);
+    const upload = await uploadGiftCardWithThumbnail(imageBuffer, 'gift-cards');
+    cardImageUrl = upload.url;
+  } catch (err) {
+    console.error('Error rendering direct gift card image:', err);
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.insert(giftCards).values({
+      id,
+      code,
+      qrHash,
+      amount,
+      balance: amount,
+      expiresAt,
+      status,
+      senderId: user.id,
+      recipientId: data.recipientId || null,
+      recipientEmail: data.recipientEmail || null,
+      recipientPhone: data.recipientPhone || null,
+      recipientName: data.recipientName,
+      businessId: store.id,
+      message: data.message || template.description || null,
+      occasion: template.occasion,
+      cardImageUrl,
+      paymentMethod: data.paymentMethod,
+      transactionNumber: data.transactionNumber || null,
+      storeGiftCardTemplateId: template.id,
+      verifiedBy: user.id,
+      verifiedAt: new Date(),
+      deliveredAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  });
+
+  // Registrar en historial
+  await addHistoryRecord(id, user.id, 'saved', `Gift card vendida directamente en tienda por ${data.paymentMethod}`, amount);
+  if (data.recipientId && data.recipientId !== user.id) {
+    await addHistoryRecord(id, data.recipientId, 'received', `Gift card recibida de la tienda por compra directa`, amount);
+  }
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath('/gift-cards');
+  return { success: true, id };
+}
+
+async function generateWhatsAppThumbnail(originalBuffer: Buffer): Promise<Buffer> {
+  const sharp = (await import('sharp')).default;
+  return sharp(originalBuffer)
+    .resize(1200, 1200, {
+      fit: 'contain',
+      background: { r: 248, g: 250, b: 252, alpha: 1 }
+    })
+    .png()
+    .toBuffer();
+}
+
+async function uploadGiftCardWithThumbnail(imageBuffer: Buffer, folder: string = 'gift-cards'): Promise<{ url: string; key: string }> {
+  const uniqueId = crypto.randomUUID();
+  const originalKey = `${folder}/${uniqueId}.png`;
+  const whatsappKey = `miniaturasGiftWhatsapp/${uniqueId}.png`;
+
+  const uploadOriginal = await uploadImageFromBuffer(imageBuffer, 'card.png', 'image/png', folder, originalKey);
+  
+  try {
+    const whatsappThumbBuffer = await generateWhatsAppThumbnail(imageBuffer);
+    await uploadImageFromBuffer(whatsappThumbBuffer, 'card.png', 'image/png', 'miniaturasGiftWhatsapp', whatsappKey);
+  } catch (error) {
+    console.error('Error generating/uploading WhatsApp thumbnail:', error);
+  }
+
+  return uploadOriginal;
 }
 
 

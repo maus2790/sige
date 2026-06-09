@@ -3,6 +3,14 @@ import { resend } from "./resend";
 export async function sendResetEmail(email: string, name: string, resetToken: string) {
   const resetUrl = `${process.env.NEXTAUTH_URL}/auth/reset-password?token=${resetToken}`;
 
+  if (!resend) {
+    console.warn("⚠️ Resend is not configured (RESEND_API_KEY is missing).");
+    if (process.env.NODE_ENV === "development") {
+      console.log("\n🔑 [DEBUG] ENLACE DE RECUPERACIÓN (Resend not configured):", resetUrl, "\n");
+    }
+    throw new Error("El servicio de correo no está configurado, pero puedes ver los detalles en la consola de desarrollo.");
+  }
+
   const { data, error } = await resend.emails.send({
     // ✅ CAMBIA ESTO - usa tu dominio personalizado
     from: `"SIGE Marketplace" <hola@sige.click>`,  // ← NUEVO REMITENTE

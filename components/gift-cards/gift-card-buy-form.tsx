@@ -323,14 +323,21 @@ export function GiftCardBuyForm({ availableBalance }: { availableBalance: number
 
         if (deliveryOption === 'send' && deliveryMethod === 'whatsapp' && finalCardImageUrl) {
           const senderName = session?.user?.name || 'Un amigo/a';
-          const text = 'Hola ' + recipientName + ', ' + senderName + ' te esta regalando una Gift Card de SIGE por Bs. ' + amount.toFixed(2) + '. Mirala aqui: ' + finalCardImageUrl;
-          const waUrl = 'https://wa.me/' + whatsappNumber.replace(/\D/g, '') + '?text=' + encodeURIComponent(text);
-          const link = document.createElement('a');
-          link.href = waUrl;
-          link.target = '_blank';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          const absoluteUrl = finalCardImageUrl.startsWith('http') ? finalCardImageUrl : `https://sige.click${finalCardImageUrl}`;
+          const shareImageUrl = absoluteUrl.replace('/api/images/gift-cards/', '/api/images/miniaturasGiftWhatsapp/');
+          const shareText = `¡Hola ${recipientName}! ${senderName} te está regalando una Gift Card de SIGE por Bs. ${amount.toFixed(2)}.\nCanjéala en: https://sige.click/gift-cards/check`;
+          const cleanNumber = whatsappNumber.replace(/\D/g, '');
+          const fallbackUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(shareText + '\n' + shareImageUrl)}`;
+
+          if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+              await navigator.share({ title: '🎁 Gift Card SIGE', text: shareText, url: shareImageUrl });
+            } catch (err) {
+              if ((err as Error).name !== 'AbortError') window.open(fallbackUrl, '_blank');
+            }
+          } else {
+            window.open(fallbackUrl, '_blank');
+          }
         }
 
         if (isSave) {

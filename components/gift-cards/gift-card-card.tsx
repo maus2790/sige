@@ -13,6 +13,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { GIFT_CARD_TEMPLATES, getGiftCardTemplate } from './gift-card-templates';
 import { CUSTOM_CARD_ICONS } from './gift-card-designer';
+import { Drawer } from 'vaul';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { useMediaQuery } from '@/hooks/use-media-query';
 
 interface GiftCardCardProps {
   giftCard: {
@@ -46,6 +49,7 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const router = useRouter();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
   
   // Redesigned modal states
   const [isRegalarMode, setIsRegalarMode] = useState(false);
@@ -90,10 +94,31 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
 
       if (result.success) {
         if (deliveryMethod === 'whatsapp') {
-          const text = `¡Hola ${recipientName}! Te he enviado una Gift Card de SIGE por Bs. ${giftCard.amount.toFixed(2)}. \n\nCódigo de Canje: ${giftCard.code}\n\nMensaje: "${giftCard.message || '¡Disfruta tu regalo!'}"\n\nPuedes canjearlo en: ${window.location.origin}/gift-cards/check`;
+          const imageUrl = (result as any).cardImageUrl || giftCard.cardImageUrl;
+          let shareText = `¡Hola ${recipientName}! Te he enviado una Gift Card de SIGE por Bs. ${giftCard.amount.toFixed(2)}.`;
+          shareText += `\nCódigo de Canje: ${giftCard.code}`;
+          shareText += `\nMensaje: "${giftCard.message || '¡Disfruta tu regalo!'}"`;
+          shareText += `\nCanjéalo en: https://sige.click/gift-cards/check`;
+
+          const absoluteUrl = imageUrl
+            ? (imageUrl.startsWith('http') ? imageUrl : `https://sige.click${imageUrl}`)
+            : null;
+          const shareImageUrl = absoluteUrl
+            ? absoluteUrl.replace('/api/images/gift-cards/', '/api/images/miniaturasGiftWhatsapp/')
+            : `https://sige.click/gift-cards/check`;
+
           const cleanNumber = whatsappNumber.replace(/\D/g, '');
-          const url = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`;
-          window.open(url, '_blank');
+          const fallbackUrl = `https://wa.me/${cleanNumber}?text=${encodeURIComponent(shareText + '\n' + shareImageUrl)}`;
+
+          if (typeof navigator !== 'undefined' && navigator.share) {
+            try {
+              await navigator.share({ title: '🎁 Gift Card SIGE', text: shareText, url: shareImageUrl });
+            } catch (err) {
+              if ((err as Error).name !== 'AbortError') window.open(fallbackUrl, '_blank');
+            }
+          } else {
+            window.open(fallbackUrl, '_blank');
+          }
         }
         
         toast.success('¡Gift Card enviada con éxito!');
@@ -212,455 +237,424 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
           ? 'Email'
           : null;
 
-  return (
-    <div className="block group">
-      <Dialog open={showPreview} onOpenChange={handleOpenChange}>
-        <DialogTrigger asChild>
-          <div 
-            className={`aspect-[1.9/1] lg:aspect-[1.8/1] w-full max-w-[420px] mx-auto rounded-2xl lg:rounded-3xl p-4 lg:p-5 text-white shadow-lg group-hover:shadow-2xl group-hover:scale-[1.01] transition-all duration-700 relative overflow-hidden ring-1 ring-white/20 cursor-pointer card-shine ${giftCard.templateId === 99 ? '' : template.className}`}
-            style={giftCard.templateId === 99 ? customBgStyle : undefined}
-          >
-            
-            {/* Decorative Gift Icon Background */}
-            <div className="absolute top-0 right-0 p-4 lg:p-6 opacity-10 pointer-events-none">
-              <WatermarkIconComponent size={120} />
+  // ---------- card tile (trigger) ----------
+  const cardTile = (
+    <div
+      className={`aspect-[1.9/1] lg:aspect-[1.8/1] w-full max-w-[420px] mx-auto rounded-2xl lg:rounded-3xl p-4 lg:p-5 text-white shadow-lg group-hover:shadow-2xl group-hover:scale-[1.01] transition-all duration-700 relative overflow-hidden ring-1 ring-white/20 cursor-pointer card-shine ${giftCard.templateId === 99 ? '' : template.className}`}
+      style={giftCard.templateId === 99 ? customBgStyle : undefined}
+      onClick={() => setShowPreview(true)}
+    >
+      <div className="absolute top-0 right-0 p-4 lg:p-6 opacity-10 pointer-events-none">
+        <WatermarkIconComponent size={120} />
+      </div>
+
+      {(isExpired || isFullyRedeemed) && (
+        <Button
+          variant="destructive"
+          size="icon"
+          className={`absolute top-4 right-4 z-30 h-8 w-8 lg:h-9 lg:w-9 rounded-full bg-red-600/80 hover:bg-red-600 border border-white/20 backdrop-blur-md shadow-xl transition-all ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+          onClick={handleDelete}
+          disabled={isDeleting}
+          title="Eliminar tarjeta"
+        >
+          <Trash2 className="h-4 w-4 lg:h-4 lg:w-4 text-white" />
+        </Button>
+      )}
+
+      <div className="relative z-10 h-full flex flex-col justify-between">
+        <div className="flex justify-between items-start">
+          <div className="space-y-1 lg:space-y-3 flex-1 min-w-0">
+            <div className="h-8 w-8 lg:h-10 lg:w-10 rounded-lg lg:rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/40">
+              <BadgeIconComponent className="h-4 w-4 lg:h-5 lg:w-5" />
+            </div>
+            <div className="space-y-0.5 lg:space-y-1">
+              <p className="text-[7px] lg:text-[8px] opacity-70 uppercase tracking-widest font-black">
+                {type === 'sent' ? '📤 Enviada a' : type === 'received' ? '📥 Recibida' : '💾 Guardada'}
+              </p>
+              <p className="text-sm lg:text-lg font-bold truncate leading-none">
+                {type === 'sent' ? (giftCard.recipientName || 'Sin nombre') : type === 'received' ? 'Para Mí' : (giftCard.recipientName || 'Mi Inventario')}
+              </p>
+            </div>
+          </div>
+
+          <div className="text-right">
+            <p className="text-[8px] lg:text-[10px] font-black tracking-widest opacity-90 uppercase">SIGE DIGITAL</p>
+            <p className="text-[6px] lg:text-[7px] font-bold opacity-60 tracking-wider">
+              {giftCard.templateId === 99 ? 'PERSONALIZADA' : (template.name || 'PLATINUM CARD')}
+            </p>
+            <div className="flex items-center justify-end gap-1.5 mt-1">
+              {deliveryLabel && (
+                <Badge variant="outline" className="bg-white/20 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">
+                  {deliveryLabel}
+                </Badge>
+              )}
+              {isExpired ? (
+                <Badge variant="outline" className="bg-red-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">EXPIRADA</Badge>
+              ) : isFullyRedeemed ? (
+                <Badge variant="outline" className="bg-white/20 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">CANJEADA</Badge>
+              ) : giftCard.status === 'pending_payment' ? (
+                <Badge variant="outline" className="bg-amber-500/50 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">EN VERIFICACIÓN</Badge>
+              ) : type === 'saved' ? (
+                <Badge variant="outline" className="bg-amber-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">GUARDADA</Badge>
+              ) : (
+                <Badge variant="outline" className="bg-green-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">ACTIVA</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
+          <p className="text-[6px] lg:text-[7px] opacity-60 uppercase tracking-[0.2em] font-bold mb-0.5">Código</p>
+          <p className="text-[9px] lg:text-[11px] font-mono font-black tracking-widest bg-white/15 px-3 py-0.5 lg:py-1 rounded-full backdrop-blur-md border border-white/20 shadow-sm">
+            {giftCard.code}
+          </p>
+        </div>
+
+        {giftCard.message && type !== 'saved' && (
+          <div className="bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 w-full my-2">
+            <p className="text-[10px] italic opacity-90 leading-none text-center whitespace-nowrap overflow-hidden">
+              "{giftCard.message.slice(0, 60)}"
+            </p>
+          </div>
+        )}
+
+        <div className="flex justify-between items-end border-t border-white/10 pt-2 lg:pt-3 mt-auto">
+          <div className="space-y-0.5">
+            <p className="text-[8px] lg:text-[9px] opacity-80 uppercase tracking-widest font-black">
+              {type === 'received' ? 'Saldo Disponible' : 'Monto de Tarjeta'}
+            </p>
+            <div className="flex items-baseline gap-1">
+              <span className="text-xs lg:text-sm font-bold opacity-90">Bs.</span>
+              <span className="text-2xl lg:text-4xl font-black tracking-tighter">
+                {(type === 'received' ? giftCard.balance : giftCard.amount).toFixed(2)}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-1 text-[8px] lg:text-[10px] opacity-70 font-bold group-hover:opacity-100 transition-opacity">
+              Click para opciones <Eye className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
+            </div>
+            <div className="flex items-center gap-1 text-[7px] lg:text-[8px] opacity-60">
+              <Calendar className="h-2.5 w-2.5" />
+              {isExpired ? 'Expiró' : 'Expira'}: {new Date(expiresAtMs).toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ---------- modal content ----------
+  const renderModalContent = () => (
+    <>
+      {isRegalarMode ? (
+        <div className="p-6 space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="sendNameModal" className="text-zinc-400 text-xs font-bold">Nombre del destinatario</Label>
+              <div className="relative">
+                <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                <Input
+                  id="sendNameModal"
+                  placeholder="Nombre completo..."
+                  className="pl-10 h-12 rounded-xl bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-purple-500"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                />
+              </div>
             </div>
 
-            {(isExpired || isFullyRedeemed) && (
-              <Button
-                variant="destructive"
-                size="icon"
-                className={`absolute top-4 right-4 z-30 h-8 w-8 lg:h-9 lg:w-9 rounded-full bg-red-600/80 hover:bg-red-600 border border-white/20 backdrop-blur-md shadow-xl transition-all ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
-                onClick={handleDelete}
-                disabled={isDeleting}
-                title="Eliminar tarjeta"
-              >
-                <Trash2 className="h-4 w-4 lg:h-4 lg:w-4 text-white" />
-              </Button>
+            <div className="space-y-3">
+              <Label className="text-zinc-400 text-xs font-bold">¿Cómo quieres enviarlo?</Label>
+              <div className="grid grid-cols-3 gap-2">
+                <Button
+                  type="button"
+                  variant={deliveryMethod === 'email' ? 'default' : 'outline'}
+                  className={`h-14 flex flex-col gap-1 rounded-xl px-1 border-white/10 ${deliveryMethod === 'email' ? 'bg-[#EA4335] hover:bg-[#D93025] text-white border-none' : 'text-zinc-400 hover:text-white'}`}
+                  onClick={() => setDeliveryMethod('email')}
+                >
+                  <Mail className="h-4 w-4" />
+                  <span className="text-[10px] font-bold">Por Email</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'}
+                  className={`h-14 flex flex-col gap-1 rounded-xl px-1 border-white/10 ${deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 text-white border-none' : 'text-zinc-400 hover:text-white'}`}
+                  onClick={() => setDeliveryMethod('whatsapp')}
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span className="text-[10px] font-bold">WhatsApp</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant={deliveryMethod === 'sige' ? 'default' : 'outline'}
+                  className={`h-14 flex flex-col gap-1 rounded-xl px-1 border-white/10 ${deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 text-white border-none' : 'text-zinc-400 hover:text-white'}`}
+                  onClick={() => setDeliveryMethod('sige')}
+                >
+                  <UserIcon className="h-4 w-4" />
+                  <span className="text-[10px] font-bold">Usuario SIGE</span>
+                </Button>
+              </div>
+            </div>
+
+            {deliveryMethod === 'email' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label htmlFor="sendEmailModal" className="text-zinc-400 text-xs font-bold">Correo electrónico</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="sendEmailModal"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    className="pl-10 h-12 rounded-xl bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-red-500"
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                  />
+                </div>
+              </div>
             )}
 
-            <div className="relative z-10 h-full flex flex-col justify-between">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1 lg:space-y-3 flex-1 min-w-0">
-                  <div className="h-8 w-8 lg:h-10 lg:w-10 rounded-lg lg:rounded-xl bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/40">
-                    <BadgeIconComponent className="h-4 w-4 lg:h-5 lg:w-5" />
-                  </div>
-                  
-                  <div className="space-y-0.5 lg:space-y-1">
-                    <p className="text-[7px] lg:text-[8px] opacity-70 uppercase tracking-widest font-black">
-                      {type === 'sent' ? '📤 Enviada a' : type === 'received' ? '📥 Recibida' : '💾 Guardada'}
-                    </p>
-                    <p className="text-sm lg:text-lg font-bold truncate leading-none">
-                      {type === 'sent' ? (giftCard.recipientName || 'Sin nombre') : type === 'received' ? 'Para Mí' : (giftCard.recipientName || 'Mi Inventario')}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-[8px] lg:text-[10px] font-black tracking-widest opacity-90 uppercase">SIGE DIGITAL</p>
-                  <p className="text-[6px] lg:text-[7px] font-bold opacity-60 tracking-wider">
-                    {giftCard.templateId === 99 ? 'PERSONALIZADA' : (template.name || 'PLATINUM CARD')}
-                  </p>
-                  <div className="flex items-center justify-end gap-1.5 mt-1">
-                    {deliveryLabel && (
-                      <Badge variant="outline" className="bg-white/20 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">
-                        {deliveryLabel}
-                      </Badge>
-                    )}
-                    {isExpired ? (
-                      <Badge variant="outline" className="bg-red-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">EXPIRADA</Badge>
-                    ) : isFullyRedeemed ? (
-                      <Badge variant="outline" className="bg-white/20 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">CANJEADA</Badge>
-                    ) : giftCard.status === 'pending_payment' ? (
-                      <Badge variant="outline" className="bg-amber-500/50 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">EN VERIFICACIÓN</Badge>
-                    ) : type === 'saved' ? (
-                      <Badge variant="outline" className="bg-amber-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">GUARDADA</Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-green-500/30 text-white border-white/20 text-[7px] lg:text-[8px] px-1.5 h-4 lg:h-5">ACTIVA</Badge>
-                    )}
-                  </div>
+            {deliveryMethod === 'whatsapp' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label htmlFor="sendWaModal" className="text-zinc-400 text-xs font-bold">Número de WhatsApp</Label>
+                <div className="relative">
+                  <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    id="sendWaModal"
+                    type="tel"
+                    placeholder="+591 7XXXXXXX"
+                    className="pl-10 h-12 rounded-xl bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-green-500"
+                    value={whatsappNumber}
+                    onChange={(e) => setWhatsappNumber(e.target.value)}
+                  />
                 </div>
               </div>
+            )}
 
-              {/* Código de Canje Centrado Superior */}
-              <div className="absolute top-4 left-1/2 -translate-x-1/2 flex flex-col items-center pointer-events-none">
-                <p className="text-[6px] lg:text-[7px] opacity-60 uppercase tracking-[0.2em] font-bold mb-0.5">Código</p>
-                <p className="text-[9px] lg:text-[11px] font-mono font-black tracking-widest bg-white/15 px-3 py-0.5 lg:py-1 rounded-full backdrop-blur-md border border-white/20 shadow-sm">
-                  {giftCard.code}
-                </p>
+            {deliveryMethod === 'sige' && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label htmlFor="sendSigeUserModal" className="text-zinc-400 text-xs font-bold">Seleccionar Usuario SIGE</Label>
+                <select
+                  id="sendSigeUserModal"
+                  className="w-full h-12 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+                  value={recipientId}
+                  onChange={(e) => {
+                    const uid = e.target.value;
+                    setRecipientId(uid);
+                    const user = sigeUsers.find(u => u.id === uid);
+                    if (user) {
+                      setRecipientName(user.name);
+                      setRecipientEmail(user.email);
+                    }
+                  }}
+                >
+                  <option value="" className="bg-zinc-950 text-white">Selecciona un usuario...</option>
+                  {sigeUsers.map(user => (
+                    <option key={user.id} value={user.id} className="bg-zinc-950 text-white">
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
               </div>
+            )}
+          </div>
 
-
-              {/* Message snippet if exists */}
-              {giftCard.message && type !== 'saved' && (
-                <div className="bg-black/10 backdrop-blur-sm px-3 py-1.5 rounded-xl border border-white/10 w-full my-2">
-                  <p className="text-[10px] italic opacity-90 leading-none text-center whitespace-nowrap overflow-hidden">
-                    "{giftCard.message.slice(0, 60)}"
-                  </p>
-                </div>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button
+              className={`h-14 text-lg font-bold gap-2 rounded-2xl shadow-lg transition-all ${
+                deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20 text-white animate-pulse' :
+                deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20 text-white' :
+                'bg-[#EA4335] hover:bg-[#D93025] shadow-red-500/20 text-white'
+              }`}
+              onClick={handleSend}
+              disabled={
+                isSending ||
+                !recipientName ||
+                (deliveryMethod === 'email' && !recipientEmail) ||
+                (deliveryMethod === 'whatsapp' && !whatsappNumber) ||
+                (deliveryMethod === 'sige' && !recipientId)
+              }
+            >
+              {isSending ? 'Enviando...' : (
+                <>
+                  <Send className="h-5 w-5" />
+                  {deliveryMethod === 'email' ? 'Enviar por Email' :
+                   deliveryMethod === 'whatsapp' ? 'Enviar por WhatsApp' : 'Enviar a Usuario SIGE'}
+                </>
               )}
-
-              <div className="flex justify-between items-end border-t border-white/10 pt-2 lg:pt-3 mt-auto">
-                <div className="space-y-0.5">
-                  <p className="text-[8px] lg:text-[9px] opacity-80 uppercase tracking-widest font-black">
-                    {type === 'received' ? 'Saldo Disponible' : 'Monto de Tarjeta'}
-                  </p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xs lg:text-sm font-bold opacity-90">Bs.</span>
-                    <span className="text-2xl lg:text-4xl font-black tracking-tighter">
-                      {(type === 'received' ? giftCard.balance : giftCard.amount).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex flex-col items-end gap-1">
-                   <div className="flex items-center gap-1 text-[8px] lg:text-[10px] opacity-70 font-bold group-hover:opacity-100 transition-opacity">
-                    Click para opciones <Eye className="h-2.5 w-2.5 lg:h-3 lg:w-3" />
-                  </div>
-                  <div className="flex items-center gap-1 text-[7px] lg:text-[8px] opacity-60">
-                    <Calendar className="h-2.5 w-2.5" />
-                    {isExpired ? 'Expiró' : 'Expira'}: {new Date(expiresAtMs).toLocaleDateString('es-BO', { day: 'numeric', month: 'short' })}
-                  </div>
-                </div>
+            </Button>
+            <Button variant="ghost" className="hover:bg-white/5 text-zinc-400 rounded-xl" onClick={() => setIsRegalarMode(false)} disabled={isSending}>
+              Atrás
+            </Button>
+          </div>
+        </div>
+      ) : isCheckingBalance ? (
+        <div className="p-6 space-y-6">
+          <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 text-center space-y-4">
+            <div className="mx-auto h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 border border-emerald-500/20">
+              <Wallet className="h-8 w-8" />
+            </div>
+            <div>
+              <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Saldo Disponible</p>
+              <p className="text-3xl font-black text-white mt-1">Bs. {giftCard.balance.toFixed(2)}</p>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-zinc-400">
+                <span>Consumido: Bs. {(giftCard.amount - giftCard.balance).toFixed(2)}</span>
+                <span>Monto Total: Bs. {giftCard.amount.toFixed(2)}</span>
+              </div>
+              <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden border border-zinc-700">
+                <div className="bg-emerald-500 h-full rounded-full transition-all duration-1000" style={{ width: `${(giftCard.balance / giftCard.amount) * 100}%` }} />
+              </div>
+            </div>
+            <div className="border-t border-white/5 pt-4 grid grid-cols-2 gap-4 text-left text-xs">
+              <div>
+                <p className="text-zinc-500 font-bold">Código de Canje</p>
+                <p className="font-mono text-zinc-300 font-bold text-sm mt-0.5">{giftCard.code}</p>
+              </div>
+              <div>
+                <p className="text-zinc-500 font-bold">Estado</p>
+                <p className="font-bold text-zinc-300 mt-0.5 uppercase flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-zinc-500'}`} />
+                  {isActive ? 'Activa / Disponible' : 'Inactiva / Canjeada'}
+                </p>
               </div>
             </div>
           </div>
-        </DialogTrigger>
-
-        <DialogContent className="sm:max-w-md bg-zinc-950 border-white/10 p-0 overflow-hidden text-white">
-          <DialogHeader className={`p-6 pb-4 text-left ${
-            isRegalarMode 
-              ? (deliveryMethod === 'whatsapp' ? 'bg-green-600' : deliveryMethod === 'sige' ? 'bg-purple-600' : 'bg-[#EA4335]')
-              : isCheckingBalance 
-                ? 'bg-blue-600' 
-                : template.className
-          } transition-colors duration-500`}>
-            <div className="flex items-center gap-3">
-              {(isRegalarMode || isCheckingBalance) && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-full hover:bg-white/15 text-white p-0 border border-white/10"
-                  onClick={() => {
-                    if (isRegalarMode) setIsRegalarMode(false);
-                    else if (isCheckingBalance) setIsCheckingBalance(false);
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              )}
-              <div>
-                <DialogTitle className="text-lg font-bold text-white mb-0.5">
-                  {isRegalarMode 
-                    ? 'Enviar Gift Card' 
-                    : isCheckingBalance 
-                      ? 'Consulta de Saldo' 
-                      : 'Opciones de Tarjeta'}
-                </DialogTitle>
-                <DialogDescription className="text-white/80 text-xs">
-                  {isRegalarMode 
-                    ? 'Configura el destinatario y el medio de envío.' 
-                    : isCheckingBalance 
-                      ? 'Verifica el saldo disponible y consumido de tu tarjeta.' 
-                      : 'Visualiza, descarga, regala o consulta el saldo de tu tarjeta.'}
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          
-          {isRegalarMode ? (
-            <div className="p-6 space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sendNameModal" className="text-zinc-400 text-xs font-bold">Nombre del destinatario</Label>
-                  <div className="relative">
-                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                    <Input
-                      id="sendNameModal"
-                      placeholder="Nombre completo..."
-                      className="pl-10 h-12 rounded-xl bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-purple-500"
-                      value={recipientName}
-                      onChange={(e) => setRecipientName(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-zinc-400 text-xs font-bold">¿Cómo quieres enviarlo?</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <Button
-                      type="button"
-                      variant={deliveryMethod === 'email' ? 'default' : 'outline'}
-                      className={`h-14 flex flex-col gap-1 rounded-xl px-1 border-white/10 ${deliveryMethod === 'email' ? 'bg-[#EA4335] hover:bg-[#D93025] text-white border-none' : 'text-zinc-400 hover:text-white'}`}
-                      onClick={() => setDeliveryMethod('email')}
-                    >
-                      <Mail className="h-4 w-4" />
-                      <span className="text-[10px] font-bold">Por Email</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={deliveryMethod === 'whatsapp' ? 'default' : 'outline'}
-                      className={`h-14 flex flex-col gap-1 rounded-xl px-1 border-white/10 ${deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 text-white border-none' : 'text-zinc-400 hover:text-white'}`}
-                      onClick={() => setDeliveryMethod('whatsapp')}
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      <span className="text-[10px] font-bold">WhatsApp</span>
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={deliveryMethod === 'sige' ? 'default' : 'outline'}
-                      className={`h-14 flex flex-col gap-1 rounded-xl px-1 border-white/10 ${deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 text-white border-none' : 'text-zinc-400 hover:text-white'}`}
-                      onClick={() => setDeliveryMethod('sige')}
-                    >
-                      <UserIcon className="h-4 w-4" />
-                      <span className="text-[10px] font-bold">Usuario SIGE</span>
-                    </Button>
-                  </div>
-                </div>
-
-                {deliveryMethod === 'email' && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <Label htmlFor="sendEmailModal" className="text-zinc-400 text-xs font-bold">Correo electrónico</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="sendEmailModal"
-                        type="email"
-                        placeholder="correo@ejemplo.com"
-                        className="pl-10 h-12 rounded-xl bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-red-500"
-                        value={recipientEmail}
-                        onChange={(e) => setRecipientEmail(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {deliveryMethod === 'whatsapp' && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <Label htmlFor="sendWaModal" className="text-zinc-400 text-xs font-bold">Número de WhatsApp</Label>
-                    <div className="relative">
-                      <MessageCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="sendWaModal"
-                        type="tel"
-                        placeholder="+591 7XXXXXXX"
-                        className="pl-10 h-12 rounded-xl bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus:border-green-500"
-                        value={whatsappNumber}
-                        onChange={(e) => setWhatsappNumber(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {deliveryMethod === 'sige' && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <Label htmlFor="sendSigeUserModal" className="text-zinc-400 text-xs font-bold">Seleccionar Usuario SIGE</Label>
-                    <select
-                      id="sendSigeUserModal"
-                      className="w-full h-12 rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
-                      value={recipientId}
-                      onChange={(e) => {
-                        const uid = e.target.value;
-                        setRecipientId(uid);
-                        const user = sigeUsers.find(u => u.id === uid);
-                        if (user) {
-                          setRecipientName(user.name);
-                          setRecipientEmail(user.email);
-                        }
-                      }}
-                    >
-                      <option value="" className="bg-zinc-950 text-white">Selecciona un usuario...</option>
-                      {sigeUsers.map(user => (
-                        <option key={user.id} value={user.id} className="bg-zinc-950 text-white">
-                          {user.name} ({user.email})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col gap-3 pt-2">
-                <Button 
-                  className={`h-14 text-lg font-bold gap-2 rounded-2xl shadow-lg transition-all ${
-                    deliveryMethod === 'whatsapp' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20 text-white animate-pulse' : 
-                    deliveryMethod === 'sige' ? 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/20 text-white' : 
-                    'bg-[#EA4335] hover:bg-[#D93025] shadow-red-500/20 text-white'
-                  }`}
-                  onClick={handleSend}
-                  disabled={
-                    isSending || 
-                    !recipientName || 
-                    (deliveryMethod === 'email' && !recipientEmail) || 
-                    (deliveryMethod === 'whatsapp' && !whatsappNumber) ||
-                    (deliveryMethod === 'sige' && !recipientId)
-                  }
-                >
-                  {isSending ? (
-                    'Enviando...'
-                  ) : (
-                    <>
-                      <Send className="h-5 w-5" />
-                      {deliveryMethod === 'email' ? 'Enviar por Email' : 
-                       deliveryMethod === 'whatsapp' ? 'Enviar por WhatsApp' : 'Enviar a Usuario SIGE'}
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="hover:bg-white/5 text-zinc-400 rounded-xl"
-                  onClick={() => setIsRegalarMode(false)} 
-                  disabled={isSending}
-                >
-                  Atrás
+          <Button variant="outline" className="w-full rounded-xl h-11 border-white/10 hover:bg-white/5" onClick={() => setIsCheckingBalance(false)}>
+            Volver a Opciones
+          </Button>
+        </div>
+      ) : (
+        <div className="p-6 space-y-6">
+          {giftCard.cardImageUrl ? (
+            <div className="relative group/preview rounded-2xl overflow-hidden border border-white/10 shadow-2xl aspect-[1.8/1] max-w-[380px] mx-auto">
+              <img src={giftCard.cardImageUrl} alt="Gift Card Preview" className="w-full h-full object-cover animate-in zoom-in duration-500" />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                <Button variant="outline" className="bg-white/20 backdrop-blur-md border-white/20 text-white hover:bg-white/30 rounded-xl" onClick={() => window.open(giftCard.cardImageUrl!, '_blank')}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ampliar
                 </Button>
               </div>
-            </div>
-          ) : isCheckingBalance ? (
-            <div className="p-6 space-y-6">
-              <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 text-center space-y-4">
-                <div className="mx-auto h-16 w-16 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-400 border border-emerald-500/20">
-                  <Wallet className="h-8 w-8" />
-                </div>
-                
-                <div>
-                  <p className="text-xs text-zinc-400 font-bold uppercase tracking-wider">Saldo Disponible</p>
-                  <p className="text-3xl font-black text-white mt-1">
-                    Bs. {giftCard.balance.toFixed(2)}
-                  </p>
-                </div>
-
-                {/* Progress bar */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs text-zinc-400">
-                    <span>Consumido: Bs. {(giftCard.amount - giftCard.balance).toFixed(2)}</span>
-                    <span>Monto Total: Bs. {giftCard.amount.toFixed(2)}</span>
-                  </div>
-                  <div className="w-full bg-zinc-800 rounded-full h-3 overflow-hidden border border-zinc-700">
-                    <div 
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-1000"
-                      style={{ width: `${(giftCard.balance / giftCard.amount) * 100}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Details table */}
-                <div className="border-t border-white/5 pt-4 grid grid-cols-2 gap-4 text-left text-xs">
-                  <div>
-                    <p className="text-zinc-500 font-bold">Código de Canje</p>
-                    <p className="font-mono text-zinc-300 font-bold text-sm mt-0.5">{giftCard.code}</p>
-                  </div>
-                  <div>
-                    <p className="text-zinc-500 font-bold">Estado</p>
-                    <p className="font-bold text-zinc-300 mt-0.5 uppercase flex items-center gap-1.5">
-                      <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-zinc-500'}`} />
-                      {isActive ? 'Activa / Disponible' : 'Inactiva / Canjeada'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full rounded-xl h-11 border-white/10 hover:bg-white/5"
-                onClick={() => setIsCheckingBalance(false)}
-              >
-                Volver a Opciones
-              </Button>
             </div>
           ) : (
-            <div className="p-6 space-y-6">
-              {giftCard.cardImageUrl ? (
-                <div className="relative group/preview rounded-2xl overflow-hidden border border-white/10 shadow-2xl aspect-[1.8/1] max-w-[380px] mx-auto">
-                  <img 
-                    src={giftCard.cardImageUrl} 
-                    alt="Gift Card Preview" 
-                    className="w-full h-full object-cover animate-in zoom-in duration-500"
-                  />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                    <Button 
-                      variant="outline" 
-                      className="bg-white/20 backdrop-blur-md border-white/20 text-white hover:bg-white/30 rounded-xl"
-                      onClick={() => window.open(giftCard.cardImageUrl!, '_blank')}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Ampliar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div 
-                  className={`aspect-[1.8/1] w-full max-w-[380px] mx-auto rounded-2xl p-4 text-white shadow-xl relative overflow-hidden ring-1 ring-white/20 ${giftCard.templateId === 99 ? '' : template.className}`}
-                  style={giftCard.templateId === 99 ? customBgStyle : undefined}
-                >
-                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                    <WatermarkIconComponent size={90} />
-                  </div>
-                  <div className="relative z-10 h-full flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
-                      <div className="space-y-1">
-                        <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/40">
-                          <BadgeIconComponent className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <p className="text-[6px] opacity-70 uppercase tracking-widest font-black">SIGE DIGITAL</p>
-                          <p className="text-[8px] font-bold opacity-60">
-                            {giftCard.templateId === 99 ? 'PERSONALIZADA' : (template.name || 'PLATINUM CARD')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-mono font-black tracking-widest bg-white/15 px-2.5 py-0.5 rounded-full border border-white/20">
-                          {giftCard.code}
-                        </p>
-                      </div>
+            <div
+              className={`aspect-[1.8/1] w-full max-w-[380px] mx-auto rounded-2xl p-4 text-white shadow-xl relative overflow-hidden ring-1 ring-white/20 ${giftCard.templateId === 99 ? '' : template.className}`}
+              style={giftCard.templateId === 99 ? customBgStyle : undefined}
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><WatermarkIconComponent size={90} /></div>
+              <div className="relative z-10 h-full flex flex-col justify-between">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-1">
+                    <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/40">
+                      <BadgeIconComponent className="h-4 w-4" />
                     </div>
-                    <div className="flex justify-between items-end border-t border-white/10 pt-2">
-                      <div>
-                        <p className="text-[8px] opacity-80 uppercase tracking-widest font-black">Saldo Disponible</p>
-                        <p className="text-xl font-black">Bs. {giftCard.balance.toFixed(2)}</p>
-                      </div>
+                    <div>
+                      <p className="text-[6px] opacity-70 uppercase tracking-widest font-black">SIGE DIGITAL</p>
+                      <p className="text-[8px] font-bold opacity-60">{giftCard.templateId === 99 ? 'PERSONALIZADA' : (template.name || 'PLATINUM CARD')}</p>
                     </div>
                   </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-mono font-black tracking-widest bg-white/15 px-2.5 py-0.5 rounded-full border border-white/20">{giftCard.code}</p>
+                  </div>
                 </div>
-              )}
-
-              {/* Three buttons grid */}
-              <div className={`grid ${type === 'sent' ? 'grid-cols-2' : 'grid-cols-3'} gap-3 pt-2`}>
-                <Button 
-                  variant="outline" 
-                  className="rounded-xl h-14 flex flex-col gap-1 border-white/10 hover:bg-white/5 text-xs text-zinc-300 font-bold"
-                  onClick={handleDownload}
-                  disabled={!giftCard.cardImageUrl}
-                >
-                  <Download className="h-4 w-4 text-blue-400" />
-                  Descargar
-                </Button>
-
-                <Button 
-                  variant="outline" 
-                  className="rounded-xl h-14 flex flex-col gap-1 border-white/10 hover:bg-white/5 text-xs text-zinc-300 font-bold"
-                  onClick={() => setIsCheckingBalance(true)}
-                >
-                  <Wallet className="h-4 w-4 text-emerald-400" />
-                  Saldo
-                </Button>
-
-                {type !== 'sent' && (
-                  <Button 
-                    className="rounded-xl h-14 flex flex-col gap-1 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border border-white/10 shadow-lg shadow-purple-500/10 text-xs font-bold"
-                    onClick={() => setIsRegalarMode(true)}
-                    disabled={!isActive}
-                  >
-                    <Send className="h-4 w-4 text-white" />
-                    Regalar
-                  </Button>
-                )}
+                <div className="flex justify-between items-end border-t border-white/10 pt-2">
+                  <div>
+                    <p className="text-[8px] opacity-80 uppercase tracking-widest font-black">Saldo Disponible</p>
+                    <p className="text-xl font-black">Bs. {giftCard.balance.toFixed(2)}</p>
+                  </div>
+                </div>
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+
+          <div className={`grid ${type === 'sent' ? 'grid-cols-2' : 'grid-cols-3'} gap-3 pt-2`}>
+            <Button variant="outline" className="rounded-xl h-14 flex flex-col gap-1 border-white/10 hover:bg-white/5 text-xs text-zinc-300 font-bold" onClick={handleDownload} disabled={!giftCard.cardImageUrl}>
+              <Download className="h-4 w-4 text-blue-400" />
+              Descargar
+            </Button>
+            <Button variant="outline" className="rounded-xl h-14 flex flex-col gap-1 border-white/10 hover:bg-white/5 text-xs text-zinc-300 font-bold" onClick={() => setIsCheckingBalance(true)}>
+              <Wallet className="h-4 w-4 text-emerald-400" />
+              Saldo
+            </Button>
+            {type !== 'sent' && (
+              <Button className="rounded-xl h-14 flex flex-col gap-1 bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white border border-white/10 shadow-lg shadow-purple-500/10 text-xs font-bold" onClick={() => setIsRegalarMode(true)} disabled={!isActive}>
+                <Send className="h-4 w-4 text-white" />
+                Regalar
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  const dialogHeader = (
+    <DialogHeader className={`p-6 pb-4 text-left ${
+      isRegalarMode
+        ? (deliveryMethod === 'whatsapp' ? 'bg-green-600' : deliveryMethod === 'sige' ? 'bg-purple-600' : 'bg-[#EA4335]')
+        : isCheckingBalance
+          ? 'bg-blue-600'
+          : template.className
+    } transition-colors duration-500`}>
+      <div className="flex items-center gap-3">
+        {(isRegalarMode || isCheckingBalance) && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-full hover:bg-white/15 text-white p-0 border border-white/10"
+            onClick={() => {
+              if (isRegalarMode) setIsRegalarMode(false);
+              else if (isCheckingBalance) setIsCheckingBalance(false);
+            }}
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div>
+          <DialogTitle className="text-lg font-bold text-white mb-0.5">
+            {isRegalarMode ? 'Enviar Gift Card' : isCheckingBalance ? 'Consulta de Saldo' : 'Opciones de Tarjeta'}
+          </DialogTitle>
+          <DialogDescription className="text-white/80 text-xs">
+            {isRegalarMode ? 'Configura el destinatario y el medio de envío.' : isCheckingBalance ? 'Verifica el saldo disponible y consumido de tu tarjeta.' : 'Visualiza, descarga, regala o consulta el saldo de tu tarjeta.'}
+          </DialogDescription>
+        </div>
+      </div>
+    </DialogHeader>
+  );
+
+  return (
+    <div className="block group">
+      {isDesktop ? (
+        <Dialog open={showPreview} onOpenChange={handleOpenChange}>
+          <DialogTrigger asChild>
+            <div className="cursor-pointer">{cardTile}</div>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md bg-zinc-950 border-white/10 p-0 overflow-hidden text-white">
+            {dialogHeader}
+            {renderModalContent()}
+          </DialogContent>
+        </Dialog>
+      ) : (
+        <>
+          <div className="cursor-pointer" onClick={() => setShowPreview(true)}>{cardTile}</div>
+          <Drawer.Root open={showPreview} onOpenChange={handleOpenChange}>
+            <Drawer.Portal>
+              <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />
+              <Drawer.Content className="bg-zinc-950 text-white flex flex-col rounded-t-[2.5rem] max-h-[92vh] fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 shadow-xl outline-none">
+                <VisuallyHidden.Root>
+                  <DialogTitle>Opciones de Tarjeta</DialogTitle>
+                </VisuallyHidden.Root>
+                <div className="mx-auto w-12 h-1.5 shrink-0 rounded-full bg-zinc-700 mt-4 mb-0" />
+                {dialogHeader}
+                <div className="flex-1 overflow-y-auto">
+                  {renderModalContent()}
+                </div>
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        </>
+      )}
     </div>
   );
 }
