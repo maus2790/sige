@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { giftCards } from '@/db/schema';
+import { giftCards, stores } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 
 // Simple in-memory rate limiter (5 requests per minute per IP)
@@ -36,28 +36,49 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const card = await db
-    .select()
+  const cardData = await db
+    .select({
+      id: giftCards.id,
+      code: giftCards.code,
+      amount: giftCards.amount,
+      balance: giftCards.balance,
+      expiresAt: giftCards.expiresAt,
+      status: giftCards.status,
+      message: giftCards.message,
+      templateId: giftCards.templateId,
+      occasion: giftCards.occasion,
+      customStyle: giftCards.customStyle,
+      storeName: stores.name,
+    })
     .from(giftCards)
+    .leftJoin(stores, eq(giftCards.businessId, stores.id))
     .where(eq(giftCards.code, code))
     .get();
 
-  if (!card) {
+  if (!cardData) {
     return NextResponse.json({ error: 'Código no encontrado. Verifica que lo escribiste correctamente.' }, { status: 404 });
   }
 
   const now = new Date();
-  const isExpired = card.expiresAt < now;
+  const expiresAtMs = cardData.expiresAt instanceof Date
+    ? cardData.expiresAt.getTime()
+    : Number(cardData.expiresAt);
+  const isExpired = expiresAtMs < now.getTime();
 
   // Return safe public info only (no private IDs)
   return NextResponse.json({
-    code: card.code,
-    balance: card.balance,
-    amount: card.amount,
-    status: isExpired ? 'expired' : card.status,
-    expiresAt: card.expiresAt instanceof Date
-      ? card.expiresAt.toISOString()
-      : new Date(Number(card.expiresAt)).toISOString(),
-    message: card.message,
+    code: cardData.code,
+    balance: cardData.balance,
+    amount: cardData.amount,
+    status: isExpired ? 'expired' : cardData.status,
+    expiresAt: cardData.expiresAt instanceof Date
+      ? cardData.expiresAt.toISOString()
+      : new Date(Number(cardData.expiresAt)).toISOString(),
+    message: cardData.message,
+    templateId: cardData.templateId,
+    occasion: cardData.occasion,
+    customStyle: cardData.customStyle,
+    storeName: cardData.storeName || 'SIGE Store',
   });
 }
+

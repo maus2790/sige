@@ -2,27 +2,24 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Send, Inbox, Gift, Search, Wallet } from 'lucide-react';
+import { Store, Clock, Search, Wallet } from 'lucide-react';
 
 export function GiftCardBottomNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get('tab') || 'sent';
-  const isBuyPage = pathname === '/gift-cards/buy';
+  const activeTab = searchParams.get('tab') || 'stores';
   const isMainPage = pathname === '/gift-cards';
 
   const getActiveState = (id: string) => {
-    if (id === 'buy') return isBuyPage;
     if (isMainPage && activeTab === id) return true;
     return false;
   };
 
   const navItems = [
-    { id: 'sent', label: 'Enviados', icon: Send, href: '/gift-cards?tab=sent' },
-    { id: 'received', label: 'Recibidos', icon: Inbox, href: '/gift-cards?tab=received' },
-    { id: 'buy', label: 'Regalar', icon: Gift, href: '/gift-cards/buy', isMain: true },
+    { id: 'stores', label: 'Tiendas', icon: Store, href: '/gift-cards?tab=stores' },
+    { id: 'mine', label: 'Mis Gift Cards', icon: Wallet, href: '/gift-cards?tab=mine' },
     { id: 'check', label: 'Saldo', icon: Search, href: '/gift-cards?tab=check' },
-    { id: 'saved', label: 'Guardados', icon: Wallet, href: '/gift-cards?tab=saved' },
+    { id: 'history', label: 'Historial', icon: Clock, href: '/gift-cards?tab=history' },
   ];
 
   return (
@@ -31,16 +28,6 @@ export function GiftCardBottomNav() {
         {navItems.map((item) => {
           const isActive = getActiveState(item.id);
           const Icon = item.icon;
-
-          if (item.isMain) {
-            return (
-              <Link key={item.id} href={item.href} className="relative -top-5 flex items-center justify-center">
-                <div className={`gift-card-bottom-main w-14 h-14 rounded-full bg-linear-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30 hover:shadow-xl active:scale-90 transition-all border-4 border-background flex items-center justify-center group ${isActive ? 'ring-2 ring-blue-400 ring-offset-2' : ''}`}>
-                  <Icon className="w-7 h-7 group-hover:scale-110 transition-transform duration-300" />
-                </div>
-              </Link>
-            );
-          }
 
           return (
             <Link

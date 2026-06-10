@@ -9,6 +9,8 @@ import { Drawer } from 'vaul';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
+import { GiftCardPreview } from './gift-card-designer';
+
 type CardInfo = {
   code: string;
   balance: number;
@@ -16,6 +18,10 @@ type CardInfo = {
   status: string;
   expiresAt: string;
   message: string | null;
+  templateId?: number | null;
+  occasion?: string | null;
+  customStyle?: string | null;
+  storeName?: string | null;
 };
 
 interface CheckBalanceDialogProps {
@@ -119,77 +125,57 @@ export function CheckBalanceDialog({ open, onOpenChange }: CheckBalanceDialogPro
       ) : (
         /* ── RESULT STATE ── */
         <div className="space-y-4">
-          <div className={`rounded-3xl overflow-hidden text-white shadow-2xl ${
-            isActive
-              ? 'bg-linear-to-br from-blue-600 to-indigo-700'
-              : isExpired
-                ? 'bg-linear-to-br from-gray-500 to-gray-700'
-                : 'bg-linear-to-br from-gray-600 to-gray-800'
-          }`}>
-            <div className="relative p-6">
-              <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/5" />
-              <div className="absolute -bottom-8 -left-4 w-40 h-40 rounded-full bg-white/5" />
+          <GiftCardPreview
+            value={{
+              storeName: result.storeName || 'Tienda',
+              amount: result.amount,
+              recipientName: 'Mi Gift Card',
+              message: result.message || '',
+              occasion: result.occasion || 'otros',
+              designId: result.templateId === 99 ? 99 : (result.templateId || 1),
+              customStyle: (() => { try { return result.customStyle ? JSON.parse(result.customStyle) : null; } catch { return null; } })()
+            }}
+            mode="buyer"
+            code={result.code}
+          />
 
-              <div className="relative z-10">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2">
-                    <Gift className="h-5 w-5" />
-                    <span className="text-xs font-bold uppercase tracking-widest opacity-80">SIGE Gift Card</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-bold">
-                    {isActive ? (
-                      <><CheckCircle className="h-4 w-4 text-green-300" /><span className="text-green-200">Activa</span></>
-                    ) : isExpired ? (
-                      <><Clock className="h-4 w-4 text-red-300" /><span className="text-red-200">Expirada</span></>
-                    ) : (
-                      <><AlertCircle className="h-4 w-4 text-yellow-300" /><span className="text-yellow-200">Canjeada</span></>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mb-6 text-center">
-                  <p className="text-xs opacity-60 mb-1">Saldo disponible</p>
-                  <p className="text-5xl font-black tracking-tighter">
-                    Bs. {result.balance.toFixed(2)}
-                  </p>
-                  {result.balance < result.amount && (
-                    <p className="text-xs opacity-50 mt-1">
-                      de Bs. {result.amount.toFixed(2)} originales
-                    </p>
-                  )}
-                </div>
-
-                <div className="mb-4">
-                  <div className="w-full bg-white/20 rounded-full h-2">
-                    <div
-                      className="bg-white h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${balancePct}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between mt-1">
-                    <span className="text-[10px] opacity-50">0</span>
-                    <span className="text-[10px] opacity-50">{balancePct}% restante</span>
-                    <span className="text-[10px] opacity-50">Bs. {result.amount}</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs opacity-60">
-                  <span className="font-mono">{result.code}</span>
-                  <div className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Expira {new Date(result.expiresAt).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </div>
-                </div>
+          <div className="rounded-2xl bg-muted/50 border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground font-bold uppercase">Estado</span>
+              <span className={`text-xs font-black uppercase rounded-full px-2.5 py-0.5 ${
+                isActive ? 'bg-green-100 text-green-700' : isExpired ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+              }`}>
+                {isActive ? 'Activa' : isExpired ? 'Expirada' : 'Canjeada'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground font-bold uppercase">Saldo Disponible</span>
+              <span className="text-lg font-black">Bs. {result.balance.toFixed(2)}</span>
+            </div>
+            {result.balance < result.amount && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground font-bold uppercase">Consumido</span>
+                <span className="text-sm font-bold text-muted-foreground">Bs. {(result.amount - result.balance).toFixed(2)}</span>
+              </div>
+            )}
+            <div className="space-y-1 pt-1">
+              <div className="w-full bg-muted-foreground/20 rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-1000"
+                  style={{ width: `${balancePct}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>0%</span>
+                <span>{balancePct}% restante</span>
+                <span>100%</span>
               </div>
             </div>
-          </div>
-
-          {result.message && (
-            <div className="bg-card border rounded-2xl p-4">
-              <p className="text-xs text-muted-foreground mb-1 font-bold">Mensaje</p>
-              <p className="text-sm italic">"{result.message}"</p>
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t">
+              <span>Fecha de Expiración</span>
+              <span className="font-bold">{new Date(result.expiresAt).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
-          )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <Button
