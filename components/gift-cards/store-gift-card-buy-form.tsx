@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowLeft, Calendar, Check, ChevronRight, CreditCard, Gift, Loader2, Mail, MessageCircle, QrCode, Send, Smartphone, Sparkles, Upload, User, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, CreditCard, Gift, Loader2, MessageCircle, QrCode, Smartphone, Sparkles, Upload, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { purchaseGiftCard, getSIGEUsers, getStoreGiftCardPaymentSettings } from '@/app/actions/gift-cards';
-import { GiftCardDesigner, GiftCardPreview } from './gift-card-designer';
+import { purchaseGiftCard, getStoreGiftCardPaymentSettings } from '@/app/actions/gift-cards';
+import { GiftCardDesigner, GiftCardPreview, type CustomCardStyle } from './gift-card-designer';
 import { getGiftCardMessages } from './gift-card-customization';
 
 type StoreGiftCardTemplate = {
@@ -35,7 +35,6 @@ type PaymentSettings = {
   maxAmount?: number | null;
 } | null;
 
-type DeliveryMethod = 'whatsapp' | 'email' | 'sige';
 type PaymentMethod = 'qr' | 'bank_transfer' | 'tigo_money' | 'operator';
 
 const PAYMENT_METHODS: { id: PaymentMethod; icon: LucideIcon; label: string }[] = [
@@ -74,12 +73,7 @@ export function StoreGiftCardBuyForm({
   const [selectedDesignId, setSelectedDesignId] = useState(selectedTemplate?.designId || 1);
   const [selectedOccasion, setSelectedOccasion] = useState(selectedTemplate?.occasion || 'otros');
   const [message, setMessage] = useState(selectedTemplate?.description || getGiftCardMessages(selectedTemplate?.occasion || 'otros')[0]);
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [recipientPhone, setRecipientPhone] = useState('');
-  const [recipientId, setRecipientId] = useState('');
-  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('whatsapp');
-  const [sigeUsers, setSigeUsers] = useState<any[]>([]);
+  const [customStyle, setCustomStyle] = useState<CustomCardStyle | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qr');
   const [transactionNumber, setTransactionNumber] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -103,9 +97,7 @@ export function StoreGiftCardBuyForm({
     getStoreGiftCardPaymentSettings(activeStoreId).then(setPaymentSettings).catch(() => {});
   }, [activeStoreId]);
 
-  async function loadSigeUsers() {
-    if (sigeUsers.length === 0) setSigeUsers(await getSIGEUsers());
-  }
+  // loadSigeUsers helper removed
 
   function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -149,11 +141,12 @@ export function StoreGiftCardBuyForm({
         paymentMethod,
         transactionNumber,
         receiptUrl,
+        customStyle: JSON.stringify(customStyle || {}),
       });
 
       if ('error' in result && result.error) return toast.error(result.error);
       toast.success('Gift Card enviada a verificacion de la tienda');
-      router.push('/gift-cards?tab=sent');
+      router.push('/gift-cards?tab=mine');
     } catch (error: any) {
       toast.error(error.message || 'No se pudo procesar la Gift Card');
     } finally {
@@ -176,10 +169,11 @@ export function StoreGiftCardBuyForm({
     templateName: isCustomDesign ? 'Gift Card personalizada' : selectedTemplate?.name || 'Gift Card',
     storeName: activeStoreName,
     amount: displayAmount,
-    recipientName,
+    recipientName: 'Mi Gift Card',
     message,
     occasion: selectedOccasion,
     designId: selectedDesignId,
+    customStyle,
   };
 
   return (
@@ -244,6 +238,7 @@ export function StoreGiftCardBuyForm({
                 <GiftCardDesigner value={previewValue} onChange={(patch) => {
                   if (patch.occasion) setSelectedOccasion(patch.occasion);
                   if (patch.message !== undefined) setMessage(patch.message);
+                  if (patch.customStyle !== undefined) setCustomStyle(patch.customStyle);
                 }} sections={['occasion']} hidePreview />
                 <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setStep(1)}><ArrowLeft className="mr-2 h-4 w-4" />Atras</Button><Button className="flex-1" onClick={() => setStep(3)}>Siguiente</Button></div>
               </CardContent>
@@ -254,7 +249,10 @@ export function StoreGiftCardBuyForm({
             <>
               <CardHeader><CardTitle>Sugerencias y mensaje</CardTitle><CardDescription>Escoge una sugerencia o escribe un mensaje corto.</CardDescription></CardHeader>
               <CardContent className="space-y-4">
-                <GiftCardDesigner value={previewValue} onChange={(patch) => patch.message !== undefined && setMessage(patch.message)} sections={['suggestions']} hidePreview />
+                <GiftCardDesigner value={previewValue} onChange={(patch) => {
+                  if (patch.message !== undefined) setMessage(patch.message);
+                  if (patch.customStyle !== undefined) setCustomStyle(patch.customStyle);
+                }} sections={['suggestions']} hidePreview />
                 <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setStep(2)}>Atras</Button><Button className="flex-1" onClick={() => setStep(4)}>Siguiente</Button></div>
               </CardContent>
             </>
@@ -264,7 +262,10 @@ export function StoreGiftCardBuyForm({
             <>
               <CardHeader><CardTitle>Estilo de tarjeta</CardTitle><CardDescription>Todos los tonos disponibles para personalizar.</CardDescription></CardHeader>
               <CardContent className="space-y-4">
-                <GiftCardDesigner value={previewValue} onChange={(patch) => patch.designId && setSelectedDesignId(patch.designId)} sections={['style']} hidePreview />
+                <GiftCardDesigner value={previewValue} onChange={(patch) => {
+                  if (patch.designId) setSelectedDesignId(patch.designId);
+                  if (patch.customStyle !== undefined) setCustomStyle(patch.customStyle);
+                }} sections={['style']} hidePreview />
                 <div className="flex gap-2"><Button variant="outline" className="flex-1" onClick={() => setStep(3)}>Atras</Button><Button className="flex-1" onClick={() => setStep(5)}>Pago</Button></div>
               </CardContent>
             </>

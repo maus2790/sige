@@ -408,6 +408,10 @@ export async function purchaseGiftCard(data: {
   let amount = data.amount || 0;
   let businessId = data.businessId || 'SIGE-GLOBAL';
   let status = 'active';
+  let finalCustomStyle = data.customStyle || null;
+  let finalTemplateId = data.templateId || null;
+  let finalOccasion = data.occasion || null;
+  let finalMessage = data.message || null;
 
   if (data.storeGiftCardTemplateId) {
     const template = await db
@@ -416,6 +420,10 @@ export async function purchaseGiftCard(data: {
         storeId: storeGiftCardTemplates.storeId,
         giftCardsEnabled: stores.giftCardsEnabled,
         isActive: storeGiftCardTemplates.isActive,
+        designId: storeGiftCardTemplates.designId,
+        occasion: storeGiftCardTemplates.occasion,
+        description: storeGiftCardTemplates.description,
+        customStyle: storeGiftCardTemplates.customStyle,
       })
       .from(storeGiftCardTemplates)
       .innerJoin(stores, eq(storeGiftCardTemplates.storeId, stores.id))
@@ -440,6 +448,20 @@ export async function purchaseGiftCard(data: {
     amount = template.amount;
     businessId = template.storeId;
     status = 'pending_payment';
+
+    // Copy missing values from template if not provided by the client
+    if (!finalCustomStyle || finalCustomStyle === '{}') {
+      finalCustomStyle = template.customStyle || null;
+    }
+    if (!finalTemplateId) {
+      finalTemplateId = template.designId;
+    }
+    if (!finalOccasion) {
+      finalOccasion = template.occasion;
+    }
+    if (!finalMessage) {
+      finalMessage = template.description;
+    }
   } else {
     if (!Number.isFinite(amount) || amount <= 0) {
       return { error: 'Monto invalido' };
@@ -501,16 +523,16 @@ export async function purchaseGiftCard(data: {
       recipientName: data.recipientName,
       businessId,
       productId: data.productId || null,
-      message: data.message || null,
-      templateId: data.templateId || null,
-      occasion: data.occasion || null,
+      message: finalMessage,
+      templateId: finalTemplateId,
+      occasion: finalOccasion,
       cardImageUrl: data.cardImageUrl || null,
       receiptUrl: data.receiptUrl || null,
       paymentMethod: data.paymentMethod || null,
       transactionNumber: data.transactionNumber || null,
       storeGiftCardTemplateId: data.storeGiftCardTemplateId || null,
       scheduledAt: data.scheduledAt || null,
-      customStyle: data.customStyle || null,
+      customStyle: finalCustomStyle,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -1578,6 +1600,129 @@ export async function toggleStoreGiftCardTemplate(templateId: string, isActive: 
   return { success: true };
 }
 
+export async function deleteStoreGiftCardTemplate(templateId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const store = await getOwnedStoreForUser(user.id);
+  if (!store && user.role !== 'superadmin') return { error: 'Tienda no encontrada' };
+
+  const storeId = store?.id || '';
+
+  await db
+    .delete(storeGiftCardTemplates)
+    .where(and(eq(storeGiftCardTemplates.id, templateId), eq(storeGiftCardTemplates.storeId, storeId)));
+
+  revalidatePath('/dashboard/gift-cards');
+  if (storeId) revalidatePath(`/tienda/${storeId}`);
+  revalidatePath('/gift-cards/buy');
+  return { success: true };
+}
+
+export async function sellStoreGiftCardDirectly(data: {
+  templateId: string;
+  recipientName: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  message?: string;
+  recipientId?: string;
+  paymentMethod?: string;
+  transactionNumber?: string;
+}) {
+  const user = await getCurrentUser();
+  if (!user) return { error: 'No autorizado' };
+
+  const template = await db
+    .select()
+    .from(storeGiftCardTemplates)
+    .where(eq(storeGiftCardTemplates.id, data.templateId))
+    .get();
+
+  if (!template) return { error: 'Plantilla no encontrada' };
+
+  const auth = await ensureStoreOwner(template.storeId);
+  if ('error' in auth) return auth;
+
+  // Generate code and hash
+  const code = await generateUniqueGiftCardCode();
+  const qrHash = hashGiftCardCode(code);
+  const id = crypto.randomUUID();
+
+  // Expiration in 1 year
+  const expiresAt = new Date();
+  expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+
+  const finalStyle = template.customStyle || null;
+
+  const tempCard = {
+    id,
+    code,
+    amount: template.amount,
+    balance: template.amount,
+    recipientName: data.recipientName || 'Mi Gift Card',
+    message: data.message || template.description || '',
+    occasion: template.occasion || 'otros',
+    templateId: template.designId,
+    customStyle: finalStyle,
+    expiresAt,
+    status: 'active',
+    senderId: user.id,
+    recipientId: data.recipientId || null,
+    recipientEmail: data.recipientEmail || null,
+    recipientPhone: data.recipientPhone || null,
+    businessId: template.storeId,
+    productId: null,
+    customImageUrl: null,
+    cardImageUrl: null,
+    receiptUrl: null,
+    paymentMethod: data.paymentMethod || 'efectivo',
+    transactionNumber: data.transactionNumber || null,
+    storeGiftCardTemplateId: template.id,
+    scheduledAt: null,
+    deliveredAt: null,
+    openedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  } as any;
+
+  const imageBuffer = await renderGiftCardImageBuffer(tempCard, code, auth.store?.name || 'Tienda');
+  const upload = await uploadImageFromBuffer(imageBuffer, `gift-card-${id}.png`, 'image/png', 'gift-cards');
+
+  await db.insert(giftCards).values({
+    id,
+    code,
+    qrHash,
+    amount: template.amount,
+    balance: template.amount,
+    expiresAt,
+    status: 'active',
+    senderId: user.id,
+    recipientId: data.recipientId || user.id,
+    recipientEmail: data.recipientEmail || null,
+    recipientPhone: data.recipientPhone || null,
+    recipientName: data.recipientName || 'Mi Gift Card',
+    businessId: template.storeId,
+    message: data.message || template.description || null,
+    templateId: template.designId,
+    occasion: template.occasion || null,
+    cardImageUrl: upload.url,
+    paymentMethod: data.paymentMethod || 'efectivo',
+    transactionNumber: data.transactionNumber || null,
+    storeGiftCardTemplateId: template.id,
+    customStyle: finalStyle,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  // Log in history
+  await addHistoryRecord(id, user.id, 'saved', `Gift card vendida directamente en tienda`, template.amount);
+
+  revalidatePath('/dashboard/gift-cards');
+  revalidatePath('/gift-cards');
+  return { success: true, id };
+}
+
+
 export async function updateStoreGiftCardPaymentSettings(data: {
   storeId: string;
   qrUrl?: string;
@@ -2015,62 +2160,76 @@ export async function getStoreGiftCardsEnabled() {
 }
 
 export async function getStoresWithGiftCards() {
-  const conditions = [
-    eq(stores.giftCardsEnabled, true),
-  ];
-
-  const results = await db
+  // Fetch all stores with gift cards enabled (with or without templates)
+  const allStores = await db
     .select({
       storeId: stores.id,
       storeName: stores.name,
       storeLogoUrl: stores.logoUrl,
       storeBannerUrl: stores.bannerUrl,
-      templateId: storeGiftCardTemplates.id,
-      templateName: storeGiftCardTemplates.name,
-      templateDescription: storeGiftCardTemplates.description,
-      templateAmount: storeGiftCardTemplates.amount,
-      designId: storeGiftCardTemplates.designId,
-      occasion: storeGiftCardTemplates.occasion,
-      createdAt: storeGiftCardTemplates.createdAt,
     })
-    .from(storeGiftCardTemplates)
-    .innerJoin(stores, eq(storeGiftCardTemplates.storeId, stores.id))
-    .where(and(...conditions))
+    .from(stores)
+    .where(eq(stores.giftCardsEnabled, true))
     .orderBy(desc(stores.createdAt))
     .all();
 
-  const storesMap = new Map();
-  for (const result of results) {
-    if (!storesMap.has(result.storeId)) {
-      const giftCardImage = await db
+  // Fetch all templates for those stores
+  const storeIds = allStores.map((s) => s.storeId);
+  const allTemplates = storeIds.length > 0
+    ? await db
         .select({
-          cardImageUrl: giftCards.cardImageUrl,
-          customImageUrl: giftCards.customImageUrl,
+          templateId: storeGiftCardTemplates.id,
+          storeId: storeGiftCardTemplates.storeId,
+          templateName: storeGiftCardTemplates.name,
+          templateDescription: storeGiftCardTemplates.description,
+          templateAmount: storeGiftCardTemplates.amount,
+          designId: storeGiftCardTemplates.designId,
+          occasion: storeGiftCardTemplates.occasion,
+          customStyle: storeGiftCardTemplates.customStyle,
         })
-        .from(giftCards)
+        .from(storeGiftCardTemplates)
         .where(
           and(
-            eq(giftCards.businessId, result.storeId),
-            eq(giftCards.status, 'active')
+            sql`${storeGiftCardTemplates.storeId} IN (${sql.join(storeIds.map((id) => sql`${id}`), sql`, `)})`,
+            eq(storeGiftCardTemplates.isActive, true)
           )
         )
-        .orderBy(desc(giftCards.createdAt))
-        .get();
+        .all()
+    : [];
 
-      storesMap.set(result.storeId, {
-        id: result.storeId,
-        name: result.storeName,
-        logoUrl: result.storeLogoUrl,
-        bannerUrl: result.storeBannerUrl,
-        firstTemplateId: result.templateId,
-        firstTemplateName: result.templateName,
-        firstTemplateAmount: result.templateAmount,
-        firstTemplateDesignId: result.designId,
-        imageUrl: giftCardImage?.cardImageUrl || giftCardImage?.customImageUrl || null,
-        templates: [],
-      });
-    }
+  const storesMap = new Map();
 
+  for (const store of allStores) {
+    const giftCardImage = await db
+      .select({
+        cardImageUrl: giftCards.cardImageUrl,
+        customImageUrl: giftCards.customImageUrl,
+      })
+      .from(giftCards)
+      .where(
+        and(
+          eq(giftCards.businessId, store.storeId),
+          eq(giftCards.status, 'active')
+        )
+      )
+      .orderBy(desc(giftCards.createdAt))
+      .get();
+
+    storesMap.set(store.storeId, {
+      id: store.storeId,
+      name: store.storeName,
+      logoUrl: store.storeLogoUrl,
+      bannerUrl: store.storeBannerUrl,
+      firstTemplateId: null,
+      firstTemplateName: null,
+      firstTemplateAmount: null,
+      firstTemplateDesignId: null,
+      imageUrl: giftCardImage?.cardImageUrl || giftCardImage?.customImageUrl || null,
+      templates: [],
+    });
+  }
+
+  for (const result of allTemplates) {
     const reserved = await db
       .select({ id: giftCards.id })
       .from(giftCards)
@@ -2082,8 +2241,18 @@ export async function getStoresWithGiftCards() {
       )
       .get();
 
-    if (!reserved) {
-      storesMap.get(result.storeId).templates.push({
+    if (!reserved && storesMap.has(result.storeId)) {
+      const store = storesMap.get(result.storeId);
+
+      // set first template properties if not set
+      if (!store.firstTemplateId) {
+        store.firstTemplateId = result.templateId;
+        store.firstTemplateName = result.templateName;
+        store.firstTemplateAmount = result.templateAmount;
+        store.firstTemplateDesignId = result.designId;
+      }
+
+      store.templates.push({
         id: result.templateId,
         storeId: result.storeId,
         name: result.templateName,
@@ -2091,13 +2260,14 @@ export async function getStoresWithGiftCards() {
         description: result.templateDescription,
         designId: result.designId,
         occasion: result.occasion,
-        storeName: result.storeName,
-        storeLogoUrl: result.storeLogoUrl,
+        storeName: store.name,
+        storeLogoUrl: store.logoUrl,
+        customStyle: result.customStyle,
       });
     }
   }
 
-  return Array.from(storesMap.values()).filter((store) => store.templates.length > 0);
+  return Array.from(storesMap.values());
 }
 
 export async function getGiftCardStoreProducts(storeId: string) {

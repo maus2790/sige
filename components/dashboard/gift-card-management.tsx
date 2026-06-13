@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { AlertCircle, BadgeCheck, Check, CheckCircle, Gift, Loader2, Plus, QrCode, Settings, Trash2, Upload, XCircle } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Check, CheckCircle, Gift, Loader2, Plus, QrCode, Receipt, Settings, Trash2, Upload, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -11,13 +11,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { GiftCardDesigner, GiftCardPreview } from '@/components/gift-cards/gift-card-designer';
+import { GiftCardDesigner, GiftCardPreview, type CustomCardStyle } from '@/components/gift-cards/gift-card-designer';
 import {
   deleteStoreIssuedGiftCard,
   updateStoreIssuedGiftCard,
   updateStoreGiftCardPaymentSettings,
   upsertStoreGiftCardTemplate,
   verifyStoreGiftCardPayment,
+  deleteStoreGiftCardTemplate,
+  sellStoreGiftCardDirectly,
 } from '@/app/actions/gift-cards';
 
 type Store = { id: string; name: string };
@@ -30,6 +32,7 @@ type Template = {
   designId: number;
   occasion: string | null;
   isActive: boolean;
+  customStyle?: string | null;
 };
 type IssuedCard = {
   id: string;
@@ -42,11 +45,13 @@ type IssuedCard = {
   recipientPhone: string | null;
   message: string | null;
   templateId: number | null;
+  storeGiftCardTemplateId?: string | null;
   occasion: string | null;
   cardImageUrl: string | null;
   receiptUrl: string | null;
   paymentMethod: string | null;
   transactionNumber: string | null;
+  customStyle?: string | null;
   createdAt: Date;
 };
 type SettingsData = {
@@ -66,6 +71,7 @@ type DraftCard = {
   message: string;
   occasion: string;
   designId: number;
+  customStyle: CustomCardStyle | null;
 };
 
 const defaultDraft = (): DraftCard => ({
@@ -74,15 +80,140 @@ const defaultDraft = (): DraftCard => ({
   message: '',
   occasion: 'otros',
   designId: 1,
+  customStyle: {
+    useCustom: false,
+    colors: ['#ec4899', '#8b5cf6'],
+    angle: 135,
+    type: 'linear',
+    iconId: 'gift',
+    bgIconId: 'gift',
+    centerX: 50,
+    centerY: 50,
+  },
 });
+
+// ── Receipt Preview with zoom/magnifier ──────────────────────────────────────
+function ReceiptPreview({ url, isMobile }: { url: string; isMobile?: boolean }) {
+  const [showZoom, setShowZoom] = useState(false);
+  const [zoomPos, setZoomPos] = useState({ x: 50, y: 50 });
+  const [zoomScale, setZoomScale] = useState(300); // percentage for backgroundSize
+  const containerRef = useRef<HTMLDivElement>(null);
+  const initialDistanceRef = useRef<number | null>(null);
+  const initialScaleRef = useRef<number>(300);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    if (!showZoom) setShowZoom(true);
+    const { left, top, width, height } = containerRef.current.getBoundingClientRect();
+    setZoomPos({
+      x: ((e.clientX - left) / width) * 100,
+      y: ((e.clientY - top) / height) * 100,
+    });
+    setZoomScale(300); // Default desktop zoom scale
+  };
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      // Pinch gesture start
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialDistanceRef.current = dist;
+      initialScaleRef.current = zoomScale;
+      setShowZoom(true);
+    } else if (e.touches.length === 1) {
+      // Single finger start: check if we should zoom in or just track position
+      if (!showZoom) {
+        setShowZoom(true);
+        setZoomScale(250); // initial zoom level on single touch
+      }
+      const touch = e.touches[0];
+      if (containerRef.current) {
+        const { left, top, width, height } = containerRef.current.getBoundingClientRect();
+        setZoomPos({
+          x: ((touch.clientX - left) / width) * 100,
+          y: ((touch.clientY - top) / height) * 100,
+        });
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (!containerRef.current) return;
+    const { left, top, width, height } = containerRef.current.getBoundingClientRect();
+
+    if (e.touches.length === 2 && initialDistanceRef.current !== null) {
+      // Pinch zoom in action
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = dist / initialDistanceRef.current;
+      setZoomScale(Math.min(600, Math.max(150, initialScaleRef.current * factor)));
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      setZoomPos({
+        x: ((touch.clientX - left) / width) * 100,
+        y: ((touch.clientY - top) / height) * 100,
+      });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    initialDistanceRef.current = null;
+  };
+
+  const handleMouseLeave = () => {
+    setShowZoom(false);
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative overflow-hidden rounded-2xl border bg-muted shadow-sm select-none cursor-zoom-in w-full"
+      style={{ aspectRatio: '3/4' }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
+      {showZoom ? (
+        <div
+          className="absolute inset-0 bg-no-repeat pointer-events-none transition-all duration-75"
+          style={{
+            backgroundImage: `url(${url})`,
+            backgroundPosition: `${zoomPos.x}% ${zoomPos.y}%`,
+            backgroundSize: `${zoomScale}%`,
+          }}
+        />
+      ) : (
+        <Image
+          src={url}
+          alt="Comprobante de pago"
+          fill
+          className="object-contain p-2"
+          sizes="(max-width: 768px) 100vw, 400px"
+          priority
+        />
+      )}
+      <div className="absolute bottom-2 right-2 rounded-lg bg-black/60 px-2 py-1 text-[10px] font-bold text-white backdrop-blur-sm pointer-events-none">
+        {showZoom ? 'Arrastra / Pincha' : 'Toca para Zoom'}
+      </div>
+    </div>
+  );
+}
 
 function IssuedCardGrid({
   cards,
   storeName,
+  templates,
   onOpen,
 }: {
   cards: IssuedCard[];
   storeName: string;
+  templates: Template[];
   onOpen: (card: IssuedCard) => void;
 }) {
   const [visible, setVisible] = useState(9);
@@ -103,32 +234,37 @@ function IssuedCardGrid({
       }}
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {shown.map((card) => (
-          <button key={card.id} type="button" onClick={() => onOpen(card)} className="group text-left">
-            {card.cardImageUrl ? (
-              <div className="relative aspect-[1.62/1] overflow-hidden rounded-[2rem] border bg-muted shadow-sm transition group-hover:-translate-y-0.5 group-hover:shadow-xl">
-                <Image src={card.cardImageUrl} alt="Gift Card" fill sizes="(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" className="object-cover" loading="lazy" />
-              </div>
-            ) : (
+        {shown.map((card) => {
+          const matchingTemplate = templates.find(t => String(t.id) === String(card.storeGiftCardTemplateId));
+          return (
+            <button key={card.id} type="button" onClick={() => onOpen(card)} className="group text-left w-full">
               <GiftCardPreview
                 value={{
                   storeName,
                   amount: card.amount,
-                  recipientName: card.recipientName || '',
+                  recipientName: card.recipientName || 'Mi Gift Card',
                   message: card.message || '',
                   occasion: card.occasion || 'otros',
-                  designId: card.templateId || 1,
+                  designId: card.templateId === 99 ? 99 : (matchingTemplate?.designId || card.templateId || 1),
+                  customStyle: (() => {
+                    try {
+                      const styleStr = card.customStyle || matchingTemplate?.customStyle;
+                      return styleStr ? JSON.parse(styleStr) : null;
+                    } catch {
+                      return null;
+                    }
+                  })()
                 }}
                 mode="buyer"
-                code={card.code || 'SIN IMAGEN'}
+                code={card.code || 'ACTIVA'}
               />
-            )}
-            <div className="mt-2 flex items-center justify-between px-1 text-xs">
-              <span className="truncate font-black">{card.recipientName || 'Sin destinatario'}</span>
-              <span className="font-black text-muted-foreground">Bs. {card.balance.toFixed(2)}</span>
-            </div>
-          </button>
-        ))}
+              <div className="mt-2 flex items-center justify-between px-1 text-xs">
+                <span className="truncate font-black">{card.recipientName || 'Sin destinatario'}</span>
+                <span className="font-black text-muted-foreground">Bs. {card.balance.toFixed(2)}</span>
+              </div>
+            </button>
+          );
+        })}
       </div>
       {visible < cards.length && (
         <div className="py-6 text-center text-xs font-black text-muted-foreground">
@@ -174,6 +310,31 @@ export function GiftCardManagement({
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState({ recipientName: '', recipientEmail: '', recipientPhone: '', message: '' });
   const [localAvailableTemplates, setLocalAvailableTemplates] = useState(availableTemplates);
+  const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
+  const [mobilePendingCard, setMobilePendingCard] = useState<Pending | null>(null);
+
+  const [selectedTemplateForActions, setSelectedTemplateForActions] = useState<Template | null>(null);
+  const [sellingTemplate, setSellingTemplate] = useState<Template | null>(null);
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [sellForm, setSellForm] = useState({
+    recipientName: '',
+    recipientEmail: '',
+    recipientPhone: '',
+    message: '',
+    recipientId: '',
+    paymentMethod: 'efectivo',
+    transactionNumber: '',
+  });
+
+  const selectedPendingCard = useMemo(() => {
+    return pending.find(c => c.id === selectedPendingId) || pending[0] || null;
+  }, [pending, selectedPendingId]);
+
+  useEffect(() => {
+    if (pending.length > 0 && !selectedPendingId) {
+      setSelectedPendingId(pending[0].id);
+    }
+  }, [pending, selectedPendingId]);
 
   const activeStore = store as Store;
   const maxAmountNumber = Number(maxAmount || 5000);
@@ -201,33 +362,105 @@ export function GiftCardManagement({
     setSavingTemplate(true);
     const amount = Number(draft.amount);
     const result = await upsertStoreGiftCardTemplate({
+      id: editingTemplateId || undefined,
       storeId: activeStore.id,
       name: draft.name.trim() || 'Gift Card',
       amount,
       description: draft.message,
       designId: draft.designId,
       occasion: draft.occasion,
+      customStyle: JSON.stringify(draft.customStyle || {}),
     });
     setSavingTemplate(false);
     if ('error' in result && result.error) return toast.error(result.error);
 
-    setLocalAvailableTemplates((current) => [
-      {
-        id: 'id' in result && result.id ? result.id : crypto.randomUUID(),
-        storeId: activeStore.id,
-        name: draft.name.trim() || 'Gift Card',
-        amount,
-        description: draft.message || null,
-        designId: draft.designId,
-        occasion: draft.occasion,
-        isActive: true,
-      },
-      ...current,
-    ]);
-    toast.success('Boceto disponible guardado');
+    if (editingTemplateId) {
+      setLocalAvailableTemplates((current) =>
+        current.map((t) =>
+          t.id === editingTemplateId
+            ? {
+                ...t,
+                name: draft.name.trim() || 'Gift Card',
+                amount,
+                description: draft.message || null,
+                designId: draft.designId,
+                occasion: draft.occasion,
+                customStyle: JSON.stringify(draft.customStyle || {}),
+              }
+            : t
+        )
+      );
+      toast.success('Boceto disponible actualizado');
+    } else {
+      setLocalAvailableTemplates((current) => [
+        {
+          id: 'id' in result && result.id ? result.id : crypto.randomUUID(),
+          storeId: activeStore.id,
+          name: draft.name.trim() || 'Gift Card',
+          amount,
+          description: draft.message || null,
+          designId: draft.designId,
+          occasion: draft.occasion,
+          isActive: true,
+          customStyle: JSON.stringify(draft.customStyle || {}),
+        },
+        ...current,
+      ]);
+      toast.success('Boceto disponible guardado');
+    }
+
     setDraft(defaultDraft());
+    setEditingTemplateId(null);
     setCreateStep(1);
     if (!keepOpen) setCreateOpen(false);
+  }
+
+  async function handleDeleteTemplate(templateId: string) {
+    if (!confirm('¿Estás seguro de que deseas eliminar este boceto de Gift Card?')) return;
+    setProcessingId(templateId);
+    const result = await deleteStoreGiftCardTemplate(templateId);
+    setProcessingId(null);
+    if ('error' in result && result.error) return toast.error(result.error);
+    setLocalAvailableTemplates((current) => current.filter((t) => t.id !== templateId));
+    toast.success('Boceto eliminado correctamente');
+    setSelectedTemplateForActions(null);
+  }
+
+  async function handleSellDirectly() {
+    if (!sellingTemplate) return;
+    if (!sellForm.recipientName.trim()) {
+      return toast.error('El nombre del destinatario es obligatorio.');
+    }
+    if ((sellForm.paymentMethod === 'qr' || sellForm.paymentMethod === 'transferencia') && !sellForm.transactionNumber.trim()) {
+      return toast.error('El número de transacción es obligatorio.');
+    }
+
+    setProcessingId(sellingTemplate.id);
+    const result = await sellStoreGiftCardDirectly({
+      templateId: sellingTemplate.id,
+      recipientName: sellForm.recipientName,
+      recipientEmail: sellForm.recipientEmail || undefined,
+      recipientPhone: sellForm.recipientPhone || undefined,
+      message: sellForm.message || undefined,
+      recipientId: sellForm.recipientId || undefined,
+      paymentMethod: sellForm.paymentMethod,
+      transactionNumber: sellForm.transactionNumber || undefined,
+    });
+    setProcessingId(null);
+
+    if ('error' in result && result.error) return toast.error(result.error);
+    toast.success('Gift Card vendida y activada directamente.');
+    setSellingTemplate(null);
+    setSellForm({
+      recipientName: '',
+      recipientEmail: '',
+      recipientPhone: '',
+      message: '',
+      recipientId: '',
+      paymentMethod: 'efectivo',
+      transactionNumber: '',
+    });
+    window.location.reload();
   }
 
   function handleQrFile(event: React.ChangeEvent<HTMLInputElement>) {
@@ -325,19 +558,19 @@ export function GiftCardManagement({
           <h1 className="text-3xl font-black tracking-tight">Gift Cards</h1>
           <p className="mt-1 text-muted-foreground">Bocetos, verificaciones y tarjetas emitidas de {activeStore.name}.</p>
         </div>
-        <Button className="h-12 rounded-2xl gap-2 bg-brand-gradient text-white shadow-premium" onClick={() => setCreateOpen(true)}>
+        <Button className="h-12 rounded-2xl gap-2 bg-brand-gradient text-white shadow-premium" onClick={() => { setDraft(defaultDraft()); setEditingTemplateId(null); setCreateStep(1); setCreateOpen(true); }}>
           <Plus className="h-4 w-4" />
           Crear Gift Card
         </Button>
       </div>
 
       <Tabs defaultValue="available" className="space-y-5">
-        <TabsList className="grid h-auto w-full grid-cols-2 rounded-2xl p-1 sm:grid-cols-5">
-          <TabsTrigger value="available" className="rounded-xl">Disponibles</TabsTrigger>
-          <TabsTrigger value="verifications" className="rounded-xl">Verificaciones</TabsTrigger>
-          <TabsTrigger value="active" className="rounded-xl">Activas</TabsTrigger>
-          <TabsTrigger value="inactive" className="rounded-xl">Inactivas</TabsTrigger>
-          <TabsTrigger value="payments" className="rounded-xl">Datos de pago</TabsTrigger>
+        <TabsList className="flex h-12 w-full items-center justify-start gap-1 overflow-x-auto rounded-2xl bg-muted p-1 scrollbar-none select-none">
+          <TabsTrigger value="available" className="rounded-xl shrink-0">Disponibles</TabsTrigger>
+          <TabsTrigger value="verifications" className="rounded-xl shrink-0">Verificaciones</TabsTrigger>
+          <TabsTrigger value="active" className="rounded-xl shrink-0">Activas</TabsTrigger>
+          <TabsTrigger value="inactive" className="rounded-xl shrink-0">Inactivas</TabsTrigger>
+          <TabsTrigger value="payments" className="rounded-xl shrink-0">Datos de pago</TabsTrigger>
         </TabsList>
 
         <TabsContent value="available" className="mt-0">
@@ -348,83 +581,149 @@ export function GiftCardManagement({
                   <Gift className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
                   <h2 className="text-xl font-black">Sin bocetos disponibles</h2>
                   <p className="mb-5 text-sm text-muted-foreground">Crea una Gift Card para que los clientes puedan comprarla o personalizarla.</p>
-                  <Button onClick={() => setCreateOpen(true)} className="rounded-2xl">Crear ahora</Button>
+                  <Button onClick={() => { setDraft(defaultDraft()); setEditingTemplateId(null); setCreateStep(1); setCreateOpen(true); }} className="rounded-2xl">Crear ahora</Button>
                 </CardContent>
               </Card>
             ) : localAvailableTemplates.map((template) => (
-              <GiftCardPreview
+              <button
                 key={template.id}
-                mode="seller"
-                code="SIN CODIGO"
-                value={{
-                  templateName: template.name,
-                  storeName: activeStore.name,
-                  amount: template.amount,
-                  message: template.description || '',
-                  occasion: template.occasion || 'otros',
-                  designId: template.designId,
-                }}
-              />
+                type="button"
+                onClick={() => setSelectedTemplateForActions(template)}
+                className="group text-left w-full rounded-[2rem] transition duration-200 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <GiftCardPreview
+                  mode="seller"
+                  code="SIN CODIGO"
+                  value={{
+                    templateName: template.name,
+                    storeName: activeStore.name,
+                    amount: template.amount,
+                    message: template.description || '',
+                    occasion: template.occasion || 'otros',
+                    designId: template.designId,
+                    customStyle: (() => { try { return template.customStyle ? JSON.parse(template.customStyle) : null; } catch { return null; } })()
+                  }}
+                />
+                <p className="mt-2 text-center text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
+                  Bs. {template.amount.toFixed(2)} · {template.name} · Toca para gestionar
+                </p>
+              </button>
             ))}
           </div>
         </TabsContent>
 
         <TabsContent value="verifications" className="mt-0">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {pending.length === 0 ? (
-              <Card className="md:col-span-2 xl:col-span-3">
-                <CardContent className="py-14 text-center">
-                  <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500" />
-                  <h2 className="text-xl font-black">Sin verificaciones pendientes</h2>
-                  <p className="text-sm text-muted-foreground">Las compras pendientes apareceran aqui.</p>
-                </CardContent>
-              </Card>
-            ) : pending.map((card) => {
-              const matchingTemplate = localAvailableTemplates.find(t => t.designId === card.templateId);
-              return (
-              <button key={card.id} type="button" onClick={() => setConfirmingCard(card)} className="group text-left">
-                <GiftCardPreview
-                  value={{
-                    templateName: matchingTemplate?.name || 'Gift Card',
-                    storeName: activeStore.name,
-                    amount: card.amount,
-                    message: card.message || '',
-                    occasion: card.occasion || 'otros',
-                    designId: card.templateId || 1,
-                  }}
-                  mode="seller"
-                  code="PENDIENTE"
-                />
-                <div className="mt-2 rounded-xl bg-amber-50 p-2 text-xs">
-                  <p className="font-black text-amber-900">De {card.senderName}</p>
-                  <p className="truncate text-muted-foreground">{card.senderEmail}</p>
-                  <p className="mt-1 text-[10px]">Metodo: {card.paymentMethod || 'N/A'} · Txn: {card.transactionNumber || 'N/A'}</p>
-                  {card.receiptUrl && (
-                    <a href={card.receiptUrl} target="_blank" rel="noreferrer" className="relative block aspect-video overflow-hidden rounded-xl border bg-muted mt-2">
-                      <Image src={card.receiptUrl} alt="Comprobante" fill className="object-contain" />
-                    </a>
-                  )}
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); handleVerify(card, 'reject'); }} disabled={processingId === card.id}>
-                      <XCircle className="mr-1 h-4 w-4" /> Rechazar
-                    </Button>
-                    <Button size="sm" onClick={(e) => { e.stopPropagation(); setConfirmingCard(card); }} disabled={processingId === card.id}>
-                      {processingId === card.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-1 h-4 w-4" />}
-                      Aprobar
-                    </Button>
-                  </div>
+          {pending.length === 0 ? (
+            <Card>
+              <CardContent className="py-14 text-center">
+                <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500" />
+                <h2 className="text-xl font-black">Sin verificaciones pendientes</h2>
+                <p className="text-sm text-muted-foreground">Las compras pendientes aparecerán aquí.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="flex flex-col md:flex-row gap-6 items-start">
+              {/* Left: scrollable card list */}
+              <div className="w-full md:w-[380px] lg:w-[420px] shrink-0 max-h-[80vh] overflow-y-auto space-y-3 pr-1 pt-2">
+                {pending.map((card) => {
+                  const isSelected = selectedPendingId === card.id;
+                  const matchingTemplate = localAvailableTemplates.find(t => String(t.id) === String(card.storeGiftCardTemplateId));
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      onClick={() => setSelectedPendingId(card.id)}
+                      className={`w-full text-left rounded-2xl border transition-all duration-200 overflow-hidden ${
+                        isSelected
+                          ? 'border-primary ring-2 ring-primary/20 shadow-lg'
+                          : 'border-border hover:border-primary/40 hover:shadow-md'
+                      }`}
+                    >
+                      {/* Gift Card preview */}
+                      <div className="p-3 pb-0">
+                        <GiftCardPreview
+                          value={{
+                            templateName: matchingTemplate?.name || 'Gift Card',
+                            storeName: activeStore.name,
+                            amount: card.amount,
+                            message: card.message || '',
+                            occasion: card.occasion || 'otros',
+                            designId: card.templateId === 99 ? 99 : (matchingTemplate?.designId || card.templateId || 1),
+                            customStyle: (() => {
+                              try {
+                                const styleStr = card.customStyle || matchingTemplate?.customStyle;
+                                return styleStr ? JSON.parse(styleStr) : null;
+                              } catch {
+                                return null;
+                              }
+                            })()
+                          }}
+                          mode="buyer"
+                          code="PENDIENTE"
+                        />
+                      </div>
+                      <div className="mt-2 rounded-xl bg-amber-50 p-2 text-xs">
+                        <p className="font-black text-amber-900">De {card.senderName}</p>
+                        <p className="truncate text-muted-foreground">{card.senderEmail}</p>
+                        <p className="mt-1 text-[10px]">Método: {card.paymentMethod || 'N/A'} · Txn: {card.transactionNumber || 'N/A'}</p>
+                        
+                        {/* Mobile display of receipt comparison button */}
+                        {card.receiptUrl && (
+                          <div className="md:hidden mt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full rounded-xl text-xs gap-1"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setMobilePendingCard(card);
+                              }}
+                            >
+                              <Receipt className="h-3.5 w-3.5" />
+                              Ver Comprobante
+                            </Button>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); handleVerify(card, 'reject'); }} disabled={processingId === card.id}>
+                            <XCircle className="mr-1 h-4 w-4" /> Rechazar
+                          </Button>
+                          <Button size="sm" onClick={(e) => { e.stopPropagation(); setConfirmingCard(card); }} disabled={processingId === card.id}>
+                            {processingId === card.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="mr-1 h-4 w-4" />}
+                            Aprobar
+                          </Button>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Right: receipt preview (desktop only) */}
+              <div className="hidden md:flex flex-1 flex-col gap-3 sticky top-4 w-full">
+                <div className="flex items-center gap-2 text-sm font-black text-muted-foreground">
+                  <Receipt className="h-4 w-4" />
+                  Comprobante de pago
                 </div>
-              </button>
-            );
-            })}
-          </div>
+                {selectedPendingCard?.receiptUrl ? (
+                  <ReceiptPreview url={selectedPendingCard.receiptUrl} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border-2 border-dashed bg-muted/30 text-muted-foreground w-full h-[450px]">
+                    <p className="text-xs">Selecciona una tarjeta para ver el comprobante</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="active" className="mt-0">
           {sortedActiveCards.length === 0 ? (
             <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">Aun no hay Gift Cards activas con saldo.</CardContent></Card>
           ) : (
-            <IssuedCardGrid cards={sortedActiveCards} storeName={activeStore.name} onOpen={openIssuedCard} />
+            <IssuedCardGrid cards={sortedActiveCards} storeName={activeStore.name} templates={localAvailableTemplates} onOpen={openIssuedCard} />
           )}
         </TabsContent>
 
@@ -432,7 +731,7 @@ export function GiftCardManagement({
           {inactiveCards.length === 0 ? (
             <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">No hay Gift Cards inactivas.</CardContent></Card>
           ) : (
-            <IssuedCardGrid cards={inactiveCards} storeName={activeStore.name} onOpen={openIssuedCard} />
+            <IssuedCardGrid cards={inactiveCards} storeName={activeStore.name} templates={localAvailableTemplates} onOpen={openIssuedCard} />
           )}
         </TabsContent>
 
@@ -495,13 +794,22 @@ export function GiftCardManagement({
             <div className="min-h-0 flex-1 touch-pan-y overflow-y-scroll overscroll-contain bg-muted/30 px-4 py-4 pb-28 [-webkit-overflow-scrolling:touch] sm:px-5">
               <GiftCardDesigner
                 mode="seller"
-                value={{ templateName: draft.name, storeName: activeStore.name, amount: draft.amount, message: draft.message, occasion: draft.occasion, designId: draft.designId }}
+                value={{
+                  templateName: draft.name,
+                  storeName: activeStore.name,
+                  amount: draft.amount,
+                  message: draft.message,
+                  occasion: draft.occasion,
+                  designId: draft.designId,
+                  customStyle: draft.customStyle,
+                }}
                 onChange={(patch) => updateDraft({
                   name: patch.templateName ?? draft.name,
                   amount: patch.amount !== undefined ? String(patch.amount) : draft.amount,
                   message: patch.message ?? draft.message,
                   occasion: patch.occasion ?? draft.occasion,
                   designId: patch.designId ?? draft.designId,
+                  customStyle: patch.customStyle !== undefined ? patch.customStyle : draft.customStyle,
                 })}
                 sections={createStep === 1 ? ['details'] : createStep === 2 ? ['occasion', 'suggestions'] : ['style']}
                 maxAmount={maxAmountNumber}
@@ -565,17 +873,27 @@ export function GiftCardManagement({
                 <DialogDescription>Saldo disponible: Bs. {selectedCard.balance.toFixed(2)}</DialogDescription>
               </DialogHeader>
               <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4">
-                {selectedCard.cardImageUrl ? (
-                  <div className="relative aspect-[1.62/1] overflow-hidden rounded-[2rem] border bg-muted">
-                    <Image src={selectedCard.cardImageUrl} alt="Gift Card" fill className="object-cover" />
-                  </div>
-                ) : (
-                  <GiftCardPreview
-                    value={{ storeName: activeStore.name, amount: selectedCard.amount, recipientName: selectedCard.recipientName || '', message: selectedCard.message || '', occasion: selectedCard.occasion || 'otros', designId: selectedCard.templateId || 1 }}
-                    mode="buyer"
-                    code={selectedCard.code || 'SIN IMAGEN'}
-                  />
-                )}
+                <GiftCardPreview
+                  value={{
+                    storeName: activeStore.name,
+                    amount: selectedCard.amount,
+                    recipientName: selectedCard.recipientName || 'Mi Gift Card',
+                    message: selectedCard.message || '',
+                    occasion: selectedCard.occasion || 'otros',
+                    designId: selectedCard.templateId === 99 ? 99 : ((localAvailableTemplates.find(t => String(t.id) === String(selectedCard.storeGiftCardTemplateId))?.designId) || selectedCard.templateId || 1),
+                    customStyle: (() => {
+                      try {
+                        const matchingTemplate = localAvailableTemplates.find(t => String(t.id) === String(selectedCard.storeGiftCardTemplateId));
+                        const styleStr = selectedCard.customStyle || matchingTemplate?.customStyle;
+                        return styleStr ? JSON.parse(styleStr) : null;
+                      } catch {
+                        return null;
+                      }
+                    })()
+                  }}
+                  mode="buyer"
+                  code={selectedCard.code || 'ACTIVA'}
+                />
                 <div className="grid gap-2 text-sm sm:grid-cols-2">
                   <p><span className="text-muted-foreground">Codigo:</span> <strong>{selectedCard.code || 'Pendiente'}</strong></p>
                   <p><span className="text-muted-foreground">Estado:</span> <strong>{selectedCard.status}</strong></p>
@@ -597,6 +915,219 @@ export function GiftCardManagement({
                 </div>
               </div>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!mobilePendingCard} onOpenChange={(open) => !open && setMobilePendingCard(null)}>
+        <DialogContent className="!left-0 !bottom-0 !top-auto !translate-x-0 !translate-y-0 !max-w-none w-full max-h-[92vh] flex flex-col rounded-t-[2rem] border bg-background p-0 outline-none animate-in slide-in-from-bottom duration-300">
+          {mobilePendingCard && (
+            <div className="flex h-full min-h-0 flex-col overflow-hidden">
+              <DialogHeader className="p-5 border-b shrink-0">
+                <DialogTitle className="text-lg font-black">Comprobación de Pago</DialogTitle>
+                <DialogDescription>Compara los datos ingresados con la captura de pantalla.</DialogDescription>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 pb-24">
+                <div className="rounded-2xl bg-amber-50 p-3 text-xs space-y-1.5 border border-amber-200">
+                  <p><span className="text-muted-foreground font-bold">Monto:</span> <strong className="text-sm text-amber-900">Bs. {mobilePendingCard.amount.toFixed(2)}</strong></p>
+                  <p><span className="text-muted-foreground">De:</span> <strong>{mobilePendingCard.senderName} ({mobilePendingCard.senderEmail})</strong></p>
+                  <p><span className="text-muted-foreground">Método:</span> <strong className="capitalize">{mobilePendingCard.paymentMethod || 'N/A'}</strong></p>
+                  {mobilePendingCard.transactionNumber && (
+                    <p><span className="text-muted-foreground">N° Transacción:</span> <strong className="font-mono text-amber-900">{mobilePendingCard.transactionNumber}</strong></p>
+                  )}
+                </div>
+                {mobilePendingCard.receiptUrl && (
+                  <div className="mt-2">
+                    <ReceiptPreview url={mobilePendingCard.receiptUrl} isMobile={true} />
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="shrink-0 border-t bg-background/95 p-4 shadow-[0_-12px_35px_rgba(0,0,0,0.08)]">
+                <div className="grid w-full grid-cols-2 gap-2">
+                  <Button variant="destructive" className="h-12 rounded-2xl" onClick={() => { handleVerify(mobilePendingCard, 'reject'); setMobilePendingCard(null); }}>
+                    Rechazar
+                  </Button>
+                  <Button className="h-12 rounded-2xl" onClick={() => { setConfirmingCard(mobilePendingCard); setMobilePendingCard(null); }}>
+                    Aprobar
+                  </Button>
+                </div>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Acciones de boceto de Gift Card ── */}
+      <Dialog open={!!selectedTemplateForActions} onOpenChange={(open) => !open && setSelectedTemplateForActions(null)}>
+        <DialogContent className="max-w-md rounded-3xl overflow-hidden p-6">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-xl font-black">Gestionar Boceto</DialogTitle>
+            <DialogDescription>
+              Elige una acción para el boceto: {selectedTemplateForActions?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTemplateForActions && (
+            <div className="space-y-5">
+              <div className="flex justify-center p-2 bg-muted/30 rounded-2xl">
+                <GiftCardPreview
+                  mode="buyer"
+                  code="PREVIEW"
+                  value={{
+                    templateName: selectedTemplateForActions.name,
+                    storeName: activeStore.name,
+                    amount: selectedTemplateForActions.amount,
+                    message: selectedTemplateForActions.description || '',
+                    occasion: selectedTemplateForActions.occasion || 'otros',
+                    designId: selectedTemplateForActions.designId,
+                    customStyle: (() => { try { return selectedTemplateForActions.customStyle ? JSON.parse(selectedTemplateForActions.customStyle) : null; } catch { return null; } })()
+                  }}
+                />
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-2">
+                <Button
+                  className="rounded-xl h-11 bg-brand-gradient text-white font-bold"
+                  onClick={() => {
+                    setSellingTemplate(selectedTemplateForActions);
+                    setSelectedTemplateForActions(null);
+                  }}
+                >
+                  Vender
+                </Button>
+                <Button
+                  variant="outline"
+                  className="rounded-xl h-11 font-bold"
+                  onClick={() => {
+                    const t = selectedTemplateForActions;
+                    setDraft({
+                      name: t.name,
+                      amount: String(t.amount),
+                      message: t.description || '',
+                      occasion: t.occasion || 'otros',
+                      designId: t.designId,
+                      customStyle: (() => { try { return t.customStyle ? JSON.parse(t.customStyle) : null; } catch { return null; } })()
+                    });
+                    setEditingTemplateId(t.id);
+                    setCreateStep(1);
+                    setCreateOpen(true);
+                    setSelectedTemplateForActions(null);
+                  }}
+                >
+                  Modificar
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="rounded-xl h-11 font-bold"
+                  onClick={() => handleDeleteTemplate(selectedTemplateForActions.id)}
+                  disabled={processingId === selectedTemplateForActions.id}
+                >
+                  Eliminar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Modal: Vender Gift Card directamente ── */}
+      <Dialog open={!!sellingTemplate} onOpenChange={(open) => !open && setSellingTemplate(null)}>
+        <DialogContent className="max-w-md rounded-3xl overflow-hidden p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="pb-2">
+            <DialogTitle className="text-xl font-black">Vender Gift Card directamente</DialogTitle>
+            <DialogDescription>
+              Completa los datos del cliente para emitir y activar la Gift Card de forma inmediata.
+            </DialogDescription>
+          </DialogHeader>
+          {sellingTemplate && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="font-bold text-xs">Nombre del destinatario *</Label>
+                <Input
+                  required
+                  placeholder="Ej. Juan Perez"
+                  value={sellForm.recipientName}
+                  onChange={(e) => setSellForm({ ...sellForm, recipientName: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-xs">Email (opcional)</Label>
+                <Input
+                  type="email"
+                  placeholder="Ej. juan@example.com"
+                  value={sellForm.recipientEmail}
+                  onChange={(e) => setSellForm({ ...sellForm, recipientEmail: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-xs">Teléfono (opcional)</Label>
+                <Input
+                  placeholder="Ej. +59170000000"
+                  value={sellForm.recipientPhone}
+                  onChange={(e) => setSellForm({ ...sellForm, recipientPhone: e.target.value })}
+                  className="rounded-xl h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-xs">Mensaje personalizado (opcional)</Label>
+                <Textarea
+                  placeholder="Mensaje de felicitación..."
+                  value={sellForm.message}
+                  onChange={(e) => setSellForm({ ...sellForm, message: e.target.value })}
+                  className="rounded-xl"
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-bold text-xs">Método de pago</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['efectivo', 'qr', 'transferencia'].map((method) => (
+                    <Button
+                      key={method}
+                      type="button"
+                      variant={sellForm.paymentMethod === method ? 'default' : 'outline'}
+                      className="capitalize rounded-xl h-11 font-bold"
+                      onClick={() => setSellForm({ ...sellForm, paymentMethod: method })}
+                    >
+                      {method}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {(sellForm.paymentMethod === 'qr' || sellForm.paymentMethod === 'transferencia') && (
+                <div className="space-y-2">
+                  <Label className="font-bold text-xs">Número de transacción *</Label>
+                  <Input
+                    required
+                    placeholder="Ej. 9823412"
+                    value={sellForm.transactionNumber}
+                    onChange={(e) => setSellForm({ ...sellForm, transactionNumber: e.target.value })}
+                    className="rounded-xl h-11"
+                  />
+                </div>
+              )}
+              <div className="bg-brand-gradient/10 border border-brand-gradient/20 p-4 rounded-2xl flex justify-between items-center text-sm">
+                <span className="font-bold text-muted-foreground">Total a cobrar:</span>
+                <span className="font-black text-2xl text-primary">Bs. {sellingTemplate.amount.toFixed(2)}</span>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button variant="outline" className="rounded-xl h-11 font-bold" onClick={() => setSellingTemplate(null)} disabled={processingId === sellingTemplate.id}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleSellDirectly}
+                  disabled={processingId === sellingTemplate.id || !sellForm.recipientName.trim()}
+                  className="bg-brand-gradient text-white rounded-xl h-11 font-bold flex items-center justify-center gap-1.5"
+                >
+                  {processingId === sellingTemplate.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <BadgeCheck className="h-4 w-4" />
+                  )}
+                  Activar y vender
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { toast } from 'sonner';
 import {
   Check,
@@ -15,11 +16,13 @@ import {
   Loader2,
   Mail,
   MessageCircle,
+  Plus,
   QrCode,
   Search,
   Send,
   ShoppingBag,
   Smartphone,
+  Sparkles,
   Store,
   Upload,
   Wallet,
@@ -27,14 +30,14 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { CheckBalanceDialog } from './check-balance-dialog';
 import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
-import { GiftCardPreview } from './gift-card-designer';
+import { GiftCardDesigner, GiftCardPreview, type CustomCardStyle } from './gift-card-designer';
 import {
   getGiftCardStoreProducts,
   getStoreGiftCardPaymentSettings,
@@ -52,6 +55,7 @@ type StoreTemplate = {
   occasion?: string | null;
   storeName: string;
   storeLogoUrl?: string | null;
+  customStyle?: string | null;
 };
 
 type StoreWithGiftCards = {
@@ -98,6 +102,7 @@ interface GiftCardWalletProps {
 }
 
 export function GiftCardWallet({ sent, received, mine = [], saved = [], stores = [] }: GiftCardWalletProps) {
+  const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = searchParams.get('tab') || 'stores';
@@ -115,6 +120,123 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
   const [products, setProducts] = useState<any[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
 
+  // Estados para creación de Gift Card Personalizada (Usuario)
+  const [customCreateOpen, setCustomCreateOpen] = useState(false);
+  const [customStep, setCustomStep] = useState<1 | 2 | 3 | 4>(1);
+  const [customDraft, setCustomDraft] = useState<{
+    amount: string;
+    cardName: string;
+    message: string;
+    occasion: string;
+    designId: number;
+    customStyle: CustomCardStyle | null;
+  }>({
+    amount: '100',
+    cardName: '',
+    message: '',
+    occasion: 'otros',
+    designId: 1,
+    customStyle: null,
+  });
+
+  const [customPaymentMethod, setCustomPaymentMethod] = useState<PaymentMethod>('qr');
+  const [customTransactionNumber, setCustomTransactionNumber] = useState('');
+  const [customReceiptFile, setCustomReceiptFile] = useState<File | null>(null);
+  const [customReceiptPreview, setCustomReceiptPreview] = useState<string | null>(null);
+  const [submittingCustomCard, setSubmittingCustomCard] = useState(false);
+
+  function handleCustomReceipt(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return toast.error('El comprobante no puede superar 5MB');
+    setCustomReceiptFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setCustomReceiptPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadCustomReceipt() {
+    if (!customReceiptFile) return '';
+    const fd = new FormData();
+    fd.append('file', customReceiptFile);
+    const response = await fetch('/api/upload/payment-proof', { method: 'POST', body: fd });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || 'No se pudo subir el comprobante');
+    return result.url as string;
+  }
+
+  async function handleSubmitCustomCard() {
+    if (!selectedStoreId || !selectedStore) return toast.error('Tienda no seleccionada');
+    const amt = Number(customDraft.amount);
+    if (!amt || amt <= 0) return toast.error('Ingresa un monto válido');
+    
+    const maxLimit = paymentSettings?.maxAmount ?? 5000;
+    if (amt > maxLimit) return toast.error(`El monto maximo por Gift Card es Bs. ${maxLimit.toLocaleString()}`);
+
+    if (customPaymentMethod !== 'operator' && !customReceiptFile) {
+      return toast.error('Sube el comprobante de pago');
+    }
+    if (customPaymentMethod !== 'operator' && !customTransactionNumber) {
+      return toast.error('Ingresa el numero de transaccion');
+    }
+
+    setSubmittingCustomCard(true);
+    try {
+      const receiptUrl = customPaymentMethod === 'operator' ? '' : await uploadCustomReceipt();
+      const result = await purchaseGiftCard({
+        amount: amt,
+        recipientName: customDraft.cardName || 'Mi Gift Card',
+        saveToWallet: true,
+        message: customDraft.message || '',
+        templateId: customDraft.designId || 1,
+        occasion: customDraft.occasion || 'otros',
+        businessId: selectedStore.id,
+        paymentMethod: customPaymentMethod,
+        transactionNumber: customTransactionNumber,
+        receiptUrl,
+        customStyle: JSON.stringify(customDraft.customStyle || {}),
+      });
+
+      if ('error' in result && result.error) {
+        return toast.error(result.error);
+      }
+
+      toast.success('Gift Card personalizada enviada a verificacion');
+      setCustomCreateOpen(false);
+      router.refresh();
+    } catch (error: any) {
+      toast.error(error.message || 'No se pudo crear la Gift Card');
+    } finally {
+      setSubmittingCustomCard(false);
+    }
+  }
+
+  function resetCustomDraft() {
+    const defaultName = session?.user?.name || '';
+    setCustomDraft({
+      amount: '100',
+      cardName: defaultName,
+      message: '',
+      occasion: 'otros',
+      designId: 1,
+      customStyle: {
+        useCustom: false,
+        colors: ['#ec4899', '#8b5cf6'],
+        angle: 135,
+        type: 'linear',
+        iconId: 'gift',
+        bgIconId: 'gift',
+        centerX: 50,
+        centerY: 50,
+      },
+    });
+    setCustomPaymentMethod('qr');
+    setCustomTransactionNumber('');
+    setCustomReceiptFile(null);
+    setCustomReceiptPreview(null);
+    setCustomStep(1);
+  }
+
   const now = Date.now();
   const selectedStore = stores.find((store) => store.id === selectedStoreId) || stores[0] || null;
   const allUserCards = [...sent, ...received, ...saved, ...mine];
@@ -125,7 +247,8 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
   };
 
   const pendingVerification = uniqueById(allUserCards).filter((card) => card.status === 'pending_payment');
-  const activeMine = uniqueById(mine).filter(isCardActive);
+  // De acuerdo a la regla 3, todas las tarjetas activas de mi propiedad, recibidas, o enviadas deben aparecer en la pestaña "Mis Gift Cards"
+  const activeMine = uniqueById([...mine, ...received, ...sent]).filter(isCardActive);
   const activeSent = uniqueById(sent).filter(isCardActive);
   const activeReceived = uniqueById(received).filter(isCardActive);
   const historyCards = uniqueById(allUserCards)
@@ -240,19 +363,17 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
             <p className="mt-1 text-xs opacity-60">{activeMine.length} activas para usar</p>
           </div>
 
-          <div className="gift-card-tabs-nav flex w-full items-center gap-1 rounded-2xl border bg-card/80 p-1.5 shadow-sm backdrop-blur-xl">
+          <div className="gift-card-tabs-nav flex w-full items-center gap-1 rounded-2xl border bg-card/80 p-1.5 shadow-sm backdrop-blur-xl overflow-x-auto scrollbar-none">
             {[
               { id: 'stores', label: 'Tiendas', value: stores.length, icon: Store },
               { id: 'mine', label: 'Mis Gift Cards', value: activeMine.length, icon: Wallet },
-              { id: 'sent', label: 'Enviadas', value: activeSent.length, icon: Send },
-              { id: 'received', label: 'Recibidas', value: activeReceived.length, icon: Inbox },
               { id: 'history', label: 'Historial', value: historyCards.length, icon: Clock },
               { id: 'check', label: 'Consultar', value: null, icon: Search },
             ].map(({ id, label, value, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => (id === 'check' ? setCheckBalanceOpen(true) : handleTabChange(id))}
-                className={`gift-card-tabs-trigger relative flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-sm font-bold transition-all ${
+                className={`gift-card-tabs-trigger relative flex shrink-0 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl px-3 py-1.5 text-sm font-bold transition-all ${
                   activeTab === id ? 'gift-card-tabs-trigger-active bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground'
                 }`}
               >
@@ -281,19 +402,31 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                   <p className="text-xs text-amber-800">Estas Gift Cards esperan aprobacion de la tienda.</p>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {pendingVerification.map((card) => (
-                    <div key={card.id} className="opacity-70">
-                      <GiftCardPreview
-                        value={{
-                          storeName: 'Tienda',
-                          amount: card.amount,
-                          recipientName: card.recipientName || 'Mi Gift Card',
-                          message: card.message || '',
-                          occasion: card.occasion || 'otros',
-                          designId: card.templateId || 1,
-                        }}
-                        code="EN VERIFICACION"
-                      />
+                  {pendingVerification.map((card) => {
+                    const matchingStore = stores.find((s) => s.id === card.businessId);
+                    const matchingTemplate = matchingStore?.templates.find((t) => String(t.id) === String(card.templateId));
+                    return (
+                      <div key={card.id} className="opacity-70">
+                        <GiftCardPreview
+                          value={{
+                            storeName: matchingStore?.name || 'Tienda',
+                            amount: card.amount,
+                            recipientName: card.recipientName || 'Mi Gift Card',
+                            message: card.message || '',
+                            occasion: card.occasion || 'otros',
+                            designId: card.templateId === 99 ? 99 : (matchingTemplate?.designId || 1),
+                            customStyle: (() => {
+                              try {
+                                const styleStr = card.customStyle || matchingTemplate?.customStyle;
+                                return styleStr ? JSON.parse(styleStr) : null;
+                              } catch {
+                                return null;
+                              }
+                            })()
+                          }}
+                          mode="buyer"
+                          code="EN VERIFICACION"
+                        />
                       <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-white/80 p-2 text-xs font-black text-amber-900">
                         <span>En verificacion</span>
                         <Button asChild size="sm" className="h-8 rounded-xl">
@@ -301,7 +434,8 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </section>
             )}
@@ -348,7 +482,14 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                       <Store className="mr-2 h-4 w-4" />
                       Visitar tienda
                     </Button>
-                    <Button className="rounded-xl" onClick={() => router.push(`/tienda/${selectedStore.id}/gift-cards?customDesign=true`)}>
+                    <Button
+                      className="rounded-xl"
+                      onClick={async () => {
+                        setPaymentSettings(await getStoreGiftCardPaymentSettings(selectedStore.id));
+                        resetCustomDraft();
+                        setCustomCreateOpen(true);
+                      }}
+                    >
                       <Gift className="mr-2 h-4 w-4" />
                       Crear tarjeta
                     </Button>
@@ -386,25 +527,34 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  {selectedStoreTemplates.map((template) => (
-                    <button key={template.id} type="button" onClick={() => openTemplatePayment(template)} className="text-left">
-                      <GiftCardPreview
-                        value={{
-                          templateName: template.name,
-                          storeName: selectedStore.name,
-                          amount: template.amount,
-                          recipientName: 'Mi Gift Card',
-                          message: template.description || '',
-                          occasion: template.occasion || 'otros',
-                          designId: template.designId,
-                        }}
-                        mode="seller"
-                        code="SIN CODIGO"
-                      />
-                    </button>
-                  ))}
-                </div>
+                {selectedStoreTemplates.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {selectedStoreTemplates.map((template) => (
+                      <button key={template.id} type="button" onClick={() => openTemplatePayment(template)} className="text-left">
+                        <GiftCardPreview
+                          value={{
+                            templateName: template.name,
+                            storeName: selectedStore.name,
+                            amount: template.amount,
+                            recipientName: 'Mi Gift Card',
+                            message: template.description || '',
+                            occasion: template.occasion || 'otros',
+                            designId: template.designId,
+                            customStyle: (() => { try { return template.customStyle ? JSON.parse(template.customStyle) : null; } catch { return null; } })()
+                          }}
+                          mode="seller"
+                          code="SIN CODIGO"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-dashed bg-muted/30 p-8 text-center w-full col-span-full">
+                    <Gift className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-semibold text-muted-foreground">Esta tienda aún no tiene bocetos disponibles</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Puedes crear una Gift Card personalizada con diseño propio.</p>
+                  </div>
+                )}
               </section>
             ) : (
               <EmptyState icon={<Store className="h-10 w-10" />} title="No hay tiendas disponibles" description="Las tiendas con Gift Cards habilitadas apareceran aqui." />
@@ -416,27 +566,13 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
               <EmptyState icon={<Wallet className="h-10 w-10" />} title="Aun no tienes Gift Cards activas" description="Cuando una tienda active una Gift Card para ti, aparecera aqui." />
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {activeMine.map((card) => <OwnedGiftCardTile key={card.id} card={card} storeName="Tienda" />)}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="sent" className="mt-0 space-y-4">
-            {activeSent.length === 0 ? (
-              <EmptyState icon={<Send className="h-10 w-10" />} title="No tienes regalos enviados activos" description="Cuando regales una Gift Card, aparecera aqui." />
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {activeSent.map((card) => <GiftCardCard key={card.id} giftCard={card} type="sent" />)}
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="received" className="mt-0 space-y-4">
-            {activeReceived.length === 0 ? (
-              <EmptyState icon={<Inbox className="h-10 w-10" />} title="Aun no recibiste ningun regalo activo" description="Cuando alguien te envie una Gift Card, aparecera aqui." />
-            ) : (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {activeReceived.map((card) => <OwnedGiftCardTile key={card.id} card={card} storeName="Tienda" />)}
+                {activeMine.map((card) => (
+                  <OwnedGiftCardTile
+                    key={card.id}
+                    card={card}
+                    storeName={stores.find((s) => s.id === card.businessId)?.name || 'Tienda'}
+                  />
+                ))}
               </div>
             )}
           </TabsContent>
@@ -468,19 +604,6 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                 <DialogDescription>La tienda revisara tu pago antes de activar el codigo.</DialogDescription>
               </DialogHeader>
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
-                <GiftCardPreview
-                  value={{
-                    templateName: selectedTemplate.name,
-                    storeName: selectedTemplate.storeName,
-                    amount: selectedTemplate.amount,
-                    recipientName: 'Mi Gift Card',
-                    message: selectedTemplate.description || '',
-                    occasion: selectedTemplate.occasion || 'otros',
-                    designId: selectedTemplate.designId,
-                  }}
-                  mode="buyer"
-                  code="PENDIENTE"
-                />
 
                 <div className="grid grid-cols-4 gap-2">
                   {PAYMENT_METHODS.map(({ id, icon: Icon, label }) => (
@@ -536,6 +659,130 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
 
       <CheckBalanceDialog open={checkBalanceOpen} onOpenChange={setCheckBalanceOpen} />
       <GiftCardBottomNav />
+
+      {/* Modal de Creación de Gift Card Personalizada (Usuario) */}
+      <Dialog open={customCreateOpen} onOpenChange={setCustomCreateOpen}>
+        <DialogContent showCloseButton={false} className="!left-0 !top-0 !flex !h-[100svh] !max-h-[100svh] !w-[100vw] !max-w-none !translate-x-0 !translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-none p-0 sm:!left-1/2 sm:!top-1/2 sm:!h-[calc(100svh-2rem)] sm:!max-h-[calc(100svh-2rem)] sm:!w-[min(980px,calc(100vw-2rem))] sm:!-translate-x-1/2 sm:!-translate-y-1/2 sm:rounded-[2rem]">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <DialogHeader className="shrink-0 bg-brand-gradient px-4 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] text-white sm:p-5">
+              <DialogTitle className="text-xl font-black sm:text-2xl">Crear Gift Card Personalizada</DialogTitle>
+              <DialogDescription className="text-white/75">Paso {customStep} de 4</DialogDescription>
+            </DialogHeader>
+            <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain bg-muted/30 px-4 py-4 pb-28 [-webkit-overflow-scrolling:touch] sm:px-5">
+              {customStep < 4 ? (
+                <GiftCardDesigner
+                  mode="buyer"
+                  value={{
+                    templateName: 'Gift Card personalizada',
+                    storeName: selectedStore?.name || 'Tienda',
+                    cardName: customDraft.cardName,
+                    amount: customDraft.amount,
+                    message: customDraft.message,
+                    occasion: customDraft.occasion,
+                    designId: customDraft.designId,
+                    customStyle: customDraft.customStyle,
+                  }}
+                  onChange={(patch) => {
+                    setCustomDraft((current) => ({
+                      ...current,
+                      cardName: patch.cardName !== undefined ? patch.cardName : current.cardName,
+                      amount: patch.amount !== undefined ? String(patch.amount) : current.amount,
+                      message: patch.message !== undefined ? patch.message : current.message,
+                      occasion: patch.occasion !== undefined ? patch.occasion : current.occasion,
+                      designId: patch.designId !== undefined ? patch.designId : current.designId,
+                      customStyle: patch.customStyle !== undefined ? patch.customStyle : current.customStyle,
+                    }));
+                  }}
+                  sections={customStep === 1 ? ['details'] : customStep === 2 ? ['occasion', 'suggestions'] : ['style']}
+                  maxAmount={paymentSettings?.maxAmount ?? 5000}
+                />
+              ) : (
+                <div className="space-y-4 max-w-lg mx-auto">
+                  <GiftCardPreview
+                    value={{
+                      storeName: selectedStore?.name || 'Tienda',
+                      amount: customDraft.amount,
+                      cardName: customDraft.cardName,
+                      message: customDraft.message,
+                      occasion: customDraft.occasion,
+                      designId: customDraft.designId,
+                      customStyle: customDraft.customStyle,
+                    }}
+                    mode="buyer"
+                    code="PENDIENTE"
+                  />
+
+                  <div className="grid grid-cols-4 gap-2 mt-4">
+                    {PAYMENT_METHODS.map(({ id, icon: Icon, label }) => (
+                      <Button key={id} type="button" variant={customPaymentMethod === id ? 'default' : 'outline'} className="h-12 flex-col gap-1 text-[10px]" onClick={() => setCustomPaymentMethod(id)}>
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
+
+                  {customPaymentMethod === 'qr' && paymentSettings?.qrUrl && (
+                    <div className="relative mx-auto h-44 w-44 overflow-hidden rounded-2xl border bg-white mt-4">
+                      <Image src={paymentSettings.qrUrl} alt="QR de pago" fill className="object-contain p-2" />
+                    </div>
+                  )}
+                  {customPaymentMethod === 'bank_transfer' && <pre className="whitespace-pre-wrap rounded-xl bg-muted p-3 text-xs mt-4">{paymentSettings?.bankDetails || 'La tienda no configuro datos bancarios.'}</pre>}
+                  {customPaymentMethod === 'tigo_money' && <div className="rounded-xl bg-muted p-3 text-sm font-black mt-4">Tigo Money: {paymentSettings?.tigoMoney || 'No configurado'}</div>}
+                  {customPaymentMethod === 'operator' && <div className="rounded-xl bg-muted p-3 text-sm mt-4">Contacta a la tienda: {paymentSettings?.operatorPhone || 'telefono no configurado'}</div>}
+
+                  {customPaymentMethod !== 'operator' && (
+                    <div className="space-y-3 mt-4">
+                      <Label>Comprobante</Label>
+                      {customReceiptPreview ? (
+                        <div className="relative overflow-hidden rounded-2xl border">
+                          <div className="relative aspect-video">
+                            <Image src={customReceiptPreview} alt="Comprobante" fill className="bg-muted object-contain" />
+                          </div>
+                          <button type="button" className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-destructive text-white" onClick={() => { setCustomReceiptFile(null); setCustomReceiptPreview(null); }}>
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex h-32 cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed">
+                          <Upload className="h-6 w-6 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Subir comprobante</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={handleCustomReceipt} />
+                        </label>
+                      )}
+                      <Input placeholder="Numero de transaccion" value={customTransactionNumber} onChange={(event) => setCustomTransactionNumber(event.target.value)} />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <DialogFooter className="shrink-0 border-t bg-background/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-12px_35px_rgba(0,0,0,0.08)] backdrop-blur sm:p-4">
+              <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
+                <Button variant="ghost" className="h-12 rounded-2xl" onClick={() => setCustomCreateOpen(false)} disabled={submittingCustomCard}>Cancelar</Button>
+                <Button variant="outline" className="h-12 rounded-2xl" disabled={customStep === 1 || submittingCustomCard} onClick={() => setCustomStep((step) => (step - 1) as 1 | 2 | 3 | 4)}>Atras</Button>
+                {customStep < 4 ? (
+                  <Button className="col-span-2 h-12 rounded-2xl" onClick={() => {
+                    if (customStep === 1) {
+                      const amt = Number(customDraft.amount);
+                      if (!amt || amt <= 0) return toast.error('Ingresa un monto válido');
+                      const maxLimit = paymentSettings?.maxAmount ?? 5000;
+                      if (amt > maxLimit) return toast.error(`El monto maximo por Gift Card es Bs. ${maxLimit.toLocaleString()}`);
+                    }
+                    setCustomStep((step) => (step + 1) as 1 | 2 | 3 | 4);
+                  }}>Siguiente</Button>
+                ) : (
+                  <Button className="col-span-2 h-12 rounded-2xl" onClick={handleSubmitCustomCard} disabled={submittingCustomCard}>
+                    {submittingCustomCard ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                    Enviar a verificacion
+                  </Button>
+                )}
+              </div>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <CheckBalanceDialog open={checkBalanceOpen} onOpenChange={setCheckBalanceOpen} />
+      <GiftCardBottomNav />
     </div>
   );
 }
@@ -561,27 +808,30 @@ function OwnedGiftCardTile({ card, storeName }: { card: any; storeName: string }
     router.refresh();
   }
 
+  const parsedCustomStyle = (() => {
+    try {
+      return card.customStyle ? JSON.parse(card.customStyle) : null;
+    } catch {
+      return null;
+    }
+  })();
+
   return (
     <>
-      <button type="button" className="text-left" onClick={() => setOpen(true)}>
-        {card.cardImageUrl ? (
-          <div className="relative aspect-[1.62/1] overflow-hidden rounded-[2rem] border bg-muted shadow-sm">
-            <Image src={card.cardImageUrl} alt="Gift Card" fill sizes="(min-width: 768px) 50vw, 100vw" className="object-cover" />
-          </div>
-        ) : (
-          <GiftCardPreview
-            value={{
-              storeName,
-              amount: card.amount,
-              recipientName: card.recipientName || 'Mi Gift Card',
-              message: card.message || '',
-              occasion: card.occasion || 'otros',
-              designId: card.templateId || 1,
-            }}
-            mode="buyer"
-            code={card.code || 'ACTIVA'}
-          />
-        )}
+      <button type="button" className="text-left w-full" onClick={() => setOpen(true)}>
+        <GiftCardPreview
+          value={{
+            storeName,
+            amount: card.amount,
+            recipientName: card.recipientName || 'Mi Gift Card',
+            message: card.message || '',
+            occasion: card.occasion || 'otros',
+            designId: card.templateId === 99 ? 99 : (card.templateId || 1),
+            customStyle: parsedCustomStyle,
+          }}
+          mode="buyer"
+          code={card.code || 'ACTIVA'}
+        />
       </button>
 
       <Dialog open={open} onOpenChange={(next) => { setOpen(next); if (!next) setGiftMode(false); }}>
@@ -590,24 +840,20 @@ function OwnedGiftCardTile({ card, storeName }: { card: any; storeName: string }
             <DialogTitle>Gift Card</DialogTitle>
             <DialogDescription>Saldo disponible: Bs. {Number(card.balance || 0).toFixed(2)}</DialogDescription>
           </DialogHeader>
-          {card.cardImageUrl ? (
-            <div className="relative aspect-[1.62/1] overflow-hidden rounded-[2rem] border bg-muted">
-              <Image src={card.cardImageUrl} alt="Gift Card" fill className="object-cover" />
-            </div>
-          ) : (
-            <GiftCardPreview
-              value={{
-                storeName,
-                amount: card.amount,
-                recipientName: card.recipientName || 'Mi Gift Card',
-                message: card.message || '',
-                occasion: card.occasion || 'otros',
-                designId: card.templateId || 1,
-              }}
-              mode="buyer"
-              code={card.code || 'ACTIVA'}
-            />
-          )}
+
+          <GiftCardPreview
+            value={{
+              storeName,
+              amount: card.amount,
+              recipientName: card.recipientName || 'Mi Gift Card',
+              message: card.message || '',
+              occasion: card.occasion || 'otros',
+              designId: card.templateId === 99 ? 99 : (card.templateId || 1),
+              customStyle: parsedCustomStyle,
+            }}
+            mode="buyer"
+            code={card.code || 'ACTIVA'}
+          />
 
           {giftMode && (
             <div className="space-y-2 rounded-2xl border p-3">
