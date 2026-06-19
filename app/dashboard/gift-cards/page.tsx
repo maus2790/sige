@@ -7,6 +7,7 @@ export default async function DashboardGiftCardsPage() {
   return (
     <GiftCardManagement
       store={data.store}
+      templates={data.templates as any}
       availableTemplates={data.availableTemplates as any}
       activeCards={data.activeCards as any}
       inactiveCards={data.inactiveCards as any}

@@ -37,7 +37,7 @@ import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { CheckBalanceDialog } from './check-balance-dialog';
 import { GiftCardBottomNav } from './gift-card-bottom-nav';
 import { GiftCardCard } from './gift-card-card';
-import { GiftCardDesigner, GiftCardPreview, type CustomCardStyle } from './gift-card-designer';
+import { GiftCardDesigner, GiftCardPreview, GiftCardPreviewFromRecord, type CustomCardStyle } from './gift-card-designer';
 import {
   getGiftCardStoreProducts,
   getStoreGiftCardPaymentSettings,
@@ -404,26 +404,13 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                 <div className="grid gap-3 sm:grid-cols-2">
                   {pendingVerification.map((card) => {
                     const matchingStore = stores.find((s) => s.id === card.businessId);
-                    const matchingTemplate = matchingStore?.templates.find((t) => String(t.id) === String(card.templateId));
+                    const matchingTemplate = matchingStore?.templates.find((t) => String(t.id) === String(card.storeGiftCardTemplateId));
                     return (
                       <div key={card.id} className="opacity-70">
-                        <GiftCardPreview
-                          value={{
-                            storeName: matchingStore?.name || 'Tienda',
-                            amount: card.amount,
-                            recipientName: card.recipientName || 'Mi Gift Card',
-                            message: card.message || '',
-                            occasion: card.occasion || 'otros',
-                            designId: card.templateId === 99 ? 99 : (matchingTemplate?.designId || 1),
-                            customStyle: (() => {
-                              try {
-                                const styleStr = card.customStyle || matchingTemplate?.customStyle;
-                                return styleStr ? JSON.parse(styleStr) : null;
-                              } catch {
-                                return null;
-                              }
-                            })()
-                          }}
+                        <GiftCardPreviewFromRecord
+                          record={card}
+                          template={matchingTemplate}
+                          storeName={matchingStore?.name || 'Tienda'}
                           mode="buyer"
                           code="EN VERIFICACION"
                         />
@@ -531,17 +518,9 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {selectedStoreTemplates.map((template) => (
                       <button key={template.id} type="button" onClick={() => openTemplatePayment(template)} className="text-left">
-                        <GiftCardPreview
-                          value={{
-                            templateName: template.name,
-                            storeName: selectedStore.name,
-                            amount: template.amount,
-                            recipientName: 'Mi Gift Card',
-                            message: template.description || '',
-                            occasion: template.occasion || 'otros',
-                            designId: template.designId,
-                            customStyle: (() => { try { return template.customStyle ? JSON.parse(template.customStyle) : null; } catch { return null; } })()
-                          }}
+                        <GiftCardPreviewFromRecord
+                          record={{ ...template, recipientName: 'Mi Gift Card', designId: template.designId }}
+                          storeName={selectedStore.name}
                           mode="seller"
                           code="SIN CODIGO"
                         />
@@ -808,27 +787,12 @@ function OwnedGiftCardTile({ card, storeName }: { card: any; storeName: string }
     router.refresh();
   }
 
-  const parsedCustomStyle = (() => {
-    try {
-      return card.customStyle ? JSON.parse(card.customStyle) : null;
-    } catch {
-      return null;
-    }
-  })();
-
   return (
     <>
       <button type="button" className="text-left w-full" onClick={() => setOpen(true)}>
-        <GiftCardPreview
-          value={{
-            storeName,
-            amount: card.amount,
-            recipientName: card.recipientName || 'Mi Gift Card',
-            message: card.message || '',
-            occasion: card.occasion || 'otros',
-            designId: card.templateId === 99 ? 99 : (card.templateId || 1),
-            customStyle: parsedCustomStyle,
-          }}
+        <GiftCardPreviewFromRecord
+          record={{ ...card, recipientName: card.recipientName || 'Mi Gift Card' }}
+          storeName={storeName}
           mode="buyer"
           code={card.code || 'ACTIVA'}
         />
@@ -841,16 +805,9 @@ function OwnedGiftCardTile({ card, storeName }: { card: any; storeName: string }
             <DialogDescription>Saldo disponible: Bs. {Number(card.balance || 0).toFixed(2)}</DialogDescription>
           </DialogHeader>
 
-          <GiftCardPreview
-            value={{
-              storeName,
-              amount: card.amount,
-              recipientName: card.recipientName || 'Mi Gift Card',
-              message: card.message || '',
-              occasion: card.occasion || 'otros',
-              designId: card.templateId === 99 ? 99 : (card.templateId || 1),
-              customStyle: parsedCustomStyle,
-            }}
+          <GiftCardPreviewFromRecord
+            record={{ ...card, recipientName: card.recipientName || 'Mi Gift Card' }}
+            storeName={storeName}
             mode="buyer"
             code={card.code || 'ACTIVA'}
           />

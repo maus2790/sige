@@ -27,6 +27,12 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { GIFT_CARD_TEMPLATES, getGiftCardTemplate } from './gift-card-templates';
 import {
+  getCustomBackgroundCss,
+  parseGiftCardCustomStyle,
+  resolveGiftCardVisual,
+  type CustomCardStyle,
+} from '@/lib/gift-card-visual';
+import {
   GIFT_CARD_MAX_MESSAGE_LENGTH,
   GIFT_CARD_OCCASIONS,
   getGiftCardMessages,
@@ -34,16 +40,7 @@ import {
 } from './gift-card-customization';
 
 /* ─── Custom style type ──────────────────────────────────────────────────── */
-export type CustomCardStyle = {
-  useCustom: boolean;
-  colors: string[];
-  angle: number;
-  type: 'linear' | 'radial' | 'conic' | 'reflected' | 'diamond';
-  iconId: string;
-  bgIconId: string;
-  centerX?: number; // percent 0-100
-  centerY?: number; // percent 0-100
-};
+export type { CustomCardStyle } from '@/lib/gift-card-visual';
 
 export type GiftCardDesignValue = {
   templateName?: string;
@@ -88,29 +85,7 @@ const GRADIENT_TYPES: { id: CustomCardStyle['type']; label: string }[] = [
 
 /* ─── Helper: compute inline bg from custom style ────────────────────────── */
 export function getCustomBgStyle(cfg: CustomCardStyle): React.CSSProperties {
-  const colors = cfg.colors?.length >= 2 ? cfg.colors : ['#ec4899', '#8b5cf6'];
-  const angle = cfg.angle ?? 135;
-  const cx = cfg.centerX ?? 50;
-  const cy = cfg.centerY ?? 50;
-
-  switch (cfg.type) {
-    case 'radial':
-      return { background: `radial-gradient(circle at ${cx}% ${cy}%, ${colors.join(', ')})` };
-    case 'conic':
-      return { background: `conic-gradient(from ${angle}deg at ${cx}% ${cy}%, ${colors.join(', ')})` };
-    case 'reflected': {
-      const mirrored = [...colors, ...colors.slice(0, -1).reverse()];
-      return { background: `linear-gradient(${angle}deg, ${mirrored.join(', ')})` };
-    }
-    case 'diamond': {
-      const quad = [...colors, ...colors.slice(1, -1).reverse()];
-      const full = [...quad, ...quad, ...quad, ...quad, colors[0]];
-      const stops = full.map((c, i) => `${c} ${((i / (full.length - 1)) * 100).toFixed(1)}%`);
-      return { background: `conic-gradient(from ${angle}deg at ${cx}% ${cy}%, ${stops.join(', ')})` };
-    }
-    default:
-      return { background: `linear-gradient(${angle}deg, ${colors.join(', ')})` };
-  }
+  return { background: getCustomBackgroundCss(cfg) };
 }
 
 /* ─── Preview card ───────────────────────────────────────────────────────── */
@@ -123,16 +98,16 @@ export function GiftCardPreview({
   mode?: 'seller' | 'buyer';
   code?: string;
 }) {
-  const visual = getGiftCardTemplate(value.designId);
-  const occasion = getGiftCardOccasion(value.occasion);
+  const resolved = resolveGiftCardVisual({ ...value, code }, mode);
+  const visual = resolved.template;
+  const occasion = getGiftCardOccasion(resolved.occasionId);
   const OccasionIconFallback = occasion.icon;
-  const amount = Number(value.amount || 0);
 
   /* Custom style overrides */
-  const isCustom = value.customStyle?.useCustom;
-  const cfg = value.customStyle;
+  const isCustom = resolved.isCustom;
+  const cfg = resolved.customStyle;
 
-  const bgStyle: React.CSSProperties = isCustom && cfg ? getCustomBgStyle(cfg) : {};
+  const bgStyle: React.CSSProperties = resolved.backgroundCss ? { background: resolved.backgroundCss } : {};
   const containerClass = `card-shine relative aspect-[1.62/1] w-full overflow-hidden rounded-[2rem] p-5 text-white shadow-2xl ring-1 ring-white/20 ${isCustom ? '' : visual.className}`;
 
   const BadgeIcon: LucideIcon =
@@ -146,11 +121,6 @@ export function GiftCardPreview({
       : Gift;
 
   /* Display label for top-left */
-  const displayName =
-    mode === 'buyer'
-      ? (value.cardName || value.recipientName || '________')
-      : (value.templateName || 'Gift Card');
-
   return (
     <div className={containerClass} style={bgStyle}>
       <div className="absolute inset-0 rounded-[2rem] ring-1 ring-white/25" />
@@ -166,32 +136,81 @@ export function GiftCardPreview({
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70">
               {mode === 'buyer' ? 'Nombre' : 'Boceto'}
             </p>
-            <h3 className="truncate text-xl font-black leading-tight">{displayName}</h3>
+            <h3 className="truncate text-xl font-black leading-tight">{resolved.displayName}</h3>
             <p className="mt-0.5 text-[10px] font-bold opacity-75">
-              {occasion.label} - {isCustom ? 'Personalizado' : visual.name}
+              {resolved.occasionLabel} - {resolved.visualName}
             </p>
           </div>
           <div className="shrink-0 text-right">
-            <p className="text-[10px] font-black uppercase tracking-widest">{value.storeName}</p>
-            <p className="text-[8px] uppercase tracking-wider opacity-75">{isCustom ? 'CUSTOM' : visual.name}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest">{resolved.storeName}</p>
+            <p className="text-[8px] uppercase tracking-wider opacity-75">{resolved.topRightLabel}</p>
           </div>
         </div>
 
-        {value.message && (
+        {resolved.message && (
           <p className="overflow-hidden text-ellipsis whitespace-nowrap rounded-2xl border border-white/5 bg-black/15 px-4 py-2 text-center text-xs italic backdrop-blur-xs">
-            "{value.message.slice(0, GIFT_CARD_MAX_MESSAGE_LENGTH)}"
+            "{resolved.message.slice(0, GIFT_CARD_MAX_MESSAGE_LENGTH)}"
           </p>
         )}
 
         <div className="flex items-end justify-between gap-3 border-t border-white/20 pt-3">
           <div>
             <p className="text-[9px] font-black uppercase tracking-widest opacity-60">Codigo</p>
-            <p className="font-mono text-[10px] font-black tracking-widest">{code}</p>
+            <p className="font-mono text-[10px] font-black tracking-widest">{resolved.code}</p>
           </div>
-          <p className="shrink-0 text-3xl font-black">Bs. {amount.toFixed(2)}</p>
+          <p className="shrink-0 text-3xl font-black">Bs. {resolved.amount.toFixed(2)}</p>
         </div>
       </div>
     </div>
+  );
+}
+
+export function GiftCardPreviewFromRecord({
+  record,
+  template,
+  storeName,
+  mode = 'buyer',
+  code,
+}: {
+  record: {
+    amount?: string | number | null;
+    recipientName?: string | null;
+    cardName?: string | null;
+    message?: string | null;
+    occasion?: string | null;
+    templateId?: number | null;
+    designId?: number | null;
+    customStyle?: CustomCardStyle | string | null;
+    name?: string | null;
+    code?: string | null;
+  };
+  template?: {
+    name?: string | null;
+    designId?: number | null;
+    occasion?: string | null;
+    description?: string | null;
+    customStyle?: CustomCardStyle | string | null;
+  } | null;
+  storeName: string;
+  mode?: 'seller' | 'buyer';
+  code?: string;
+}) {
+  return (
+    <GiftCardPreview
+      mode={mode}
+      code={code || record.code || (mode === 'seller' ? 'SIN CODIGO' : 'XXXX-XXXX-XXXX')}
+      value={{
+        templateName: template?.name || record.name || 'Gift Card',
+        storeName,
+        amount: record.amount || 0,
+        recipientName: record.recipientName || undefined,
+        cardName: record.cardName || undefined,
+        message: record.message || template?.description || '',
+        occasion: record.occasion || template?.occasion || 'otros',
+        designId: record.templateId || record.designId || template?.designId || 1,
+        customStyle: parseGiftCardCustomStyle(record.customStyle || template?.customStyle || null),
+      }}
+    />
   );
 }
 

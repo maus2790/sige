@@ -9,7 +9,7 @@ import { Drawer } from 'vaul';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/use-media-query';
 
-import { GiftCardPreview } from './gift-card-designer';
+import { GiftCardPreviewFromRecord } from './gift-card-designer';
 
 type CardInfo = {
   code: string;
@@ -125,16 +125,9 @@ export function CheckBalanceDialog({ open, onOpenChange }: CheckBalanceDialogPro
       ) : (
         /* ── RESULT STATE ── */
         <div className="space-y-4">
-          <GiftCardPreview
-            value={{
-              storeName: result.storeName || 'Tienda',
-              amount: result.amount,
-              recipientName: 'Mi Gift Card',
-              message: result.message || '',
-              occasion: result.occasion || 'otros',
-              designId: result.templateId === 99 ? 99 : (result.templateId || 1),
-              customStyle: (() => { try { return result.customStyle ? JSON.parse(result.customStyle) : null; } catch { return null; } })()
-            }}
+          <GiftCardPreviewFromRecord
+            record={{ ...result, recipientName: 'Mi Gift Card' }}
+            storeName={result.storeName || 'Tienda'}
             mode="buyer"
             code={result.code}
           />

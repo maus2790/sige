@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { GiftCardDesigner, GiftCardPreview, type CustomCardStyle } from '@/components/gift-cards/gift-card-designer';
+import { GiftCardDesigner, GiftCardPreview, GiftCardPreviewFromRecord, type CustomCardStyle } from '@/components/gift-cards/gift-card-designer';
 import {
   deleteStoreIssuedGiftCard,
   updateStoreIssuedGiftCard,
@@ -238,23 +238,10 @@ function IssuedCardGrid({
           const matchingTemplate = templates.find(t => String(t.id) === String(card.storeGiftCardTemplateId));
           return (
             <button key={card.id} type="button" onClick={() => onOpen(card)} className="group text-left w-full">
-              <GiftCardPreview
-                value={{
-                  storeName,
-                  amount: card.amount,
-                  recipientName: card.recipientName || 'Mi Gift Card',
-                  message: card.message || '',
-                  occasion: card.occasion || 'otros',
-                  designId: card.templateId === 99 ? 99 : (matchingTemplate?.designId || card.templateId || 1),
-                  customStyle: (() => {
-                    try {
-                      const styleStr = card.customStyle || matchingTemplate?.customStyle;
-                      return styleStr ? JSON.parse(styleStr) : null;
-                    } catch {
-                      return null;
-                    }
-                  })()
-                }}
+              <GiftCardPreviewFromRecord
+                record={card}
+                template={matchingTemplate}
+                storeName={storeName}
                 mode="buyer"
                 code={card.code || 'ACTIVA'}
               />
@@ -278,6 +265,7 @@ function IssuedCardGrid({
 
 export function GiftCardManagement({
   store,
+  templates = [],
   availableTemplates,
   activeCards,
   inactiveCards,
@@ -341,6 +329,12 @@ export function GiftCardManagement({
   const createDisabled = savingTemplate || !draft.amount || Number(draft.amount) <= 0 || Number(draft.amount) > maxAmountNumber;
 
   const sortedActiveCards = useMemo(() => [...activeCards].sort((a, b) => b.balance - a.balance), [activeCards]);
+  const templateCatalog = useMemo(() => {
+    const map = new Map<string, Template>();
+    for (const template of templates) map.set(template.id, template);
+    for (const template of localAvailableTemplates) map.set(template.id, template);
+    return Array.from(map.values());
+  }, [templates, localAvailableTemplates]);
 
   if (!activeStore) {
     return (
@@ -591,18 +585,11 @@ export function GiftCardManagement({
                 onClick={() => setSelectedTemplateForActions(template)}
                 className="group text-left w-full rounded-[2rem] transition duration-200 hover:-translate-y-1 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
-                <GiftCardPreview
+                <GiftCardPreviewFromRecord
+                  record={{ ...template, designId: template.designId }}
+                  storeName={activeStore.name}
                   mode="seller"
                   code="SIN CODIGO"
-                  value={{
-                    templateName: template.name,
-                    storeName: activeStore.name,
-                    amount: template.amount,
-                    message: template.description || '',
-                    occasion: template.occasion || 'otros',
-                    designId: template.designId,
-                    customStyle: (() => { try { return template.customStyle ? JSON.parse(template.customStyle) : null; } catch { return null; } })()
-                  }}
                 />
                 <p className="mt-2 text-center text-xs font-bold text-muted-foreground group-hover:text-primary transition-colors">
                   Bs. {template.amount.toFixed(2)} · {template.name} · Toca para gestionar
@@ -627,7 +614,7 @@ export function GiftCardManagement({
               <div className="w-full md:w-[380px] lg:w-[420px] shrink-0 max-h-[80vh] overflow-y-auto space-y-3 pr-1 pt-2">
                 {pending.map((card) => {
                   const isSelected = selectedPendingId === card.id;
-                  const matchingTemplate = localAvailableTemplates.find(t => String(t.id) === String(card.storeGiftCardTemplateId));
+                  const matchingTemplate = templateCatalog.find(t => String(t.id) === String(card.storeGiftCardTemplateId));
                   return (
                     <button
                       key={card.id}
@@ -641,23 +628,10 @@ export function GiftCardManagement({
                     >
                       {/* Gift Card preview */}
                       <div className="p-3 pb-0">
-                        <GiftCardPreview
-                          value={{
-                            templateName: matchingTemplate?.name || 'Gift Card',
-                            storeName: activeStore.name,
-                            amount: card.amount,
-                            message: card.message || '',
-                            occasion: card.occasion || 'otros',
-                            designId: card.templateId === 99 ? 99 : (matchingTemplate?.designId || card.templateId || 1),
-                            customStyle: (() => {
-                              try {
-                                const styleStr = card.customStyle || matchingTemplate?.customStyle;
-                                return styleStr ? JSON.parse(styleStr) : null;
-                              } catch {
-                                return null;
-                              }
-                            })()
-                          }}
+                        <GiftCardPreviewFromRecord
+                          record={card}
+                          template={matchingTemplate}
+                          storeName={activeStore.name}
                           mode="buyer"
                           code="PENDIENTE"
                         />
@@ -723,7 +697,7 @@ export function GiftCardManagement({
           {sortedActiveCards.length === 0 ? (
             <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">Aun no hay Gift Cards activas con saldo.</CardContent></Card>
           ) : (
-            <IssuedCardGrid cards={sortedActiveCards} storeName={activeStore.name} templates={localAvailableTemplates} onOpen={openIssuedCard} />
+            <IssuedCardGrid cards={sortedActiveCards} storeName={activeStore.name} templates={templateCatalog} onOpen={openIssuedCard} />
           )}
         </TabsContent>
 
@@ -731,7 +705,7 @@ export function GiftCardManagement({
           {inactiveCards.length === 0 ? (
             <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">No hay Gift Cards inactivas.</CardContent></Card>
           ) : (
-            <IssuedCardGrid cards={inactiveCards} storeName={activeStore.name} templates={localAvailableTemplates} onOpen={openIssuedCard} />
+            <IssuedCardGrid cards={inactiveCards} storeName={activeStore.name} templates={templateCatalog} onOpen={openIssuedCard} />
           )}
         </TabsContent>
 
@@ -873,24 +847,10 @@ export function GiftCardManagement({
                 <DialogDescription>Saldo disponible: Bs. {selectedCard.balance.toFixed(2)}</DialogDescription>
               </DialogHeader>
               <div className="max-h-[75vh] overflow-y-auto p-5 space-y-4">
-                <GiftCardPreview
-                  value={{
-                    storeName: activeStore.name,
-                    amount: selectedCard.amount,
-                    recipientName: selectedCard.recipientName || 'Mi Gift Card',
-                    message: selectedCard.message || '',
-                    occasion: selectedCard.occasion || 'otros',
-                    designId: selectedCard.templateId === 99 ? 99 : ((localAvailableTemplates.find(t => String(t.id) === String(selectedCard.storeGiftCardTemplateId))?.designId) || selectedCard.templateId || 1),
-                    customStyle: (() => {
-                      try {
-                        const matchingTemplate = localAvailableTemplates.find(t => String(t.id) === String(selectedCard.storeGiftCardTemplateId));
-                        const styleStr = selectedCard.customStyle || matchingTemplate?.customStyle;
-                        return styleStr ? JSON.parse(styleStr) : null;
-                      } catch {
-                        return null;
-                      }
-                    })()
-                  }}
+                <GiftCardPreviewFromRecord
+                  record={selectedCard}
+                  template={templateCatalog.find(t => String(t.id) === String(selectedCard.storeGiftCardTemplateId))}
+                  storeName={activeStore.name}
                   mode="buyer"
                   code={selectedCard.code || 'ACTIVA'}
                 />
@@ -969,18 +929,11 @@ export function GiftCardManagement({
           {selectedTemplateForActions && (
             <div className="space-y-5">
               <div className="flex justify-center p-2 bg-muted/30 rounded-2xl">
-                <GiftCardPreview
+                <GiftCardPreviewFromRecord
+                  record={{ ...selectedTemplateForActions, designId: selectedTemplateForActions.designId }}
+                  storeName={activeStore.name}
                   mode="buyer"
                   code="PREVIEW"
-                  value={{
-                    templateName: selectedTemplateForActions.name,
-                    storeName: activeStore.name,
-                    amount: selectedTemplateForActions.amount,
-                    message: selectedTemplateForActions.description || '',
-                    occasion: selectedTemplateForActions.occasion || 'otros',
-                    designId: selectedTemplateForActions.designId,
-                    customStyle: (() => { try { return selectedTemplateForActions.customStyle ? JSON.parse(selectedTemplateForActions.customStyle) : null; } catch { return null; } })()
-                  }}
                 />
               </div>
               <div className="grid grid-cols-3 gap-2 pt-2">

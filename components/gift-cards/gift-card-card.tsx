@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { GIFT_CARD_TEMPLATES, getGiftCardTemplate } from './gift-card-templates';
-import { CUSTOM_CARD_ICONS } from './gift-card-designer';
+import { CUSTOM_CARD_ICONS, GiftCardPreviewFromRecord } from './gift-card-designer';
 import { Drawer } from 'vaul';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { useMediaQuery } from '@/hooks/use-media-query';
@@ -344,6 +344,29 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
     </div>
   );
 
+  const unifiedCardTile = (
+    <div className="relative w-full max-w-[420px] mx-auto transition-all duration-700 group-hover:scale-[1.01]">
+      <GiftCardPreviewFromRecord
+        record={giftCard}
+        storeName="SIGE DIGITAL"
+        mode="buyer"
+        code={giftCard.code || (giftCard.status === 'pending_payment' ? 'EN VERIFICACION' : 'ACTIVA')}
+      />
+      {(isExpired || isFullyRedeemed) && (
+        <Button
+          variant="destructive"
+          size="icon"
+          className={`absolute top-4 right-4 z-30 h-8 w-8 rounded-full bg-red-600/80 hover:bg-red-600 border border-white/20 backdrop-blur-md shadow-xl transition-all ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+          onClick={handleDelete}
+          disabled={isDeleting}
+          title="Eliminar tarjeta"
+        >
+          <Trash2 className="h-4 w-4 text-white" />
+        </Button>
+      )}
+    </div>
+  );
+
   // ---------- modal content ----------
   const renderModalContent = () => (
     <>
@@ -538,34 +561,12 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
               </div>
             </div>
           ) : (
-            <div
-              className={`aspect-[1.8/1] w-full max-w-[380px] mx-auto rounded-2xl p-4 text-white shadow-xl relative overflow-hidden ring-1 ring-white/20 ${giftCard.templateId === 99 ? '' : template.className}`}
-              style={giftCard.templateId === 99 ? customBgStyle : undefined}
-            >
-              <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none"><WatermarkIconComponent size={90} /></div>
-              <div className="relative z-10 h-full flex flex-col justify-between">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <div className="h-8 w-8 rounded-lg bg-white/20 backdrop-blur-xl flex items-center justify-center border border-white/40">
-                      <BadgeIconComponent className="h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-[6px] opacity-70 uppercase tracking-widest font-black">SIGE DIGITAL</p>
-                      <p className="text-[8px] font-bold opacity-60">{giftCard.templateId === 99 ? 'PERSONALIZADA' : (template.name || 'PLATINUM CARD')}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[10px] font-mono font-black tracking-widest bg-white/15 px-2.5 py-0.5 rounded-full border border-white/20">{giftCard.code}</p>
-                  </div>
-                </div>
-                <div className="flex justify-between items-end border-t border-white/10 pt-2">
-                  <div>
-                    <p className="text-[8px] opacity-80 uppercase tracking-widest font-black">Saldo Disponible</p>
-                    <p className="text-xl font-black">Bs. {giftCard.balance.toFixed(2)}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <GiftCardPreviewFromRecord
+              record={giftCard}
+              storeName="SIGE DIGITAL"
+              mode="buyer"
+              code={giftCard.code || 'ACTIVA'}
+            />
           )}
 
           <div className={`grid ${type === 'sent' ? 'grid-cols-2' : 'grid-cols-3'} gap-3 pt-2`}>
@@ -628,7 +629,7 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
       {isDesktop ? (
         <Dialog open={showPreview} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
-            <div className="cursor-pointer">{cardTile}</div>
+            <div className="cursor-pointer">{unifiedCardTile}</div>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md bg-zinc-950 border-white/10 p-0 overflow-hidden text-white">
             {dialogHeader}
@@ -637,7 +638,7 @@ export function GiftCardCard({ giftCard, type }: GiftCardCardProps) {
         </Dialog>
       ) : (
         <>
-          <div className="cursor-pointer" onClick={() => setShowPreview(true)}>{cardTile}</div>
+          <div className="cursor-pointer" onClick={() => setShowPreview(true)}>{unifiedCardTile}</div>
           <Drawer.Root open={showPreview} onOpenChange={handleOpenChange}>
             <Drawer.Portal>
               <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50 backdrop-blur-sm" />

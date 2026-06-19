@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import { uploadImageFromBuffer, deleteImage, extractKeyFromUrl } from '@/lib/cloudflare';
 import { sendOneSignalNotification } from '@/lib/onesignal';
 import { generateSecureGiftCardCode, hashGiftCardCode } from '@/lib/gift-card-code';
+import { resolveGiftCardVisual, type CustomCardStyle } from '@/lib/gift-card-visual';
 
 export async function getCurrentUser() {
   const session = await getServerSession(nextauthConfig);
@@ -1769,19 +1770,6 @@ export async function updateStoreGiftCardPaymentSettings(data: {
   return { success: true };
 }
 
-const SERVER_GIFT_CARD_GRADIENTS: Record<number, string[]> = {
-  1: ['#2563eb', '#1d4ed8', '#312e81'],
-  2: ['#fde047', '#f59e0b', '#c2410c'],
-  3: ['#09090b', '#164e63', '#0891b2'],
-  4: ['#fb7185', '#db2777', '#701a75'],
-  5: ['#6ee7b7', '#059669', '#052e16'],
-  6: ['#c4b5fd', '#7e22ce', '#312e81'],
-  7: ['#7dd3fc', '#2563eb', '#172554'],
-  8: ['#fdba74', '#ef4444', '#9f1239'],
-  9: ['#a5f3fc', '#06b6d4', '#115e59'],
-  10: ['#f87171', '#be123c', '#1c1917'],
-};
-
 function escapeSvgText(value?: string | null) {
   return String(value || '')
     .replace(/&/g, '&amp;')
@@ -1790,31 +1778,91 @@ function escapeSvgText(value?: string | null) {
     .replace(/"/g, '&quot;');
 }
 
+function svgStops(colors: string[]) {
+  const list = colors.length >= 2 ? colors : ['#ec4899', '#8b5cf6'];
+  return list
+    .map((color, index) => `<stop offset="${(index / (list.length - 1)) * 100}%" stop-color="${escapeSvgText(color)}" />`)
+    .join('');
+}
+
+function conicToLinearColors(style: CustomCardStyle) {
+  if (style.type === 'diamond') {
+    const colors = style.colors.length >= 2 ? style.colors : ['#ec4899', '#8b5cf6'];
+    const quad = [...colors, ...colors.slice(1, -1).reverse()];
+    return [...quad, ...quad, colors[0]];
+  }
+  return style.colors.length >= 2 ? style.colors : ['#ec4899', '#8b5cf6'];
+}
+
+function renderSvgBackgroundDef(visual: ReturnType<typeof resolveGiftCardVisual>) {
+  if (!visual.customStyle) {
+    return {
+      defs: `<linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">${svgStops(visual.presetColors)}</linearGradient>`,
+      fill: 'url(#bg)',
+    };
+  }
+
+  const style = visual.customStyle;
+  if (style.type === 'radial') {
+    return {
+      defs: `<radialGradient id="bg" cx="${style.centerX ?? 50}%" cy="${style.centerY ?? 50}%" r="75%">${svgStops(style.colors)}</radialGradient>`,
+      fill: 'url(#bg)',
+    };
+  }
+
+  const colors = style.type === 'reflected'
+    ? [...style.colors, ...style.colors.slice(0, -1).reverse()]
+    : conicToLinearColors(style);
+  const angle = ((style.angle ?? 135) * Math.PI) / 180;
+  const x = Math.cos(angle);
+  const y = Math.sin(angle);
+  const x1 = ((1 - x) / 2) * 100;
+  const y1 = ((1 - y) / 2) * 100;
+  const x2 = ((1 + x) / 2) * 100;
+  const y2 = ((1 + y) / 2) * 100;
+
+  return {
+    defs: `<linearGradient id="bg" x1="${x1.toFixed(2)}%" y1="${y1.toFixed(2)}%" x2="${x2.toFixed(2)}%" y2="${y2.toFixed(2)}%">${svgStops(colors)}</linearGradient>`,
+    fill: 'url(#bg)',
+  };
+}
+
 async function renderGiftCardImageBuffer(card: typeof giftCards.$inferSelect, code: string, storeName: string) {
   const sharp = (await import('sharp')).default;
-  const colors = SERVER_GIFT_CARD_GRADIENTS[card.templateId || 1] || SERVER_GIFT_CARD_GRADIENTS[1];
+  const visual = resolveGiftCardVisual({
+    storeName,
+    amount: card.amount,
+    recipientName: card.recipientName,
+    cardName: card.recipientName,
+    message: card.message,
+    occasion: card.occasion,
+    designId: card.templateId,
+    customStyle: card.customStyle,
+    code,
+  }, 'buyer');
+  const background = renderSvgBackgroundDef(visual);
   const width = 1200;
   const height = 740;
-  const recipient = escapeSvgText(card.recipientName || '________');
-  const message = escapeSvgText(card.message || '');
-  const occasion = escapeSvgText(card.occasion || 'Gift Card');
-  const store = escapeSvgText(storeName);
-  const amount = Number(card.amount || 0).toFixed(2);
+  const recipient = escapeSvgText(visual.displayName);
+  const message = escapeSvgText(visual.message);
+  const occasion = escapeSvgText(`${visual.occasionLabel} - ${visual.visualName}`);
+  const store = escapeSvgText(visual.storeName);
+  const typeLabel = escapeSvgText(visual.topRightLabel);
+  const amount = visual.amount.toFixed(2);
 
   const svg = `
     <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-          ${colors.map((color, index) => `<stop offset="${(index / (colors.length - 1)) * 100}%" stop-color="${color}" />`).join('')}
-        </linearGradient>
+        ${background.defs}
         <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
           <feDropShadow dx="0" dy="18" stdDeviation="24" flood-color="#000000" flood-opacity="0.24"/>
         </filter>
       </defs>
-      <rect width="${width}" height="${height}" rx="64" fill="url(#bg)" filter="url(#shadow)" />
+      <rect width="${width}" height="${height}" rx="64" fill="${background.fill}" filter="url(#shadow)" />
       <rect x="1" y="1" width="${width - 2}" height="${height - 2}" rx="64" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
       <circle cx="1020" cy="120" r="180" fill="rgba(255,255,255,0.10)" />
       <text x="70" y="96" font-family="Arial, sans-serif" font-size="24" font-weight="900" letter-spacing="6" fill="rgba(255,255,255,0.72)">${store}</text>
+      <text x="1130" y="96" text-anchor="end" font-family="Arial, sans-serif" font-size="18" font-weight="900" letter-spacing="4" fill="rgba(255,255,255,0.68)">${typeLabel}</text>
       <text x="70" y="175" font-family="Arial, sans-serif" font-size="32" font-weight="900" letter-spacing="4" fill="rgba(255,255,255,0.72)">PARA</text>
       <text x="70" y="246" font-family="Arial, sans-serif" font-size="66" font-weight="900" fill="#ffffff">${recipient}</text>
       <text x="70" y="300" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="rgba(255,255,255,0.76)">${occasion}</text>

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, CheckCircle, AlertCircle, Clock, ArrowRight, RotateCcw } from 'lucide-react';
-import { GiftCardPreview } from '@/components/gift-cards/gift-card-designer';
+import { GiftCardPreviewFromRecord } from '@/components/gift-cards/gift-card-designer';
 
 type CardInfo = {
   code: string;
@@ -134,16 +134,9 @@ export default function CheckGiftCardPage() {
         ) : (
           /* ── RESULT STATE ── */
           <div className="pt-6 space-y-4">
-            <GiftCardPreview
-              value={{
-                storeName: result.storeName || 'Tienda',
-                amount: result.amount,
-                recipientName: 'Mi Gift Card',
-                message: result.message || '',
-                occasion: result.occasion || 'otros',
-                designId: result.templateId === 99 ? 99 : (result.templateId || 1),
-                customStyle: (() => { try { return result.customStyle ? JSON.parse(result.customStyle) : null; } catch { return null; } })()
-              }}
+            <GiftCardPreviewFromRecord
+              record={{ ...result, recipientName: 'Mi Gift Card' }}
+              storeName={result.storeName || 'Tienda'}
               mode="buyer"
               code={result.code}
             />
