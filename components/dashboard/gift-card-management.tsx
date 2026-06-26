@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { AlertCircle, BadgeCheck, Check, CheckCircle, Gift, Loader2, Plus, QrCode, Receipt, Settings, Trash2, Upload, XCircle } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Check, CheckCircle, Gift, Loader2, Plus, QrCode, Receipt, Search, Settings, Trash2, Upload, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -91,6 +91,12 @@ const defaultDraft = (): DraftCard => ({
     centerY: 50,
   },
 });
+
+function matchesGiftCardSearch(searchTerm: string, values: Array<string | number | null | undefined>) {
+  const query = searchTerm.trim().toLowerCase();
+  if (!query) return true;
+  return values.some((value) => String(value ?? '').toLowerCase().includes(query));
+}
 
 // ── Receipt Preview with zoom/magnifier ──────────────────────────────────────
 function ReceiptPreview({ url, isMobile }: { url: string; isMobile?: boolean }) {
@@ -294,10 +300,13 @@ export function GiftCardManagement({
   const [maxAmount, setMaxAmount] = useState(String(settings?.maxAmount ?? 5000));
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [confirmingCard, setConfirmingCard] = useState<Pending | null>(null);
+  const [rejectingCard, setRejectingCard] = useState<Pending | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
   const [selectedCard, setSelectedCard] = useState<IssuedCard | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [editData, setEditData] = useState({ recipientName: '', recipientEmail: '', recipientPhone: '', message: '' });
   const [localAvailableTemplates, setLocalAvailableTemplates] = useState(availableTemplates);
+  const [searchTerm, setSearchTerm] = useState('');
   const [selectedPendingId, setSelectedPendingId] = useState<string | null>(null);
   const [mobilePendingCard, setMobilePendingCard] = useState<Pending | null>(null);
 
@@ -314,27 +323,83 @@ export function GiftCardManagement({
     transactionNumber: '',
   });
 
-  const selectedPendingCard = useMemo(() => {
-    return pending.find(c => c.id === selectedPendingId) || pending[0] || null;
-  }, [pending, selectedPendingId]);
-
-  useEffect(() => {
-    if (pending.length > 0 && !selectedPendingId) {
-      setSelectedPendingId(pending[0].id);
-    }
-  }, [pending, selectedPendingId]);
-
   const activeStore = store as Store;
   const maxAmountNumber = Number(maxAmount || 5000);
   const createDisabled = savingTemplate || !draft.amount || Number(draft.amount) <= 0 || Number(draft.amount) > maxAmountNumber;
 
   const sortedActiveCards = useMemo(() => [...activeCards].sort((a, b) => b.balance - a.balance), [activeCards]);
+  const filteredAvailableTemplates = useMemo(() => {
+    return localAvailableTemplates.filter((template) =>
+      matchesGiftCardSearch(searchTerm, [
+        template.name,
+        template.amount,
+        template.description,
+        template.occasion,
+      ])
+    );
+  }, [localAvailableTemplates, searchTerm]);
+  const filteredPending = useMemo(() => {
+    return pending.filter((card) =>
+      matchesGiftCardSearch(searchTerm, [
+        card.recipientName,
+        card.senderName,
+        card.senderEmail,
+        card.recipientEmail,
+        card.recipientPhone,
+        card.transactionNumber,
+        card.code,
+        card.message,
+        card.paymentMethod,
+        card.amount,
+      ])
+    );
+  }, [pending, searchTerm]);
+  const filteredActiveCards = useMemo(() => {
+    return sortedActiveCards.filter((card) =>
+      matchesGiftCardSearch(searchTerm, [
+        card.recipientName,
+        card.recipientEmail,
+        card.recipientPhone,
+        card.transactionNumber,
+        card.code,
+        card.message,
+        card.paymentMethod,
+        card.amount,
+        card.balance,
+      ])
+    );
+  }, [sortedActiveCards, searchTerm]);
+  const filteredInactiveCards = useMemo(() => {
+    return inactiveCards.filter((card) =>
+      matchesGiftCardSearch(searchTerm, [
+        card.recipientName,
+        card.recipientEmail,
+        card.recipientPhone,
+        card.transactionNumber,
+        card.code,
+        card.message,
+        card.paymentMethod,
+        card.amount,
+        card.balance,
+        card.status,
+      ])
+    );
+  }, [inactiveCards, searchTerm]);
+  const selectedPendingCard = useMemo(() => {
+    return filteredPending.find(c => c.id === selectedPendingId) || filteredPending[0] || null;
+  }, [filteredPending, selectedPendingId]);
   const templateCatalog = useMemo(() => {
     const map = new Map<string, Template>();
     for (const template of templates) map.set(template.id, template);
     for (const template of localAvailableTemplates) map.set(template.id, template);
     return Array.from(map.values());
   }, [templates, localAvailableTemplates]);
+
+  useEffect(() => {
+    if (filteredPending.length > 0 && !filteredPending.some((card) => card.id === selectedPendingId)) {
+      setSelectedPendingId(filteredPending[0].id);
+    }
+  }, [filteredPending, selectedPendingId]);
 
   if (!activeStore) {
     return (
@@ -495,14 +560,31 @@ export function GiftCardManagement({
     }
   }
 
-  async function handleVerify(card: Pending, action: 'approve' | 'reject') {
+  async function handleVerify(card: Pending, action: 'approve' | 'reject', reason?: string) {
     setProcessingId(card.id);
-    const result = await verifyStoreGiftCardPayment(card.id, action);
+    const result = await verifyStoreGiftCardPayment(card.id, action, reason);
     setProcessingId(null);
     setConfirmingCard(null);
+    setRejectingCard(null);
+    setRejectionReason('');
     if ('error' in result && result.error) return toast.error(result.error);
     toast.success('message' in result ? result.message : 'Operacion completada');
     window.location.reload();
+  }
+
+  function openRejectModal(card: Pending) {
+    setRejectingCard(card);
+    setRejectionReason('');
+  }
+
+  function submitReject() {
+    if (!rejectingCard) return;
+    const reason = rejectionReason.trim();
+    if (reason.length < 8) {
+      toast.error('Escribe una razon clara del rechazo.');
+      return;
+    }
+    handleVerify(rejectingCard, 'reject', reason);
   }
 
   function openIssuedCard(card: IssuedCard) {
@@ -548,9 +630,17 @@ export function GiftCardManagement({
       )}
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-3xl font-black tracking-tight">Gift Cards</h1>
-          <p className="mt-1 text-muted-foreground">Bocetos, verificaciones y tarjetas emitidas de {activeStore.name}.</p>
+          <div className="relative mt-3 max-w-2xl">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Buscar por nombre, usuario, codigo de transferencia o codigo de gift card"
+              className="h-12 rounded-2xl pl-11 font-medium"
+            />
+          </div>
         </div>
         <Button className="h-12 rounded-2xl gap-2 bg-brand-gradient text-white shadow-premium" onClick={() => { setDraft(defaultDraft()); setEditingTemplateId(null); setCreateStep(1); setCreateOpen(true); }}>
           <Plus className="h-4 w-4" />
@@ -569,7 +659,7 @@ export function GiftCardManagement({
 
         <TabsContent value="available" className="mt-0">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {localAvailableTemplates.length === 0 ? (
+            {filteredAvailableTemplates.length === 0 ? (
               <Card className="md:col-span-2 xl:col-span-3">
                 <CardContent className="py-14 text-center">
                   <Gift className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
@@ -578,7 +668,7 @@ export function GiftCardManagement({
                   <Button onClick={() => { setDraft(defaultDraft()); setEditingTemplateId(null); setCreateStep(1); setCreateOpen(true); }} className="rounded-2xl">Crear ahora</Button>
                 </CardContent>
               </Card>
-            ) : localAvailableTemplates.map((template) => (
+            ) : filteredAvailableTemplates.map((template) => (
               <button
                 key={template.id}
                 type="button"
@@ -600,7 +690,7 @@ export function GiftCardManagement({
         </TabsContent>
 
         <TabsContent value="verifications" className="mt-0">
-          {pending.length === 0 ? (
+          {filteredPending.length === 0 ? (
             <Card>
               <CardContent className="py-14 text-center">
                 <CheckCircle className="mx-auto mb-3 h-12 w-12 text-emerald-500" />
@@ -612,7 +702,7 @@ export function GiftCardManagement({
             <div className="flex flex-col md:flex-row gap-6 items-start">
               {/* Left: scrollable card list */}
               <div className="w-full md:w-[380px] lg:w-[420px] shrink-0 max-h-[80vh] overflow-y-auto space-y-3 pr-1 pt-2">
-                {pending.map((card) => {
+                {filteredPending.map((card) => {
                   const isSelected = selectedPendingId === card.id;
                   const matchingTemplate = templateCatalog.find(t => String(t.id) === String(card.storeGiftCardTemplateId));
                   return (
@@ -661,7 +751,7 @@ export function GiftCardManagement({
                         )}
 
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                          <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); handleVerify(card, 'reject'); }} disabled={processingId === card.id}>
+                          <Button variant="destructive" size="sm" onClick={(e) => { e.stopPropagation(); openRejectModal(card); }} disabled={processingId === card.id}>
                             <XCircle className="mr-1 h-4 w-4" /> Rechazar
                           </Button>
                           <Button size="sm" onClick={(e) => { e.stopPropagation(); setConfirmingCard(card); }} disabled={processingId === card.id}>
@@ -694,18 +784,18 @@ export function GiftCardManagement({
         </TabsContent>
 
         <TabsContent value="active" className="mt-0">
-          {sortedActiveCards.length === 0 ? (
+          {filteredActiveCards.length === 0 ? (
             <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">Aun no hay Gift Cards activas con saldo.</CardContent></Card>
           ) : (
-            <IssuedCardGrid cards={sortedActiveCards} storeName={activeStore.name} templates={templateCatalog} onOpen={openIssuedCard} />
+            <IssuedCardGrid cards={filteredActiveCards} storeName={activeStore.name} templates={templateCatalog} onOpen={openIssuedCard} />
           )}
         </TabsContent>
 
         <TabsContent value="inactive" className="mt-0">
-          {inactiveCards.length === 0 ? (
+          {filteredInactiveCards.length === 0 ? (
             <Card><CardContent className="py-14 text-center text-sm text-muted-foreground">No hay Gift Cards inactivas.</CardContent></Card>
           ) : (
-            <IssuedCardGrid cards={inactiveCards} storeName={activeStore.name} templates={templateCatalog} onOpen={openIssuedCard} />
+            <IssuedCardGrid cards={filteredInactiveCards} storeName={activeStore.name} templates={templateCatalog} onOpen={openIssuedCard} />
           )}
         </TabsContent>
 
@@ -765,29 +855,75 @@ export function GiftCardManagement({
               <DialogTitle className="text-xl font-black sm:text-2xl">Crear Gift Card</DialogTitle>
               <DialogDescription className="text-white/75">Paso {createStep} de 3</DialogDescription>
             </DialogHeader>
-            <div className="min-h-0 flex-1 touch-pan-y overflow-y-scroll overscroll-contain bg-muted/30 px-4 py-4 pb-28 [-webkit-overflow-scrolling:touch] sm:px-5">
-              <GiftCardDesigner
-                mode="seller"
-                value={{
-                  templateName: draft.name,
-                  storeName: activeStore.name,
-                  amount: draft.amount,
-                  message: draft.message,
-                  occasion: draft.occasion,
-                  designId: draft.designId,
-                  customStyle: draft.customStyle,
-                }}
-                onChange={(patch) => updateDraft({
-                  name: patch.templateName ?? draft.name,
-                  amount: patch.amount !== undefined ? String(patch.amount) : draft.amount,
-                  message: patch.message ?? draft.message,
-                  occasion: patch.occasion ?? draft.occasion,
-                  designId: patch.designId ?? draft.designId,
-                  customStyle: patch.customStyle !== undefined ? patch.customStyle : draft.customStyle,
-                })}
-                sections={createStep === 1 ? ['details'] : createStep === 2 ? ['occasion', 'suggestions'] : ['style']}
-                maxAmount={maxAmountNumber}
-              />
+            <div className="min-h-0 flex-1 overflow-hidden bg-muted/30">
+              <div className="h-full touch-pan-y overflow-y-scroll overscroll-contain px-4 py-4 pb-28 [-webkit-overflow-scrolling:touch] md:hidden">
+                <GiftCardDesigner
+                  mode="seller"
+                  value={{
+                    templateName: draft.name,
+                    storeName: activeStore.name,
+                    amount: draft.amount,
+                    message: draft.message,
+                    occasion: draft.occasion,
+                    designId: draft.designId,
+                    customStyle: draft.customStyle,
+                  }}
+                  onChange={(patch) => updateDraft({
+                    name: patch.templateName ?? draft.name,
+                    amount: patch.amount !== undefined ? String(patch.amount) : draft.amount,
+                    message: patch.message ?? draft.message,
+                    occasion: patch.occasion ?? draft.occasion,
+                    designId: patch.designId ?? draft.designId,
+                    customStyle: patch.customStyle !== undefined ? patch.customStyle : draft.customStyle,
+                  })}
+                  sections={createStep === 1 ? ['details'] : createStep === 2 ? ['occasion', 'suggestions'] : ['style']}
+                  maxAmount={maxAmountNumber}
+                />
+              </div>
+              <div className="hidden h-full min-h-0 grid-cols-[minmax(300px,430px)_1fr] gap-5 p-5 md:grid">
+                <aside className="min-h-0 overflow-hidden">
+                  <div className="sticky top-0">
+                    <GiftCardPreview
+                      mode="seller"
+                      code="SIN CODIGO"
+                      value={{
+                        templateName: draft.name,
+                        storeName: activeStore.name,
+                        amount: draft.amount,
+                        message: draft.message,
+                        occasion: draft.occasion,
+                        designId: draft.designId,
+                        customStyle: draft.customStyle,
+                      }}
+                    />
+                  </div>
+                </aside>
+                <section className="min-h-0 overflow-y-auto overscroll-contain pb-8 pr-2">
+                  <GiftCardDesigner
+                    mode="seller"
+                    value={{
+                      templateName: draft.name,
+                      storeName: activeStore.name,
+                      amount: draft.amount,
+                      message: draft.message,
+                      occasion: draft.occasion,
+                      designId: draft.designId,
+                      customStyle: draft.customStyle,
+                    }}
+                    onChange={(patch) => updateDraft({
+                      name: patch.templateName ?? draft.name,
+                      amount: patch.amount !== undefined ? String(patch.amount) : draft.amount,
+                      message: patch.message ?? draft.message,
+                      occasion: patch.occasion ?? draft.occasion,
+                      designId: patch.designId ?? draft.designId,
+                      customStyle: patch.customStyle !== undefined ? patch.customStyle : draft.customStyle,
+                    })}
+                    sections={createStep === 1 ? ['details'] : createStep === 2 ? ['occasion', 'suggestions'] : ['style']}
+                    maxAmount={maxAmountNumber}
+                    hidePreview
+                  />
+                </section>
+              </div>
             </div>
             <DialogFooter className="shrink-0 border-t bg-background/95 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-12px_35px_rgba(0,0,0,0.08)] backdrop-blur sm:p-4">
               <div className="grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
@@ -815,25 +951,62 @@ export function GiftCardManagement({
       </Dialog>
 
       <Dialog open={!!confirmingCard} onOpenChange={(open) => !open && setConfirmingCard(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Activar Gift Card</DialogTitle>
-            <DialogDescription>Se asignara un codigo seguro, se generara la imagen y se guardara en Cloudflare R2.</DialogDescription>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-md rounded-3xl p-0 sm:p-0">
+          <DialogHeader className="border-b bg-brand-gradient p-5 text-left text-white sm:p-6">
+            <DialogTitle className="text-xl font-black">Activar Gift Card</DialogTitle>
+            <DialogDescription className="text-white/80">Se asignara un codigo seguro, se generara la imagen y se guardara en Cloudflare R2.</DialogDescription>
           </DialogHeader>
-          {confirmingCard && (
-            <div className="rounded-2xl bg-muted p-4 text-sm">
-              <div className="flex justify-between"><span>Monto</span><strong>Bs. {confirmingCard.amount.toFixed(2)}</strong></div>
-              <div className="mt-2 flex justify-between"><span>Para</span><strong>{confirmingCard.recipientName || 'Sin nombre'}</strong></div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmingCard(null)}>Cancelar</Button>
+          <div className="space-y-4 p-5 sm:p-6">
             {confirmingCard && (
-              <Button onClick={() => handleVerify(confirmingCard, 'approve')} disabled={processingId === confirmingCard.id}>
+              <div className="space-y-3 rounded-2xl bg-muted p-4 text-sm">
+                <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Monto a activar</span><strong>Bs. {confirmingCard.amount.toFixed(2)}</strong></div>
+                <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Destinatario</span><strong className="text-right">{confirmingCard.recipientName || 'Sin nombre'}</strong></div>
+                <div className="flex items-center justify-between gap-4"><span className="text-muted-foreground">Comprador</span><strong className="text-right">{confirmingCard.senderName}</strong></div>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2 border-t bg-background p-4 sm:flex sm:p-5">
+            <Button className="h-12 rounded-2xl" variant="outline" onClick={() => setConfirmingCard(null)}>Cancelar</Button>
+            {confirmingCard && (
+              <Button className="h-12 rounded-2xl" onClick={() => handleVerify(confirmingCard, 'approve')} disabled={processingId === confirmingCard.id}>
                 {processingId === confirmingCard.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                Confirmar
+                Activar
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!rejectingCard} onOpenChange={(open) => { if (!open) { setRejectingCard(null); setRejectionReason(''); } }}>
+        <DialogContent className="w-[calc(100vw-1.5rem)] max-w-lg rounded-3xl p-0 sm:p-0">
+          <DialogHeader className="border-b p-5 text-left sm:p-6">
+            <DialogTitle className="text-xl font-black">Rechazar Gift Card</DialogTitle>
+            <DialogDescription>Explica el motivo para que el cliente pueda verlo y comunicarse contigo.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 p-5 sm:p-6">
+            {rejectingCard && (
+              <div className="rounded-2xl bg-muted p-4 text-sm">
+                <div className="flex justify-between gap-4"><span className="text-muted-foreground">Monto</span><strong>Bs. {rejectingCard.amount.toFixed(2)}</strong></div>
+                <div className="mt-2 flex justify-between gap-4"><span className="text-muted-foreground">Comprador</span><strong className="text-right">{rejectingCard.senderName}</strong></div>
+                <div className="mt-2 flex justify-between gap-4"><span className="text-muted-foreground">Txn</span><strong className="text-right font-mono">{rejectingCard.transactionNumber || 'N/A'}</strong></div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Razon del rechazo</Label>
+              <Textarea
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                placeholder="Ej.: comprobante falso, monto no coincide, captura manipulada, transaccion no encontrada..."
+                className="min-h-32 rounded-2xl"
+              />
+            </div>
+          </div>
+          <DialogFooter className="grid grid-cols-2 gap-2 border-t bg-background p-4 sm:flex sm:p-5">
+            <Button className="h-12 rounded-2xl" variant="outline" onClick={() => { setRejectingCard(null); setRejectionReason(''); }} disabled={!!processingId}>Cancelar</Button>
+            <Button className="h-12 rounded-2xl" variant="destructive" onClick={submitReject} disabled={!!processingId}>
+              {processingId === rejectingCard?.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
+              Rechazar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -904,7 +1077,7 @@ export function GiftCardManagement({
               </div>
               <DialogFooter className="shrink-0 border-t bg-background/95 p-4 shadow-[0_-12px_35px_rgba(0,0,0,0.08)]">
                 <div className="grid w-full grid-cols-2 gap-2">
-                  <Button variant="destructive" className="h-12 rounded-2xl" onClick={() => { handleVerify(mobilePendingCard, 'reject'); setMobilePendingCard(null); }}>
+                  <Button variant="destructive" className="h-12 rounded-2xl" onClick={() => { openRejectModal(mobilePendingCard); setMobilePendingCard(null); }}>
                     Rechazar
                   </Button>
                   <Button className="h-12 rounded-2xl" onClick={() => { setConfirmingCard(mobilePendingCard); setMobilePendingCard(null); }}>

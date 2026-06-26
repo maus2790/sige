@@ -89,7 +89,7 @@ export function MobileNavBar({ categories, myStoreId }: MobileNavBarProps) {
       },
       badge: 0
     }] : isGiftCardsPage ? [{ 
-      href: "/gift-cards/buy",
+      href: "/gift-cards?tab=stores",
       label: "Regalar", 
       icon: Gift, 
       isAction: true,

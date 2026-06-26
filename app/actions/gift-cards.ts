@@ -1569,13 +1569,13 @@ export async function upsertStoreGiftCardTemplate(data: {
     });
     revalidatePath('/dashboard/gift-cards');
     revalidatePath(`/tienda/${data.storeId}`);
-    revalidatePath('/gift-cards/buy');
+    revalidatePath('/gift-cards');
     return { success: true, id };
   }
 
   revalidatePath('/dashboard/gift-cards');
   revalidatePath(`/tienda/${data.storeId}`);
-  revalidatePath('/gift-cards/buy');
+  revalidatePath('/gift-cards');
   return { success: true, id: data.id };
 }
 
@@ -1597,7 +1597,7 @@ export async function toggleStoreGiftCardTemplate(templateId: string, isActive: 
 
   revalidatePath('/dashboard/gift-cards');
   revalidatePath(`/tienda/${store.id}`);
-  revalidatePath('/gift-cards/buy');
+  revalidatePath('/gift-cards');
   return { success: true };
 }
 
@@ -1616,7 +1616,7 @@ export async function deleteStoreGiftCardTemplate(templateId: string) {
 
   revalidatePath('/dashboard/gift-cards');
   if (storeId) revalidatePath(`/tienda/${storeId}`);
-  revalidatePath('/gift-cards/buy');
+  revalidatePath('/gift-cards');
   return { success: true };
 }
 
@@ -1766,7 +1766,7 @@ export async function updateStoreGiftCardPaymentSettings(data: {
   }
 
   revalidatePath('/dashboard/gift-cards');
-  revalidatePath('/gift-cards/buy');
+  revalidatePath('/gift-cards');
   return { success: true };
 }
 
@@ -2215,8 +2215,10 @@ export async function getStoresWithGiftCards() {
       storeName: stores.name,
       storeLogoUrl: stores.logoUrl,
       storeBannerUrl: stores.bannerUrl,
+      operatorPhone: storeGiftCardPaymentSettings.operatorPhone,
     })
     .from(stores)
+    .leftJoin(storeGiftCardPaymentSettings, eq(storeGiftCardPaymentSettings.storeId, stores.id))
     .where(eq(stores.giftCardsEnabled, true))
     .orderBy(desc(stores.createdAt))
     .all();
@@ -2268,6 +2270,7 @@ export async function getStoresWithGiftCards() {
       name: store.storeName,
       logoUrl: store.storeLogoUrl,
       bannerUrl: store.storeBannerUrl,
+      operatorPhone: store.operatorPhone,
       firstTemplateId: null,
       firstTemplateName: null,
       firstTemplateAmount: null,

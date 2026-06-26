@@ -62,6 +62,7 @@ type StoreWithGiftCards = {
   id: string;
   name: string;
   logoUrl: string | null;
+  operatorPhone?: string | null;
   storeName?: string;
   storeLogoUrl?: string | null;
   templates: StoreTemplate[];
@@ -82,6 +83,13 @@ const PAYMENT_METHODS: { id: PaymentMethod; icon: LucideIcon; label: string }[] 
   { id: 'tigo_money', icon: Smartphone, label: 'Tigo' },
   { id: 'operator', icon: MessageCircle, label: 'Operador' },
 ];
+
+function getWhatsAppHref(phone?: string | null, message = 'Hola, necesito ayuda con mi Gift Card.') {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return null;
+  const normalized = digits.startsWith('591') ? digits : `591${digits}`;
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
 
 interface GiftCardWalletProps {
   sent: any[];
@@ -144,6 +152,7 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
   const [customReceiptFile, setCustomReceiptFile] = useState<File | null>(null);
   const [customReceiptPreview, setCustomReceiptPreview] = useState<string | null>(null);
   const [submittingCustomCard, setSubmittingCustomCard] = useState(false);
+  const [dismissedRejectedIds, setDismissedRejectedIds] = useState<string[]>([]);
 
   function handleCustomReceipt(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -247,6 +256,11 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
   };
 
   const pendingVerification = uniqueById(allUserCards).filter((card) => card.status === 'pending_payment');
+  const rejectedVerification = uniqueById(allUserCards).filter((card) =>
+    card.status === 'cancelled' &&
+    card.rejectionReason &&
+    !dismissedRejectedIds.includes(card.id)
+  );
   // De acuerdo a la regla 3, todas las tarjetas activas de mi propiedad, recibidas, o enviadas deben aparecer en la pestaña "Mis Gift Cards"
   const activeMine = uniqueById([...mine, ...received, ...sent]).filter(isCardActive);
   const activeSent = uniqueById(sent).filter(isCardActive);
@@ -395,6 +409,61 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
       <div className="mx-auto mt-5 max-w-5xl px-4 pb-32">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsContent value="stores" className="mt-0 space-y-5">
+            {rejectedVerification.length > 0 && (
+              <section className="space-y-3 rounded-2xl border border-destructive/25 bg-destructive/10 p-3">
+                <div>
+                  <h2 className="font-black text-destructive">Pago rechazado</h2>
+                  <p className="text-xs text-destructive/80">Revisa el motivo y comunicate con la tienda si necesitas aclararlo.</p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {rejectedVerification.map((card) => {
+                    const matchingStore = stores.find((s) => s.id === card.businessId);
+                    const matchingTemplate = matchingStore?.templates.find((t) => String(t.id) === String(card.storeGiftCardTemplateId));
+                    const whatsappHref = getWhatsAppHref(
+                      matchingStore?.operatorPhone,
+                      `Hola, mi pago de Gift Card fue rechazado. Codigo de transferencia: ${card.transactionNumber || 'N/A'}`
+                    );
+                    return (
+                      <div key={card.id} className="rounded-2xl border bg-background p-3">
+                        <div className="opacity-60 grayscale">
+                          <GiftCardPreviewFromRecord
+                            record={card}
+                            template={matchingTemplate}
+                            storeName={matchingStore?.name || 'Tienda'}
+                            mode="buyer"
+                            code="RECHAZADA"
+                          />
+                        </div>
+                        <div className="mt-3 space-y-3 rounded-xl bg-destructive/10 p-3 text-xs text-destructive">
+                          <div>
+                            <p className="font-black uppercase tracking-wide">Motivo del rechazo</p>
+                            <p className="mt-1 text-sm text-foreground">{card.rejectionReason}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-10 rounded-xl"
+                              onClick={() => setDismissedRejectedIds((current) => [...current, card.id])}
+                            >
+                              Aceptar
+                            </Button>
+                            <Button asChild={!!whatsappHref} disabled={!whatsappHref} className="h-10 rounded-xl">
+                              {whatsappHref ? (
+                                <a href={whatsappHref} target="_blank" rel="noreferrer">Comunicarse</a>
+                              ) : (
+                                <span>Sin WhatsApp</span>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
             {pendingVerification.length > 0 && (
               <section className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50 p-3">
                 <div>
@@ -405,6 +474,10 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                   {pendingVerification.map((card) => {
                     const matchingStore = stores.find((s) => s.id === card.businessId);
                     const matchingTemplate = matchingStore?.templates.find((t) => String(t.id) === String(card.storeGiftCardTemplateId));
+                    const whatsappHref = getWhatsAppHref(
+                      matchingStore?.operatorPhone,
+                      `Hola, quiero consultar mi Gift Card en verificacion. Codigo de transferencia: ${card.transactionNumber || 'N/A'}`
+                    );
                     return (
                       <div key={card.id} className="opacity-70">
                         <GiftCardPreviewFromRecord
@@ -416,8 +489,12 @@ export function GiftCardWallet({ sent, received, mine = [], saved = [], stores =
                         />
                       <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-white/80 p-2 text-xs font-black text-amber-900">
                         <span>En verificacion</span>
-                        <Button asChild size="sm" className="h-8 rounded-xl">
-                          <a href="https://wa.me/59173214036" target="_blank" rel="noreferrer">WhatsApp</a>
+                        <Button asChild={!!whatsappHref} size="sm" className="h-8 rounded-xl" disabled={!whatsappHref}>
+                          {whatsappHref ? (
+                            <a href={whatsappHref} target="_blank" rel="noreferrer">WhatsApp</a>
+                          ) : (
+                            <span>Sin WhatsApp</span>
+                          )}
                         </Button>
                       </div>
                     </div>

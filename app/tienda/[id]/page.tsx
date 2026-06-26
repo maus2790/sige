@@ -9,7 +9,6 @@ import { cookies } from "next/headers";
 import { db } from "@/db";
 import { stores } from "@/db/schema";
 import { desc } from "drizzle-orm";
-import { getActiveStoreGiftCardTemplates } from "@/app/actions/gift-cards";
 
 interface StorePageProps {
   params: Promise<{ id: string }>;
@@ -61,12 +60,11 @@ export default async function StorePage({ params }: StorePageProps) {
     user = await getCurrentUser();
   }
 
-  // Fetch store, initial products, categories, and gift card templates
-  const [store, initialProducts, categoriesList, giftCardTemplates] = await Promise.all([
+  // Fetch store, initial products and categories
+  const [store, initialProducts, categoriesList] = await Promise.all([
     getStoreDetails(id),
     getStoreProducts(id, 1),
     getCategories(),
-    getActiveStoreGiftCardTemplates(id),
   ]);
 
   if (!store) {
@@ -82,8 +80,6 @@ export default async function StorePage({ params }: StorePageProps) {
         initialProducts={initialProducts}
         myUserId={user?.id ?? null}
         categories={categoriesList}
-        hasGiftCards={giftCardTemplates.length > 0}
-        giftCardTemplates={giftCardTemplates}
       />
     </main>
   );

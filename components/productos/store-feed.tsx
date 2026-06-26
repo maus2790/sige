@@ -4,7 +4,7 @@ import { useInView } from "react-intersection-observer";
 import { useMemo, useEffect, useState } from "react";
 import { ProductCard } from "./product-card";
 import { ProductGridSkeleton } from "./product-card-skeleton";
-import { Loader2, Package, ShoppingCart, Store, Save, X, Palette, CheckCircle2, MapPin, Phone, Search, Plus, Gift, Globe, Lock } from "lucide-react";
+import { Loader2, Package, ShoppingCart, Store, Save, X, Palette, CheckCircle2, MapPin, Phone, Search, Plus, Globe, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getStoreProducts, getStoreDrafts, refreshStoreFeed } from "@/app/actions/storefront";
 import { RefreshButton } from "@/components/marketplace/refresh-button";
@@ -27,8 +27,6 @@ import { cn } from "@/lib/utils";
 import { StoreMap } from "@/components/tienda/store-map";
 import { getCurrentUser } from "@/app/actions/auth";
 import { getPremiumThemeColor, isPremiumTheme, PremiumTheme, usePremiumTheme } from "@/hooks/use-premium-theme";
-import { StoreGiftCardTemplates } from "@/components/gift-cards/store-gift-card-templates";
-import { GiftCardPurchaseModal } from "@/components/gift-cards/gift-card-purchase-modal";
 
 interface StoreData {
   id: string;
@@ -51,17 +49,13 @@ interface StoreFeedProps {
   initialProducts: any[];
   myUserId?: string | null;
   categories?: any[];
-  hasGiftCards?: boolean;
-  giftCardTemplates?: any[];
 }
 
-export function StoreFeed({ store, initialProducts, myUserId, categories = [], hasGiftCards = false, giftCardTemplates = [] }: StoreFeedProps) {
+export function StoreFeed({ store, initialProducts, myUserId, categories = [] }: StoreFeedProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { premiumTheme } = usePremiumTheme();
   const [showSettings, setShowSettings] = useState(false);
-  const [showGiftCards, setShowGiftCards] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(myUserId ?? null);
   const [storeThemeOverride, setStoreThemeOverride] = useState<PremiumTheme | null>(null);
 
@@ -380,16 +374,6 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [], h
           </div>
 
 
-          {/* Botón GIFT CARDS DE LA TIENDA - solo si la tienda tiene gift cards activas */}
-          {hasGiftCards && (
-            <button
-              onClick={() => setShowGiftCards(!showGiftCards)}
-              className="market-action store-action hidden md:flex items-center justify-center gap-2 px-6 h-12 rounded-2xl bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 font-black text-xs shadow-xl dark:shadow-[0_0_15px_rgba(168,85,247,0.4)] border-2 border-purple-300 dark:border-purple-400/50 hover:bg-purple-50 dark:hover:bg-zinc-800 hover:scale-105 active:scale-95 transition-all shrink-0 uppercase tracking-wider btn-shine cursor-pointer"
-            >
-              <Gift className="h-5 w-5" />
-              {showGiftCards ? "Ver Productos" : "Gift Cards de la Tienda"}
-            </button>
-          )}
         </div>
       </div>
 
@@ -435,29 +419,7 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [], h
         </div>
       )}
 
-      {/* Grid de Gift Cards o Productos */}
-      {showGiftCards ? (
-        <div className="max-w-7xl mx-auto px-4 mt-6">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="store-section-accent h-10 w-1.5 rounded-full bg-purple-600"></div>
-              <h2 className="text-2xl font-black tracking-tight">Gift Cards de la Tienda</h2>
-            </div>
-            <Badge variant="outline" className="rounded-full px-4 border-muted-foreground/20 text-muted-foreground font-bold">
-              {giftCardTemplates.length} {giftCardTemplates.length === 1 ? 'Tarjeta' : 'Tarjetas'}
-            </Badge>
-          </div>
-
-          {/* Gift Cards Grid */}
-          <StoreGiftCardTemplates
-            storeId={store.id}
-            templates={giftCardTemplates}
-            onSelectTemplate={setSelectedTemplateId}
-            onCustomDesign={() => router.push(`/tienda/${store.id}/gift-cards?customDesign=true`)}
-          />
-        </div>
-      ) : (
+      {/* Grid de Productos */}
         <div className="max-w-7xl mx-auto px-4 mt-6">
           {/* Header: use same grid so titles align perfectly with their content below */}
           {showComplexLayout ? (
@@ -620,7 +582,6 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [], h
           </>
         )}
       </div>
-      )}
       {isOwner && drafts.length > 0 && (
         <div className="max-w-7xl mx-auto px-4 mt-4 mb-16">
           <div className="flex items-center justify-between mb-8 border-t pt-8 border-zinc-200 dark:border-zinc-800">
@@ -654,31 +615,6 @@ export function StoreFeed({ store, initialProducts, myUserId, categories = [], h
         />
       )}
 
-      {/* Gift Card Purchase Modal */}
-      {selectedTemplateId && (
-        <GiftCardPurchaseModal
-          open={!!selectedTemplateId}
-          onOpenChange={(open) => {
-            if (!open) setSelectedTemplateId(null);
-          }}
-          templateId={selectedTemplateId}
-          templateName={giftCardTemplates.find(t => t.id === selectedTemplateId)?.name || 'Gift Card'}
-          amount={giftCardTemplates.find(t => t.id === selectedTemplateId)?.amount || 0}
-          storeId={store.id}
-          templates={giftCardTemplates as any}
-        />
-      )}
-
-      {/* Botón flotante Gift Cards de la Tienda - Solo en móvil, solo si hay gift cards */}
-      {hasGiftCards && (
-        <button
-          onClick={() => setShowGiftCards(!showGiftCards)}
-          className="md:hidden fixed bottom-20 right-4 z-40 flex items-center gap-2 px-4 py-3 rounded-2xl bg-purple-600 text-white font-black text-xs shadow-2xl shadow-purple-500/40 hover:bg-purple-700 active:scale-95 transition-all uppercase tracking-wider"
-        >
-          <Gift className="h-4 w-4" />
-          {showGiftCards ? "Productos" : "Gift Cards"}
-        </button>
-      )}
     </div>
   );
 }
